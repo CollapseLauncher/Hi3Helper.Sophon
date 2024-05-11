@@ -2,6 +2,7 @@
 using System;
 using System.Buffers;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
@@ -103,11 +104,22 @@ namespace Hi3Helper.Sophon
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
-            await Parallel.ForEachAsync(Chunks!, parallelOptions, async (chunk, threadToken) =>
+            try
             {
-                using Stream outStream = outStreamFunc();
-                await PerformWriteStreamThreadAsync(client, outStream, chunk, threadToken, readInfoDelegate);
-            });
+                await Parallel.ForEachAsync(Chunks!, parallelOptions, async (chunk, threadToken) =>
+                {
+                    using Stream outStream = outStreamFunc();
+                    await PerformWriteStreamThreadAsync(client, outStream, chunk, threadToken, readInfoDelegate);
+                });
+            }
+            catch (AggregateException ex)
+            {
+                throw ex.Flatten().InnerExceptions.First();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
 
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
             downloadCompleteDelegate?.Invoke(this);
