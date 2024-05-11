@@ -167,6 +167,7 @@ namespace Hi3Helper.Sophon
 
             string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
 
+#if !NOSTREAMLOCK
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
@@ -174,6 +175,7 @@ namespace Hi3Helper.Sophon
                 this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} by length: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
 #endif
             }
+#endif
 
             while (true)
             {
