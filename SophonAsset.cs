@@ -73,7 +73,8 @@ namespace Hi3Helper.Sophon
         ///     <see cref="FileAccess.ReadWrite"/> and <see cref="FileShare.ReadWrite"/> if you're using <see cref="FileStream"/>.
         /// </param>
         /// <param name="parallelOptions">
-        ///     Parallelization settings to be used for downloading chunks and data hashing.<br/>
+        ///     Parallelization settings to be used for downloading chunks and data hashing.
+        ///     Remember that while using this method, the <seealso cref="CancellationToken"/> needs to be passed with <c>CancellationToken</c> property.<br/>
         ///     If it's being set to <c>null</c>, a default setting will be used as below:
         ///     <code>
         ///     CancellationToken = <paramref name="token"/>,
@@ -82,12 +83,9 @@ namespace Hi3Helper.Sophon
         /// </param>
         /// <param name="readInfoDelegate"><inheritdoc cref="DelegateReadStreamInfo"/></param>
         /// <param name="downloadCompleteDelegate"><inheritdoc cref="DelegateDownloadAssetComplete"/></param>
-        /// <param name="token">
-        ///     Cancellation token for handling cancellation while the routine is running.
-        /// </param>
         public async ValueTask WriteToStreamAsync(HttpClient client, Func<Stream> outStreamFunc,
             ParallelOptions? parallelOptions = null, DelegateReadStreamInfo? readInfoDelegate = null,
-            DelegateDownloadAssetComplete? downloadCompleteDelegate = null, CancellationToken token = default)
+            DelegateDownloadAssetComplete? downloadCompleteDelegate = null)
         {
             EnsureOrThrowChunksState();
 
@@ -101,7 +99,7 @@ namespace Hi3Helper.Sophon
 
             parallelOptions ??= new ParallelOptions
             {
-                CancellationToken = token,
+                CancellationToken = default,
                 MaxDegreeOfParallelism = Environment.ProcessorCount
             };
 
