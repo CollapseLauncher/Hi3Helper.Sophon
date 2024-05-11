@@ -205,11 +205,13 @@ namespace Hi3Helper.Sophon
                 MD5 hashInstance = MD5.Create();
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
 
+                using CancellationTokenSource innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                using CancellationTokenSource cooperatedToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
                 try
                 {
                     outStream.Position = chunk.ChunkOffset;
-                    httpResponseStream = await SophonAssetStream.CreateStreamAsync(client, url, 0, null, token);
+                    httpResponseStream = await SophonAssetStream.CreateStreamAsync(client, url, 0, null, cooperatedToken.Token);
 
                     if (httpResponseStream == null)
                         throw new HttpRequestException($"Response stream returns an empty stream!");
@@ -218,8 +220,11 @@ namespace Hi3Helper.Sophon
                     if (SophonChunksInfo.IsUseCompression)
                         sourceStream = new ZstdStream(httpResponseStream, _zstdBufferSize);
 
+                    CancellationTokenSource innerReadTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                    CancellationTokenSource cooperatedReadToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerReadTimeoutToken.Token);
+
                     int read = 0;
-                    while ((read = await sourceStream.ReadAsync(buffer, token)) > 0)
+                    while ((read = await sourceStream.ReadAtLeastAsync(buffer, buffer.Length, false, cooperatedReadToken.Token)) > 0)
                     {
                         outStream.Write(buffer, 0, read);
                         currentWriteOffset += read;
@@ -227,6 +232,11 @@ namespace Hi3Helper.Sophon
                         readInfoDelegate?.Invoke(read);
 
                         currentRetry = 0;
+                        innerReadTimeoutToken?.Dispose();
+                        cooperatedReadToken?.Dispose();
+
+                        innerReadTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                        cooperatedReadToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerReadTimeoutToken.Token);
                     }
 
                     hashInstance.TransformFinalBlock(buffer, 0, read);
@@ -245,12 +255,7 @@ namespace Hi3Helper.Sophon
 #endif
                     return;
                 }
-                catch (TaskCanceledException)
-                {
-                    allowDispose = true;
-                    throw;
-                }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (token.IsCancellationRequested)
                 {
                     allowDispose = true;
                     throw;
