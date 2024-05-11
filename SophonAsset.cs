@@ -182,7 +182,6 @@ namespace Hi3Helper.Sophon
             int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
 
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
             long currentWriteOffset = 0;
 
             string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
@@ -204,6 +203,8 @@ namespace Hi3Helper.Sophon
                 Stream? sourceStream = null;
 
                 MD5 hashInstance = MD5.Create();
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
+
 
                 try
                 {
