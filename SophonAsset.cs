@@ -132,9 +132,7 @@ namespace Hi3Helper.Sophon
 
             if (isSkipChunk)
             {
-#if DEBUG
-                this.PushLogDebug($"Skipping chunk 0x{chunk.ChunkOffset:x8} Length: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-#endif
+                this.PushLogDebug($"Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                 readInfoDelegate?.Invoke(chunk.ChunkSizeDecompressed);
                 return;
             }
@@ -190,9 +188,7 @@ namespace Hi3Helper.Sophon
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
-#if DEBUG
-                this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} by length: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
-#endif
+                this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
 #endif
 
@@ -246,13 +242,11 @@ namespace Hi3Helper.Sophon
                     if (!isHashVerified)
                     {
                         readInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
-                        this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8}");
+                        this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                         continue;
                     }
 
-#if DEBUG
-                    this.PushLogDebug($"Chunk: {chunk.ChunkName} for: {AssetName} has been completely downloaded!");
-#endif
+                    this.PushLogDebug($"Download completed! Chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                     return;
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -268,13 +262,13 @@ namespace Hi3Helper.Sophon
                         currentWriteOffset = 0;
                         currentRetry++;
 
-                        this.PushLogWarning($"An error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8}\r\n{ex}");
+                        this.PushLogWarning($"An error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
                         await Task.Delay(TimeSpan.FromSeconds(1), token);
                         continue;
                     }
 
                     allowDispose = true;
-                    this.PushLogError($"An unhandled error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8}\r\n{ex}");
+                    this.PushLogError($"An unhandled error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
                     throw;
                 }
                 finally
