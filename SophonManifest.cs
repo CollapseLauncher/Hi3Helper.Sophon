@@ -45,7 +45,7 @@ namespace Hi3Helper.Sophon
         ///     Indicates if an argument or Http response returns a <c>null</c>.
         /// </exception>
         public static async IAsyncEnumerable<SophonAsset> EnumerateAsync(HttpClient httpClient, SophonManifestInfo manifestInfo, SophonChunksInfo chunksInfo,
-            [EnumeratorCancellation] CancellationToken token)
+            [EnumeratorCancellation] CancellationToken token = default)
         {
             if (!Extern.IsLibraryExist(ZstdNet.ExternMethods.DllName))
                 throw new DllNotFoundException($"libzstd is not found!");
@@ -60,8 +60,7 @@ namespace Hi3Helper.Sophon
                 throw new NullReferenceException($"Http response message returns a null entry");
 
             await using Stream manifestNetworkStream = await GetSophonHttpStream(httpResponseMessage, manifestInfo.IsUseCompression, token);
-            using CodedInputStream manifestProtoStream = new CodedInputStream(manifestNetworkStream);
-            SophonManifestProto manifestProto = SophonManifestProto.Parser.ParseFrom(manifestProtoStream);
+            SophonManifestProto manifestProto = SophonManifestProto.Parser.ParseFrom(manifestNetworkStream);
 
             foreach (AssetProperty asset in manifestProto.Assets)
             {

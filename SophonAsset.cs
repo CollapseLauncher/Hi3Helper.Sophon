@@ -1,5 +1,6 @@
 ﻿using Hi3Helper.Sophon.Infos;
 using System;
+using System.Buffers;
 using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -13,6 +14,7 @@ namespace Hi3Helper.Sophon
     public class SophonAsset
     {
         private const int _bufferSize = 16 << 10;
+        private const int _zstdBufferSize = 512 << 10;
 
         public string? AssetName { get; internal set; }
         public long AssetSize { get; internal set; }
@@ -132,37 +134,45 @@ namespace Hi3Helper.Sophon
 
         private async ValueTask<bool> CheckMd5HashAsync(Stream outStream, SophonChunk chunk, CancellationToken token)
         {
-            byte[] buffer = new byte[_bufferSize];
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
+            int bufferSize = buffer.Length;
 
-            outStream.Position = chunk.ChunkOffset;
-            long remain = chunk.ChunkSizeDecompressed;
-            int read = 0;
-
-            MD5 hash = MD5.Create();
-
-            while (remain > 0)
+            try
             {
-                int toRead = (int)Math.Min(_bufferSize, remain);
-                read = await outStream.ReadAsync(buffer, 0, toRead);
-                hash.TransformBlock(buffer, 0, read, buffer, 0);
+                MD5 hash = MD5.Create();
 
-                remain -= read;
+                outStream.Position = chunk.ChunkOffset;
+                long remain = chunk.ChunkSizeDecompressed;
+                int read = 0;
+
+                while (remain > 0)
+                {
+                    int toRead = (int)Math.Min(bufferSize, remain);
+                    read = await outStream.ReadAsync(buffer, 0, toRead);
+                    hash.TransformBlock(buffer, 0, read, buffer, 0);
+
+                    remain -= read;
+                }
+
+                hash.TransformFinalBlock(buffer, 0, (int)remain);
+
+                string hashString = Convert.ToHexString(hash.Hash!);
+                bool isHashMatch = hashString.Equals(chunk.ChunkHashDecompressed, StringComparison.OrdinalIgnoreCase);
+
+                return isHashMatch;
             }
-
-            hash.TransformFinalBlock(buffer, 0, (int)remain);
-
-            string hashString = Convert.ToHexString(hash.Hash!);
-            bool isHashMatch = hashString.Equals(chunk.ChunkHashDecompressed, StringComparison.OrdinalIgnoreCase);
-
-            return isHashMatch;
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         private async ValueTask InnerWriteStreamToAsync(HttpClient client, Stream outStream, SophonChunk chunk, CancellationToken token, DelegateReadStreamInfo? readInfoDelegate = null)
         {
-            int retryCount = 5;
+            int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
 
-            byte[] buffer = new byte[_bufferSize];
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
             long currentWriteOffset = 0;
 
             string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
@@ -188,22 +198,17 @@ namespace Hi3Helper.Sophon
                 try
                 {
                     outStream.Position = chunk.ChunkOffset;
-                    httpResponseStream = await TaskExtensions.RetryTimeoutAfter(
-                        () => SophonAssetStream.CreateStreamAsync(client, url, 0, null, token),
-                        token
-                        );
+                    httpResponseStream = await SophonAssetStream.CreateStreamAsync(client, url, 0, null, token);
 
                     if (httpResponseStream == null)
                         throw new HttpRequestException($"Response stream returns an empty stream!");
 
                     sourceStream = httpResponseStream;
                     if (SophonChunksInfo.IsUseCompression)
-                        sourceStream = new ZstdStream(httpResponseStream, _bufferSize);
+                        sourceStream = new ZstdStream(httpResponseStream, _zstdBufferSize);
 
                     int read = 0;
-                    while ((read = await sourceStream.ReadAsync(buffer, token)
-                        .AsTask()
-                        .TimeoutAfter(token)) > 0)
+                    while ((read = await sourceStream.ReadAsync(buffer, token)) > 0)
                     {
                         outStream.Write(buffer, 0, read);
                         currentWriteOffset += read;
@@ -263,6 +268,7 @@ namespace Hi3Helper.Sophon
                         if (sourceStream != null) await sourceStream.DisposeAsync();
                         if (httpResponseStream != null) await httpResponseStream.DisposeAsync();
                     }
+                    ArrayPool<byte>.Shared.Return(buffer);
                 }
             }
         }

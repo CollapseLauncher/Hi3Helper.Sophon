@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,13 +26,16 @@ namespace Hi3Helper.Sophon
                     Task<T?> completedTask = await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T?>(timeout, taskDelegated, token));
                     if (completedTask == taskDelegated)
                         return await taskDelegated;
+
+                    if (completedTask.Exception != null)
+                        throw completedTask.Exception.Flatten().InnerExceptions.First();
                 }
                 catch (TaskCanceledException) { throw; }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex)
                 {
                     lastException = ex;
-                    await Task.Delay(1000); // Wait 1s interval before retrying
+                    await Task.Delay(TimeSpan.FromSeconds(1)); // Wait 1s interval before retrying
                     continue;
                 }
             }
@@ -41,22 +45,16 @@ namespace Hi3Helper.Sophon
         }
 
         internal static async ValueTask<T?> TimeoutAfter<T>(this Task<T?> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
-        {
-            Task<T?> completedTask = await Task.WhenAny(task, ThrowExceptionAfterTimeout<T?>(timeout, task, token));
-            return await completedTask;
-        }
+            => await await Task.WhenAny(task, ThrowExceptionAfterTimeout<T?>(timeout, task, token));
 
         private static async Task<T?> ThrowExceptionAfterTimeout<T>(int timeout, Task mainTask, CancellationToken token = default)
         {
             if (token.IsCancellationRequested)
                 throw new OperationCanceledException();
 
-            int timeoutMs = timeout * 1000;
-            await Task.Delay(timeoutMs, token);
+            await Task.Delay(TimeSpan.FromSeconds(timeout), token);
             if (!(mainTask.IsCompleted ||
-#if NETCOREAPP
                 mainTask.IsCompletedSuccessfully ||
-#endif
                 mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
                 throw new TimeoutException($"The operation for task has timed out!");
 
