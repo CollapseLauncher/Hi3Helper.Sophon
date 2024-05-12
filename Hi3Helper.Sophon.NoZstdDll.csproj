@@ -8,11 +8,10 @@
 		<DefineConstants>NOSTREAMLOCK</DefineConstants>
 		<AssemblyName>Hi3Helper.Sophon</AssemblyName>
 	</PropertyGroup>
-
 	<ItemGroup>
-		<Content Include="Lib\win-x64\libzstd.dll">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
+	  <Compile Remove="Lib\**" />
+	  <EmbeddedResource Remove="Lib\**" />
+	  <None Remove="Lib\**" />
 	</ItemGroup>
 
 	<ItemGroup>
