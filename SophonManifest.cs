@@ -17,6 +17,41 @@ namespace Hi3Helper.Sophon
 {
     public partial class SophonManifest
     {
+
+        /// <summary>
+        ///     Enumerate the Sophon assets contained within the manifest.
+        /// </summary>
+        /// <param name="httpClient">
+        ///     The <seealso cref="HttpClient"/> to be used to download the manifest data.
+        /// </param>
+        /// <param name="infoPair">
+        ///     Pair of Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
+        /// <returns>
+        ///     An <seealso cref="IAsyncEnumerable{T}"/> to enumerate the Sophon asset from the manifest.
+        /// </returns>
+        /// <exception cref="DllNotFoundException">
+        ///     Indicates if a library required is missing.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        ///     Indicates if an error during Http request is happening.
+        /// </exception>
+        /// <exception cref="NullReferenceException">
+        ///     Indicates if an argument or Http response returns a <c>null</c>.
+        /// </exception>
+        public static async IAsyncEnumerable<SophonAsset> EnumerateAsync(HttpClient httpClient, SophonChunkManifestInfoPair infoPair,
+            [EnumeratorCancellation] CancellationToken token = default)
+
+        {
+            await foreach (SophonAsset asset in EnumerateAsync(httpClient, infoPair.ManifestInfo, infoPair.ChunksInfo, token))
+            {
+                yield return asset;
+            }
+        }
+
         /// <summary>
         ///     Enumerate the Sophon assets contained within the manifest.
         /// </summary>
