@@ -13,6 +13,14 @@
 	  <EmbeddedResource Remove="Lib\**" />
 	  <None Remove="Lib\**" />
 	</ItemGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>True</Optimize>
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="3.26.1" />

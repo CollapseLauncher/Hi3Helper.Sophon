@@ -8,6 +8,14 @@
 		<DefineConstants>NOSTREAMLOCK</DefineConstants>
 		<AssemblyName>Hi3Helper.Sophon</AssemblyName>
 	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)'=='Release'">
+		<Optimize>True</Optimize>
+		<DebugType>portable</DebugType>
+	</PropertyGroup>
 
 	<ItemGroup>
 		<Content Include="Lib\win-x64\libzstd.dll">
