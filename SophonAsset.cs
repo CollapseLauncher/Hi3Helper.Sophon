@@ -220,7 +220,7 @@ namespace Hi3Helper.Sophon
                     CancellationTokenSource cooperatedReadToken = CancellationTokenSource.CreateLinkedTokenSource(token, innerReadTimeoutToken.Token);
 
                     int read = 0;
-                    while ((read = await sourceStream.ReadAtLeastAsync(buffer, buffer.Length, false, cooperatedReadToken.Token)) > 0)
+                    while ((read = await sourceStream.ReadAsync(buffer, cooperatedReadToken.Token)) > 0)
                     {
                         outStream.Write(buffer, 0, read);
                         currentWriteOffset += read;
