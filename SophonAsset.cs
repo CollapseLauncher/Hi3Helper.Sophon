@@ -14,7 +14,7 @@ namespace Hi3Helper.Sophon
 {
     public class SophonAsset
     {
-        private const int _bufferSize = 8 << 10;
+        private const int _bufferSize = 256 << 10;
         private const int _zstdBufferSize = 256 << 10;
 
         public string? AssetName { get; internal set; }
