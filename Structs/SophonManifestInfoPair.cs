@@ -1,36 +1,18 @@
-﻿using Hi3Helper.Sophon.Infos;
-using System;
+using Hi3Helper.Sophon.Infos;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace Hi3Helper.Sophon
-{
-    public static partial class SophonManifest
+namespace Hi3Helper.Sophon;
+public struct SophonChunkManifestInfoPair
     {
-        public static async ValueTask<SophonBranch?> GetSophonBranchInfo(
-            HttpClient client, string url, CancellationToken token)
+        public SophonChunksInfo   ChunksInfo;
+        public SophonManifestInfo ManifestInfo;
+        public SophonData         OtherSophonData;
+
+        public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string? matchingField)
         {
-            return await client.GetFromJsonAsync(url, SophonContext.Default.SophonBranch, token);
-        }
-
-        public static async ValueTask<SophonChunkManifestInfoPair> CreateSophonChunkManifestInfoPair(
-            HttpClient client, string url, string? matchingField, CancellationToken token)
-        {
-            var sophonBranch = await GetSophonBranchInfo(client, url, token);
-            if (!(sophonBranch != null && sophonBranch.Data != null))
-                throw new NullReferenceException("Url returns an empty/null data!");
-
-            if (string.IsNullOrEmpty(matchingField))
-                matchingField = "game";
-
             var sophonManifestIdentity =
-                sophonBranch.Data.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
+                OtherSophonData.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
 
             if (sophonManifestIdentity == null)
                 throw new KeyNotFoundException($"Sophon manifest with matching field: {matchingField} is not found!");
@@ -55,8 +37,7 @@ namespace Hi3Helper.Sophon
                     ManifestCompressedSize = sophonManifestIdentity.ManifestFileInfo!.CompressedSize,
                     IsUseCompression       = sophonManifestIdentity.ManifestUrlInfo!.IsCompressed
                 },
-                OtherSophonData = sophonBranch.Data
+                OtherSophonData = OtherSophonData
             };
         }
     }
-}

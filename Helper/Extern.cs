@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-namespace Hi3Helper.Sophon;
+namespace Hi3Helper.Sophon.Helper;
 
 internal static class Extern
 {

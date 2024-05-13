@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-
+using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon;

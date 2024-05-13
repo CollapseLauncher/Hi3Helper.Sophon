@@ -17,7 +17,7 @@ namespace Hi3Helper.Sophon.Infos
 
 namespace Hi3Helper.Sophon
 {
-    public partial class SophonManifest
+    public static partial class SophonManifest
     {
         /// <summary>
         ///     Create Sophon manifest information. Please refer the API response to set the argument value.

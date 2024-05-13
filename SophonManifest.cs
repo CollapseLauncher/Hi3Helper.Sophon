@@ -1,4 +1,5 @@
-﻿using Hi3Helper.Sophon.Infos;
+﻿using Hi3Helper.Sophon.Helper;
+using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Protos;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon;
 
-public partial class SophonManifest
+public static partial class SophonManifest
 {
 
     /// <summary>

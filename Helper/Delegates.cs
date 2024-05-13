@@ -4,7 +4,7 @@
 ///     Delegate to get an info of how much bytes being read per cycle.
 /// </summary>
 /// <param name="read">
-///     Number or bytes being read.
+///     Number of bytes being read.
 /// </param>
 public delegate void DelegateReadStreamInfo(long read);
 
