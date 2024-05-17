@@ -1,5 +1,4 @@
-﻿using Hi3Helper.Sophon.Helper;
-using Hi3Helper.Sophon.Infos;
+﻿using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Protos;
 using System;
 using System.Collections.Generic;
@@ -9,7 +8,7 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-
+using ZstdNet;
 using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon;
@@ -83,7 +82,7 @@ public static partial class SophonManifest
                                                                      SophonChunksInfo chunksInfo,
                                                                      [EnumeratorCancellation] CancellationToken token = default)
     {
-        if (!Extern.IsLibraryExist(ZstdNet.ExternMethods.DllName))
+        if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             throw new DllNotFoundException($"libzstd is not found!");
 
         using HttpRequestMessage httpRequestMessage = 
