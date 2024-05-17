@@ -7,6 +7,7 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<DefineConstants>NOSTREAMLOCK</DefineConstants>
 		<AssemblyName>Hi3Helper.Sophon</AssemblyName>
+		<Version>1.1.0</Version>
 	</PropertyGroup>
 	
 	<PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -18,12 +19,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Content Include="Lib\win-x64\libzstd.dll">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</Content>
-	</ItemGroup>
-
-	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="3.26.1" />
+		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
 	</ItemGroup>
 </Project>
