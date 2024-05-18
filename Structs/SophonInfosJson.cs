@@ -2,99 +2,121 @@ using Hi3Helper.Sophon.Helper;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Hi3Helper.Sophon.Infos;
-
-[JsonSerializable(typeof(SophonBranch))]
-public partial class SophonContext : JsonSerializerContext;
-
-public class SophonBranch
+// ReSharper disable IdentifierTypo
+// ReSharper disable StringLiteralTypo
+// ReSharper disable CommentTypo
+namespace Hi3Helper.Sophon.Structs
 {
-    [JsonPropertyName("retcode")] public int ReturnCode { get; init; }
+#if NET6_0_OR_GREATER
+    [JsonSerializable(typeof(SophonBranch))]
+    public partial class SophonContext : JsonSerializerContext { }
+#endif
 
-    [JsonPropertyName("message")] public string? ReturnMessage { get; init; }
+    public class SophonBranch
+    {
+        [JsonPropertyName("retcode")]
+        public int ReturnCode { get; set; }
 
-    [JsonPropertyName("data")] public SophonData? Data { get; init; }
-}
+        [JsonPropertyName("message")]
+        public string ReturnMessage { get; set; }
 
-public class SophonData
-{
-    [JsonPropertyName("build_id")] public string? BuildId { get; init; }
+        [JsonPropertyName("data")]
+        public SophonData Data { get; set; }
+    }
 
-    [JsonPropertyName("tag")] public string? TagName { get; init; }
+    public class SophonData
+    {
+        [JsonPropertyName("build_id")]
+        public string BuildId { get; set; }
 
-    [JsonPropertyName("manifests")] public List<SophonManifestIdentity>? ManifestIdentityList { get; init; }
-}
+        [JsonPropertyName("tag")]
+        public string TagName { get; set; }
 
-public class SophonManifestIdentity
-{
-    [JsonPropertyName("category_id")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int? CategoryId { get; init; }
+        [JsonPropertyName("manifests")]
+        public List<SophonManifestIdentity> ManifestIdentityList { get; set; }
+    }
 
-    [JsonPropertyName("category_name")] public string? CategoryName { get; init; }
+    public class SophonManifestIdentity
+    {
+        [JsonPropertyName("category_id")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public int CategoryId { get; set; }
 
-    [JsonPropertyName("matching_field")] public string? MatchingField { get; init; }
+        [JsonPropertyName("category_name")]
+        public string CategoryName { get; set; }
 
-    [JsonPropertyName("manifest")] public SophonManifestFileInfo? ManifestFileInfo { get; init; }
+        [JsonPropertyName("matching_field")]
+        public string MatchingField { get; set; }
 
-    [JsonPropertyName("manifest_download")]
-    public SophonManifestUrlInfo? ManifestUrlInfo { get; init; }
+        [JsonPropertyName("manifest")]
+        public SophonManifestFileInfo ManifestFileInfo { get; set; }
 
-    [JsonPropertyName("chunk_download")] public SophonManifestUrlInfo? ChunksUrlInfo { get; init; }
+        [JsonPropertyName("manifest_download")]
+        public SophonManifestUrlInfo ManifestUrlInfo { get; set; }
 
-    [JsonPropertyName("stats")] public SophonManifestChunkInfo? ChunkInfo { get; init; }
+        [JsonPropertyName("chunk_download")]
+        public SophonManifestUrlInfo ChunksUrlInfo { get; set; }
 
-    [JsonPropertyName("deduplicated_stats")]
-    public SophonManifestChunkInfo? DeduplicatedChunkInfo { get; init; }
-}
+        [JsonPropertyName("stats")]
+        public SophonManifestChunkInfo ChunkInfo { get; set; }
 
-public class SophonManifestFileInfo
-{
-    [JsonPropertyName("id")] public string? FileName { get; init; }
+        [JsonPropertyName("deduplicated_stats")]
+        public SophonManifestChunkInfo DeduplicatedChunkInfo { get; set; }
+    }
 
-    [JsonPropertyName("checksum")] public string? Checksum { get; init; }
+    public class SophonManifestFileInfo
+    {
+        [JsonPropertyName("id")]
+        public string FileName { get; set; }
 
-    [JsonPropertyName("compressed_size")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public long CompressedSize { get; init; }
+        [JsonPropertyName("checksum")]
+        public string Checksum { get; set; }
 
-    [JsonPropertyName("uncompressed_size")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public long UncompressedSize { get; init; }
-}
+        [JsonPropertyName("compressed_size")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long CompressedSize { get; set; }
 
-public class SophonManifestUrlInfo
-{
-    [JsonConverter(typeof(BoolConverter))]
-    [JsonPropertyName("encryption")]
-    public bool IsEncrypted { get; init; }
+        [JsonPropertyName("uncompressed_size")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long UncompressedSize { get; set; }
+    }
 
-    [JsonPropertyName("password")] public string? EncryptionPassword { get; init; }
+    public class SophonManifestUrlInfo
+    {
+        [JsonConverter(typeof(BoolConverter))]
+        [JsonPropertyName("encryption")]
+        public bool IsEncrypted { get; set; }
 
-    [JsonConverter(typeof(BoolConverter))]
-    [JsonPropertyName("compression")]
-    public bool IsCompressed { get; init; }
+        [JsonPropertyName("password")]
+        public string EncryptionPassword { get; set; }
 
-    [JsonPropertyName("url_prefix")] public string? UrlPrefix { get; init; }
+        [JsonConverter(typeof(BoolConverter))]
+        [JsonPropertyName("compression")]
+        public bool IsCompressed { get; set; }
 
-    [JsonPropertyName("url_suffix")] public string? UrlSuffix { get; init; }
-}
+        [JsonPropertyName("url_prefix")]
+        public string UrlPrefix { get; set; }
 
-public class SophonManifestChunkInfo
-{
-    [JsonPropertyName("compressed_size")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public long CompressedSize { get; init; }
+        [JsonPropertyName("url_suffix")]
+        public string UrlSuffix { get; set; }
+    }
 
-    [JsonPropertyName("uncompressed_size")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public long UncompressedSize { get; init; }
+    public class SophonManifestChunkInfo
+    {
+        [JsonPropertyName("compressed_size")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long CompressedSize { get; set; }
 
-    [JsonPropertyName("file_count")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int FileCount { get; init; }
+        [JsonPropertyName("uncompressed_size")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public long UncompressedSize { get; set; }
 
-    [JsonPropertyName("chunk_count")]
-    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-    public int ChunkCount { get; init; }
+        [JsonPropertyName("file_count")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public int FileCount { get; set; }
+
+        [JsonPropertyName("chunk_count")]
+        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+        public int ChunkCount { get; set; }
+    }
 }

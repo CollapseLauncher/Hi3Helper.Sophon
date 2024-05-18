@@ -1,75 +1,139 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Hi3Helper.Sophon.Helper;
-
-internal static class TaskExtensions
+// ReSharper disable once IdentifierTypo
+namespace Hi3Helper.Sophon.Helper
 {
-    internal const int DefaultTimeoutSec   = 10;
-    internal const int DefaultRetryAttempt = 5;
+    internal delegate
+    #if NETSTANDARD2_0 || NET6_0_OR_GREATER
+        ValueTask<TResult>
+    #else
+        Task<TResult>
+    #endif
+        ActionTimeoutValueTaskCallback<TResult>(CancellationToken token);
 
-    internal static async Task<T?> RetryTimeoutAfter<T>(Func<Task<T?>> taskFunction, CancellationToken token = default,
-                                                        int            timeout      = DefaultTimeoutSec,
-                                                        int            retryAttempt = DefaultRetryAttempt)
+    internal delegate void ActionOnTimeOutRetry(int retryAttemptCount, int retryAttemptTotal, int timeOutSecond,
+                                                int timeOutStep);
+
+    internal static class TaskExtensions
     {
-        int        retryTotal    = 0;
-        int        lastTaskID    = 0;
-        Exception? lastException = null;
+        internal const int DefaultTimeoutSec   = 10;
+        internal const int DefaultRetryAttempt = 5;
 
-        while (retryTotal <= retryAttempt)
+        internal static async
+        #if NETSTANDARD2_0 || NET6_0_OR_GREATER
+            ValueTask<TResult>
+        #else
+        Task<TResult>
+        #endif
+            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback, int? timeout = null,
+                                       int? timeoutStep = null, int? retryAttempt = null,
+                                       ActionOnTimeOutRetry actionOnRetry = null, CancellationToken fromToken = default)
         {
-            try
+            if (timeout == null)
             {
-                lastException = null;
-                Task<T?> taskDelegated = taskFunction();
-                lastTaskID = taskDelegated.Id;
-                Task<T?> completedTask =
-                    await Task.WhenAny(taskDelegated, ThrowExceptionAfterTimeout<T?>(timeout, taskDelegated, token));
-                if (completedTask == taskDelegated)
-                    return await taskDelegated;
+                timeout = DefaultTimeoutSec;
+            }
 
-                if (completedTask.Exception != null)
-                    throw completedTask.Exception.Flatten().InnerExceptions.First();
-            }
-            catch (TaskCanceledException)
+            if (retryAttempt == null)
             {
-                throw;
+                retryAttempt = DefaultRetryAttempt;
             }
-            catch (OperationCanceledException)
+
+            if (timeoutStep == null)
             {
-                throw;
+                timeoutStep = 0;
             }
-            catch (Exception ex)
+
+            int retryAttemptCurrent = 1;
+            while (retryAttemptCurrent < retryAttempt)
             {
-                lastException = ex;
-                await Task.Delay(TimeSpan.FromSeconds(1), token); // Wait 1s interval before retrying
+                fromToken.ThrowIfCancellationRequested();
+                CancellationTokenSource innerCancellationToken = null;
+                CancellationTokenSource consolidatedToken      = null;
+
+                try
+                {
+                    innerCancellationToken =
+                        new CancellationTokenSource(TimeSpan.FromSeconds(timeout ?? DefaultTimeoutSec));
+                    consolidatedToken =
+                        CancellationTokenSource.CreateLinkedTokenSource(innerCancellationToken.Token, fromToken);
+
+                    ActionTimeoutValueTaskCallback<TResult> delegateCallback = funcCallback();
+                    return await delegateCallback(consolidatedToken.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    throw;
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    actionOnRetry?.Invoke(retryAttemptCurrent, retryAttempt ?? 0, timeout ?? 0, timeoutStep ?? 0);
+
+                    if (ex is TimeoutException)
+                    {
+                        string msg =
+                            $"The operation has timed out! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}";
+                        Logger.PushLogWarning(null, msg);
+                    }
+                    else
+                    {
+                        string msg =
+                            $"The operation has thrown an exception! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}\r\n{ex}";
+                        Logger.PushLogError(null, msg);
+                    }
+
+                    retryAttemptCurrent++;
+                    timeout += timeoutStep;
+                }
+                finally
+                {
+                    innerCancellationToken?.Dispose();
+                    consolidatedToken?.Dispose();
+                }
             }
-            finally
-            {
-                retryTotal++;
-            }
+
+            throw new TimeoutException("The operation has timed out!");
         }
 
-        if (lastException != null) throw lastException;
-        throw new TimeoutException($"The operation for task ID: {lastTaskID} has timed out!");
-    }
+        internal static async
+        #if NETSTANDARD2_0 || NET6_0_OR_GREATER
+            ValueTask<TResult>
+        #else
+        Task<TResult>
+        #endif
+            TimeoutAfter<TResult>(this Task<TResult> task, CancellationToken token = default,
+                                  int                timeout = DefaultTimeoutSec)
+        {
+            Task<TResult> completedTask =
+                await Task.WhenAny(task, ThrowExceptionAfterTimeout<TResult>(timeout, task, token));
+            return await completedTask;
+        }
 
-    internal static async ValueTask<T?> TimeoutAfter<T>(this Task<T?> task, CancellationToken token = default, int timeout = DefaultTimeoutSec)
-        => await await Task.WhenAny(task, ThrowExceptionAfterTimeout<T?>(timeout, task, token));
+        private static async Task<TResult> ThrowExceptionAfterTimeout<TResult>(
+            int? timeout, Task mainTask, CancellationToken token = default)
+        {
+            if (token.IsCancellationRequested)
+            {
+                throw new OperationCanceledException();
+            }
 
-    private static async Task<T?> ThrowExceptionAfterTimeout<T>(int timeout, Task mainTask, CancellationToken token = default)
-    {
-        if (token.IsCancellationRequested)
-            throw new OperationCanceledException();
+            await Task.Delay(TimeSpan.FromSeconds(timeout ?? DefaultTimeoutSec), token);
+            if (!(mainTask.IsCompleted ||
+              #if NET6_0_OR_GREATER
+                mainTask.IsCompletedSuccessfully ||
+              #endif
+                  mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
+            {
+                throw new TimeoutException("The operation for task has timed out!");
+            }
 
-        await Task.Delay(TimeSpan.FromSeconds(timeout), token);
-        if (!(mainTask.IsCompleted ||
-              mainTask.IsCompletedSuccessfully ||
-              mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
-            throw new TimeoutException($"The operation for task has timed out!");
-
-        return default;
+            return default;
+        }
     }
 }

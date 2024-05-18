@@ -1,45 +1,47 @@
 ﻿using System;
 
-namespace Hi3Helper.Sophon;
-
-public enum LogLevel
+// ReSharper disable once IdentifierTypo
+namespace Hi3Helper.Sophon.Helper
 {
-    Info,
-    Warning,
-    Error,
-    Debug
-}
-
-public static class Logger
-{
-    public static event EventHandler<LogStruct>? LogHandler;
-    internal static void PushLogDebug(this object? obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+    public enum LogLevel
     {
-        LogLevel = LogLevel.Debug,
-        Message  = message
-    });
+        Info,
+        Warning,
+        Error,
+        Debug
+    }
 
-    internal static void PushLogInfo(this object? obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+    public static class Logger
     {
-        LogLevel = LogLevel.Info,
-        Message  = message
-    });
+        public static event EventHandler<LogStruct> LogHandler;
+        internal static void PushLogDebug(this object obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+        {
+            LogLevel = LogLevel.Debug,
+            Message = message
+        });
 
-    internal static void PushLogWarning(this object? obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+        internal static void PushLogInfo(this object obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+        {
+            LogLevel = LogLevel.Info,
+            Message = message
+        });
+
+        internal static void PushLogWarning(this object obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+        {
+            LogLevel = LogLevel.Warning,
+            Message = message
+        });
+
+        internal static void PushLogError(this object obj, string message) => LogHandler?.Invoke(obj, new LogStruct
+        {
+            LogLevel = LogLevel.Error,
+            Message = message
+        });
+    }
+
+    public struct LogStruct
     {
-        LogLevel = LogLevel.Warning,
-        Message  = message
-    });
-
-    internal static void PushLogError(this object? obj, string message) => LogHandler?.Invoke(obj, new LogStruct
-    {
-        LogLevel = LogLevel.Error,
-        Message  = message
-    });
-}
-
-public struct LogStruct
-{
-    public LogLevel LogLevel;
-    public string   Message;
+        public LogLevel LogLevel;
+        public string Message;
+    }
 }

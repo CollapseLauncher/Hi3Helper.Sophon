@@ -1,5 +1,8 @@
 ﻿using Hi3Helper.Sophon.Infos;
 
+// ReSharper disable IdentifierTypo
+// ReSharper disable StringLiteralTypo
+// ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Infos
 {
     public struct SophonChunksInfo

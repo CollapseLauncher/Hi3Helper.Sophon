@@ -6,185 +6,166 @@ using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Hi3Helper.Sophon;
-
-public class SophonAssetStream : Stream
+// ReSharper disable IdentifierTypo
+// ReSharper disable StringLiteralTypo
+// ReSharper disable CommentTypo
+namespace Hi3Helper.Sophon
 {
-    #region Initializers
-    private protected HttpRequestMessage?  _networkRequest;
-    private protected HttpResponseMessage? _networkResponse;
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    private protected Stream _networkStream;
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
-    private protected long           _networkLength;
-    private protected long           _currentPosition;
-    public            HttpStatusCode _statusCode;
-    public            bool           _isSuccessStatusCode;
-    #endregion
-    
-    
-    public static async Task<SophonAssetStream?> CreateStreamAsync(HttpClient client, string url, long? startOffset,
-                                                                   long? endOffset, CancellationToken token)
+    public class SophonAssetStream : Stream
     {
-        startOffset ??= 0;
-        SophonAssetStream httpResponseInputStream = new SophonAssetStream();
-        httpResponseInputStream._networkRequest = new HttpRequestMessage()
+        #region Initializers
+
+        private protected HttpRequestMessage  NetworkRequest;
+        private protected HttpResponseMessage NetworkResponse;
+    #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        private protected Stream NetworkStream;
+    #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        public HttpStatusCode StatusCode;
+        public bool           IsSuccessStatusCode;
+
+        #endregion
+
+        public static async Task<Stream> CreateStreamAsync(HttpClient client,    string url, long? startOffset,
+                                                           long?      endOffset, CancellationToken token)
         {
-            RequestUri = new Uri(url),
-            Method     = HttpMethod.Get
-        };
+            if (startOffset == null)
+            {
+                startOffset = 0;
+            }
 
-        token.ThrowIfCancellationRequested();
+            SophonAssetStream httpResponseInputStream = new SophonAssetStream();
+            httpResponseInputStream.NetworkRequest = new HttpRequestMessage
+            {
+                RequestUri = new Uri(url),
+                Method     = HttpMethod.Get
+            };
 
-        httpResponseInputStream._networkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
-        httpResponseInputStream._networkResponse = await client
-           .SendAsync(httpResponseInputStream._networkRequest, HttpCompletionOption.ResponseHeadersRead, token);
+            token.ThrowIfCancellationRequested();
 
-        httpResponseInputStream._statusCode          = httpResponseInputStream._networkResponse.StatusCode;
-        httpResponseInputStream._isSuccessStatusCode = httpResponseInputStream._networkResponse.IsSuccessStatusCode;
-        if (httpResponseInputStream._isSuccessStatusCode)
-        {
-            httpResponseInputStream._networkLength = httpResponseInputStream._networkResponse
-                                                                            .Content.Headers.ContentLength ?? 0;
-            httpResponseInputStream._networkStream = await httpResponseInputStream._networkResponse
-               .Content.ReadAsStreamAsync(token);
-            return httpResponseInputStream;
-        }
+            httpResponseInputStream.NetworkRequest.Headers.Range = new RangeHeaderValue(startOffset, endOffset);
+            httpResponseInputStream.NetworkResponse = await client
+               .SendAsync(httpResponseInputStream.NetworkRequest, HttpCompletionOption.ResponseHeadersRead, token);
 
-        if ((int)httpResponseInputStream._statusCode == 416)
-        {
+            httpResponseInputStream.StatusCode          = httpResponseInputStream.NetworkResponse.StatusCode;
+            httpResponseInputStream.IsSuccessStatusCode = httpResponseInputStream.NetworkResponse.IsSuccessStatusCode;
+            if (httpResponseInputStream.IsSuccessStatusCode)
+            {
+            #if NET6_0_OR_GREATER
+                httpResponseInputStream.NetworkStream = await httpResponseInputStream.NetworkResponse
+                   .Content.ReadAsStreamAsync(token);
+            #else
+                httpResponseInputStream.NetworkStream = await httpResponseInputStream.NetworkResponse
+                   .Content.ReadAsStreamAsync();
+            #endif
+                return httpResponseInputStream;
+            }
+
+            if ((int)httpResponseInputStream.StatusCode != 416)
+            {
+                throw new
+                    HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
+                                                       httpResponseInputStream.NetworkResponse.StatusCode, url));
+            }
+        #if NET6_0_OR_GREATER
             await httpResponseInputStream.DisposeAsync();
+        #else
+            httpResponseInputStream.Dispose();
+        #endif
             return null;
         }
 
-        throw new HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
-                                                     httpResponseInputStream._networkResponse.StatusCode, url));
-    }
-
-    ~SophonAssetStream() => Dispose();
-
-    public int ReadUntilFull(Span<byte> buffer)
-    {
-        int totalRead = 0;
-        while (totalRead < buffer.Length)
+        ~SophonAssetStream()
         {
-            int read = _networkStream.Read(buffer.Slice(totalRead));
-            if (read == 0) return totalRead;
-
-            totalRead        += read;
-            _currentPosition += read;
-        }
-        return totalRead;
-    }
-
-    public async ValueTask<int> ReadUntilFullAsync(Memory<byte> buffer, CancellationToken token)
-    {
-        int totalRead = 0;
-        while (totalRead < buffer.Length)
-        {
-            int read = await _networkStream.ReadAsync(buffer.Slice(totalRead), token);
-            if (read == 0) return totalRead;
-
-            totalRead        += read;
-            _currentPosition += read;
-        }
-        return totalRead;
-    }
-
-    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) 
-        => await ReadUntilFullAsync(buffer, cancellationToken);
-    
-    public override int Read(Span<byte> buffer) => ReadUntilFull(buffer);
-
-    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) 
-        => throw new NotSupportedException();
-    
-    public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
-
-    private async ValueTask<int> ReadUntilFullAsync(byte[] buffer, int offset, int count, CancellationToken token)
-    {
-        int totalRead = 0;
-        while (offset < count)
-        {
-            int read = await _networkStream
-               .ReadAsync(buffer.AsMemory(offset), token);
-            if (read == 0) return totalRead;
-
-            totalRead        += read;
-            offset           += read;
-            _currentPosition += read;
-        }
-        return totalRead;
-    }
-
-    private int ReadUntilFull(byte[] buffer, int offset, int count)
-    {
-        int totalRead = 0;
-        while (offset < count)
-        {
-            int read = _networkStream.Read(buffer.AsSpan(offset));
-            if (read == 0) return totalRead;
-
-            totalRead        += read;
-            offset           += read;
-            _currentPosition += read;
-        }
-        return totalRead;
-    }
-
-    public override async Task<int> ReadAsync(byte[]            buffer, int offset, int count,
-                                              CancellationToken cancellationToken = default) =>
-        await ReadUntilFullAsync(buffer, offset, count, cancellationToken);
-    
-    public override int Read(byte[] buffer, int offset, int count) => ReadUntilFull(buffer, offset, count);
-    
-    public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
-        throw new NotSupportedException();
-    
-    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
-
-    public override bool CanRead => true;
-
-    public override bool CanSeek => false;
-
-    public override bool CanWrite => false;
-
-    public override void Flush()
-    {
-        _networkStream.Flush();
-    }
-
-    public override long Length => _networkLength;
-
-    public override long Position
-    {
-        get => _currentPosition;
-        set => throw new NotSupportedException();
-    }
-
-    public override long Seek(long      offset, SeekOrigin origin) => throw new NotSupportedException();
-    public override void SetLength(long value) => throw new NotSupportedException();
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing)
-        {
-            _networkRequest?.Dispose();
-            _networkResponse?.Dispose();
-            _networkStream.Dispose();
+            Dispose();
         }
 
-        GC.SuppressFinalize(this);
-    }
+    #if NET6_0_OR_GREATER
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken =
+ default)
+            => await NetworkStream.ReadAsync(buffer, cancellationToken);
 
-    public override async ValueTask DisposeAsync()
-    {
-        _networkRequest?.Dispose();
-        _networkResponse?.Dispose(); 
-        await _networkStream.DisposeAsync();
+        public override int Read(Span<byte> buffer)
+            => NetworkStream.Read(buffer);
 
-        await base.DisposeAsync();
-        GC.SuppressFinalize(this);
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+            => throw new NotSupportedException();
+
+        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+    #endif
+
+        public override async Task<int> ReadAsync(byte[]            buffer, int offset, int count,
+                                                  CancellationToken cancellationToken = default)
+        {
+            return await NetworkStream.ReadAsync(buffer, offset, count, cancellationToken);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            return NetworkStream.Read(buffer, offset, count);
+        }
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override void Flush()
+        {
+            NetworkStream.Flush();
+        }
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            if (disposing)
+            {
+                NetworkRequest?.Dispose();
+                NetworkResponse?.Dispose();
+                NetworkStream.Dispose();
+            }
+
+            GC.SuppressFinalize(this);
+        }
+
+    #if NET6_0_OR_GREATER
+        public override async ValueTask DisposeAsync()
+        {
+            NetworkRequest?.Dispose();
+            NetworkResponse?.Dispose();
+            await NetworkStream.DisposeAsync();
+
+            await base.DisposeAsync();
+            GC.SuppressFinalize(this);
+        }
+    #endif
     }
 }
