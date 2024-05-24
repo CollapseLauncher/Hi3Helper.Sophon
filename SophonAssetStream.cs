@@ -150,7 +150,7 @@ namespace Hi3Helper.Sophon
             {
                 NetworkRequest?.Dispose();
                 NetworkResponse?.Dispose();
-                NetworkStream.Dispose();
+                NetworkStream?.Dispose();
             }
 
             GC.SuppressFinalize(this);
@@ -161,7 +161,7 @@ namespace Hi3Helper.Sophon
         {
             NetworkRequest?.Dispose();
             NetworkResponse?.Dispose();
-            await NetworkStream.DisposeAsync();
+            if (NetworkStream != null) await NetworkStream.DisposeAsync();
 
             await base.DisposeAsync();
             GC.SuppressFinalize(this);

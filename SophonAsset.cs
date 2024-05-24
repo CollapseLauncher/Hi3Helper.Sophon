@@ -11,7 +11,9 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+#if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
+#endif
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
 
@@ -57,11 +59,11 @@ namespace Hi3Helper.Sophon
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
         public async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             WriteToStreamAsync(HttpClient                    client, Stream outStream,
                                DelegateReadStreamInfo        readInfoDelegate         = null,
                                DelegateDownloadAssetComplete downloadCompleteDelegate = null,
@@ -118,11 +120,11 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
         public async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             WriteToStreamAsync(HttpClient client, Func<Stream> outStreamFunc,
                                ParallelOptions parallelOptions = null, DelegateReadStreamInfo readInfoDelegate = null,
                                DelegateDownloadAssetComplete downloadCompleteDelegate = null)
@@ -150,7 +152,7 @@ namespace Hi3Helper.Sophon
 
             try
             {
-            #if !NET6_0_OR_GREATER
+#if !NET6_0_OR_GREATER
                 using (CancellationTokenSource actionToken = new CancellationTokenSource())
                 {
                     using (CancellationTokenSource linkedToken = CancellationTokenSource
@@ -180,7 +182,7 @@ namespace Hi3Helper.Sophon
                         await actionBlock.Completion;
                     }
                 }
-            #else
+#else
                 await Parallel.ForEachAsync(Chunks, parallelOptions, async (chunk, threadToken) =>
                 {
                     await using Stream outStream = outStreamFunc();
@@ -188,7 +190,7 @@ namespace Hi3Helper.Sophon
                         outStream, chunk, threadToken,
                         readInfoDelegate);
                 });
-            #endif
+#endif
             }
             catch (AggregateException ex)
             {
@@ -201,11 +203,11 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             PerformWriteStreamThreadAsync(HttpClient             client, Stream outStream, SophonChunk chunk,
                                           CancellationToken      token            = default,
                                           DelegateReadStreamInfo readInfoDelegate = null)
@@ -225,11 +227,11 @@ namespace Hi3Helper.Sophon
         }
 
         private static async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask<bool>
-        #else
+#else
             Task<bool>
-        #endif
+#endif
             CheckMd5HashAsync(Stream outStream, SophonChunk chunk, CancellationToken token)
         {
             byte[] buffer     = ArrayPool<byte>.Shared.Rent(BufferSize);
@@ -265,11 +267,11 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             InnerWriteStreamToAsync(HttpClient client, Stream outStream, SophonChunk chunk, CancellationToken token,
                                     DelegateReadStreamInfo readInfoDelegate = null)
         {
@@ -280,13 +282,13 @@ namespace Hi3Helper.Sophon
 
             string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
 
-        #if !NOSTREAMLOCK
+#if !NOSTREAMLOCK
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
                 this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
-        #endif
+#endif
 
             while (true)
             {
@@ -317,11 +319,6 @@ namespace Hi3Helper.Sophon
                         while ((read = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cooperatedToken.Token)) >
                                0)
                         {
-                            if (read < buffer.Length)
-                            {
-                                Console.WriteLine();
-                            }
-
                             await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
                             currentWriteOffset += read;
                             hashInstance.TransformBlock(buffer, 0, read, buffer, 0);
@@ -378,13 +375,13 @@ namespace Hi3Helper.Sophon
                     {
                         if (allowDispose)
                         {
-                        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                             if (sourceStream != null) await sourceStream.DisposeAsync();
                             if (httpResponseStream != null) await httpResponseStream.DisposeAsync();
-                        #else
+#else
                             sourceStream?.Dispose();
                             httpResponseStream?.Dispose();
-                        #endif
+#endif
                         }
 
                         ArrayPool<byte>.Shared.Return(buffer);
