@@ -1,6 +1,6 @@
 @echo off
 if /i not exist "artifacts" mkdir "artifacts"
-dotnet restore || goto :Fail
+dotnet restore Hi3Helper.Sophon.Universal.csproj || goto :Fail
 dotnet clean -c Release Hi3Helper.Sophon.Universal.csproj || goto :Fail
 call :Clean
 dotnet build -c Release Hi3Helper.Sophon.Universal.csproj || goto :Fail
