@@ -25,8 +25,8 @@ namespace Hi3Helper.Sophon
 
         #endregion
 
-        public static async Task<Stream> CreateStreamAsync(HttpClient client,    string url, long? startOffset,
-                                                           long?      endOffset, CancellationToken token)
+        internal static async Task<Stream> CreateStreamAsync(HttpClient client,    string url, long? startOffset,
+                                                             long?      endOffset, CancellationToken token)
         {
             if (startOffset == null)
             {
@@ -48,6 +48,23 @@ namespace Hi3Helper.Sophon
 
             httpResponseInputStream.StatusCode          = httpResponseInputStream.NetworkResponse.StatusCode;
             httpResponseInputStream.IsSuccessStatusCode = httpResponseInputStream.NetworkResponse.IsSuccessStatusCode;
+
+            if (!httpResponseInputStream.IsSuccessStatusCode)
+            {
+                throw new
+                    HttpRequestException("Http request to the manifest file returns a non-successful status!"
+#if NET6_0_OR_GREATER
+                                        ,
+                                         null, httpResponseInputStream.StatusCode
+#endif
+                                        );
+            }
+
+            if (httpResponseInputStream == null)
+            {
+                throw new NullReferenceException("Http response message returns a null entry");
+            }
+
             if (httpResponseInputStream.IsSuccessStatusCode)
             {
             #if NET6_0_OR_GREATER
@@ -66,7 +83,7 @@ namespace Hi3Helper.Sophon
                     HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
                                                        httpResponseInputStream.NetworkResponse.StatusCode, url));
             }
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             await httpResponseInputStream.DisposeAsync();
         #else
             httpResponseInputStream.Dispose();

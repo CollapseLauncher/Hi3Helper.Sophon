@@ -3,6 +3,7 @@
 // ReSharper disable CommentTypo
 // ReSharper disable InvalidXmlDocComment
 
+using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
@@ -113,111 +114,95 @@ namespace Hi3Helper.Sophon
          #endif
              CancellationToken token = default)
         {
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
                 throw new DllNotFoundException($"libzstd is not found!");
 #else
             List<SophonAsset> assetList = new List<SophonAsset>();
 #endif
 
-            // ReSharper disable once ConvertToUsingDeclaration
-            using (HttpRequestMessage httpRequestMessage =
-                   new HttpRequestMessage(HttpMethod.Get, manifestInfo.ManifestFileUrl))
-            using (HttpResponseMessage httpResponseMessage =
-                   await httpClient.SendAsync(httpRequestMessage, HttpCompletionOption.ResponseHeadersRead, token))
-            {
-                if (!httpResponseMessage.IsSuccessStatusCode)
+            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestProtoTaskCallback = new ActionTimeoutValueTaskCallback<SophonManifestProto>(
+                async (innerToken) =>
                 {
-                    throw new
-                        HttpRequestException("Http request to the manifest file returns a non-successful status!"
 #if NET6_0_OR_GREATER
-                                            ,
-                                             null, httpResponseMessage.StatusCode
+                    await
 #endif
-                                            );
-                }
-
-                if (httpResponseMessage == null)
-                {
-                    throw new NullReferenceException("Http response message returns a null entry");
-                }
-
-#if NET6_0_OR_GREATER
-                await
-#endif
-                    using (Stream manifestNetworkStream =
-                           await GetSophonHttpStream(httpResponseMessage, manifestInfo.IsUseCompression, token))
-                {
-                    SophonManifestProto manifestProto = SophonManifestProto.Parser.ParseFrom(manifestNetworkStream);
-
-                    foreach (AssetProperty asset in manifestProto.Assets)
+                        using (Stream manifestProtoStream = await SophonAssetStream.CreateStreamAsync(httpClient, manifestInfo.ManifestFileUrl, 0, null, innerToken))
+                    using (Stream decompressedProtoStream = manifestInfo.IsUseCompression ? new ZstdStream(manifestProtoStream) : manifestProtoStream)
                     {
-                        SophonAsset assetAdd;
-                        string assetName = asset.AssetName;
-                        int assetType = asset.AssetType;
-                        if (assetType != 0 || string.IsNullOrEmpty(asset.AssetHashMd5))
-                        {
-                            assetAdd = new SophonAsset
-                            {
-                                AssetName = assetName,
-                                IsDirectory = true
-                            };
-#if NET6_0_OR_GREATER
-                            yield return assetAdd;
-#else
-                                assetList.Add(assetAdd);
-#endif
-                            continue;
-                        }
-
-                        string assetHash = asset.AssetHashMd5;
-                        long assetSize = asset.AssetSize;
-                        SophonChunk[] assetChunks = asset.AssetChunks.Select(x => new SophonChunk
-                        {
-                            ChunkName = x.ChunkName,
-                            ChunkHashDecompressed = x.ChunkDecompressedHashMd5,
-                            ChunkOffset = x.ChunkOnFileOffset,
-                            ChunkSize = x.ChunkSize,
-                            ChunkSizeDecompressed = x.ChunkSizeDecompressed
-                        }).ToArray();
-
-                        assetAdd = new SophonAsset
-                        {
-                            AssetName = assetName,
-                            AssetHash = assetHash,
-                            AssetSize = assetSize,
-                            Chunks = assetChunks,
-                            SophonChunksInfo = chunksInfo,
-                            IsDirectory = false
-                        };
-#if NET6_0_OR_GREATER
-                        yield return assetAdd;
-#else
-                            assetList.Add(assetAdd);
-#endif
+                        return SophonManifestProto.Parser.ParseFrom(decompressedProtoStream);
                     }
+                });
+
+            SophonManifestProto manifestProto = await Helper.TaskExtensions
+                .WaitForRetryAsync(() => manifestProtoTaskCallback, Helper.TaskExtensions.DefaultTimeoutSec, null, null, null, token);
+
+            foreach (AssetProperty asset in manifestProto.Assets)
+            {
+                SophonAsset assetAdd;
+                string assetName = asset.AssetName;
+                int assetType = asset.AssetType;
+                if (assetType != 0 || string.IsNullOrEmpty(asset.AssetHashMd5))
+                {
+                    assetAdd = new SophonAsset
+                    {
+                        AssetName = assetName,
+                        IsDirectory = true
+                    };
+#if NET6_0_OR_GREATER
+                    yield return assetAdd;
+#else
+                    assetList.Add(assetAdd);
+#endif
+                    continue;
                 }
+
+                string assetHash = asset.AssetHashMd5;
+                long assetSize = asset.AssetSize;
+                SophonChunk[] assetChunks = asset.AssetChunks.Select(x => new SophonChunk
+                {
+                    ChunkName = x.ChunkName,
+                    ChunkHashDecompressed = x.ChunkDecompressedHashMd5,
+                    ChunkOffset = x.ChunkOnFileOffset,
+                    ChunkSize = x.ChunkSize,
+                    ChunkSizeDecompressed = x.ChunkSizeDecompressed
+                }).ToArray();
+
+                assetAdd = new SophonAsset
+                {
+                    AssetName = assetName,
+                    AssetHash = assetHash,
+                    AssetSize = assetSize,
+                    Chunks = assetChunks,
+                    SophonChunksInfo = chunksInfo,
+                    IsDirectory = false
+                };
+#if NET6_0_OR_GREATER
+                yield return assetAdd;
+#else
+                assetList.Add(assetAdd);
+#endif
             }
 
-        #if !NET6_0_OR_GREATER
+#if !NET6_0_OR_GREATER
             return assetList;
-        #endif
+#endif
         }
 
         private static async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask<Stream>
-        #else
+#else
             Task<Stream>
-        #endif
+#endif
             GetSophonHttpStream(HttpResponseMessage responseMessage, bool isCompressed, CancellationToken token)
         {
 #if NET6_0_OR_GREATER
             // ReSharper disable once ConvertToUsingDeclaration
             await using(Stream networkStream = await responseMessage.Content.ReadAsStreamAsync(token))
-        #else
+#else
             using (Stream networkStream = await responseMessage.Content.ReadAsStreamAsync())
-        #endif
+#endif
             {
                 Stream source = networkStream;
                 if (isCompressed)
@@ -225,9 +210,9 @@ namespace Hi3Helper.Sophon
                     source = new ZstdStream(networkStream);
                 }
 
-            #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                 await
-            #endif
+#endif
                 using (source)
                 {
                     MemoryStream tempStream = new MemoryStream();

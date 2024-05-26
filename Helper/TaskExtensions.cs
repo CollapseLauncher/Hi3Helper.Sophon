@@ -18,8 +18,8 @@ namespace Hi3Helper.Sophon.Helper
 
     internal static class TaskExtensions
     {
-        internal const int DefaultTimeoutSec   = 10;
-        internal const int DefaultRetryAttempt = 5;
+        internal const int DefaultTimeoutSec   = 20;
+        internal const int DefaultRetryAttempt = 10;
 
         internal static async
         #if NETSTANDARD2_0 || NET6_0_OR_GREATER
@@ -47,6 +47,7 @@ namespace Hi3Helper.Sophon.Helper
             }
 
             int retryAttemptCurrent = 1;
+            Exception lastException = null;
             while (retryAttemptCurrent < retryAttempt)
             {
                 fromToken.ThrowIfCancellationRequested();
@@ -73,6 +74,7 @@ namespace Hi3Helper.Sophon.Helper
                 }
                 catch (Exception ex)
                 {
+                    lastException = ex;
                     actionOnRetry?.Invoke(retryAttemptCurrent, retryAttempt ?? 0, timeout ?? 0, timeoutStep ?? 0);
 
                     if (ex is TimeoutException)
@@ -97,6 +99,12 @@ namespace Hi3Helper.Sophon.Helper
                     consolidatedToken?.Dispose();
                 }
             }
+
+            if (lastException is not null
+                && !fromToken.IsCancellationRequested)
+                throw lastException is TaskCanceledException ?
+                    new TimeoutException($"The operation has timed out with inner exception!", lastException) :
+                    lastException;
 
             throw new TimeoutException("The operation has timed out!");
         }
