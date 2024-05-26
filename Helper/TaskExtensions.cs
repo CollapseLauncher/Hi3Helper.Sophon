@@ -100,7 +100,7 @@ namespace Hi3Helper.Sophon.Helper
                 }
             }
 
-            if (lastException is not null
+            if (lastException != null
                 && !fromToken.IsCancellationRequested)
                 throw lastException is TaskCanceledException ?
                     new TimeoutException($"The operation has timed out with inner exception!", lastException) :
