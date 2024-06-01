@@ -162,7 +162,7 @@ namespace Hi3Helper.Sophon
                 SophonChunk[] assetChunks = asset.AssetChunks.Select(x => new SophonChunk
                 {
                     ChunkName = x.ChunkName,
-                    ChunkHashDecompressed = x.ChunkDecompressedHashMd5,
+                    ChunkHashDecompressed = Extension.HexToBytesUnsafe(x.ChunkDecompressedHashMd5),
                     ChunkOffset = x.ChunkOnFileOffset,
                     ChunkSize = x.ChunkSize,
                     ChunkSizeDecompressed = x.ChunkSizeDecompressed

@@ -21,8 +21,8 @@ namespace Hi3Helper.Sophon
 {
     public class SophonAsset
     {
-        private const int BufferSize     = 256 << 10;
-        private const int ZstdBufferSize = 256 << 10;
+        private const int BufferSize     = 4 << 10;
+        private const int ZstdBufferSize = 0; // Default
 
         public string        AssetName   { get; internal set; }
         public long          AssetSize   { get; internal set; }
@@ -254,9 +254,9 @@ namespace Hi3Helper.Sophon
                 }
 
                 hash.TransformFinalBlock(buffer, 0, (int)remain);
-
-                string hashString  = Extension.BytesToHexUnsafe(hash.Hash);
-                bool   isHashMatch = hashString.Equals(chunk.ChunkHashDecompressed, StringComparison.OrdinalIgnoreCase);
+                bool   isHashMatch = hash.Hash
+                    .AsSpan()
+                    .SequenceEqual(chunk.ChunkHashDecompressed);
 
                 return isHashMatch;
             }
@@ -302,9 +302,13 @@ namespace Hi3Helper.Sophon
                 {
                     try
                     {
-                        CancellationTokenSource innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                        CancellationTokenSource innerTimeoutToken = new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec), TimeProvider.System);
                         CancellationTokenSource cooperatedToken   = CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
+#if DEBUG
+                        this.PushLogDebug($"Init. by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
+
+#endif
                         outStream.Position = chunk.ChunkOffset;
                         httpResponseStream =
                             await SophonAssetStream.CreateStreamAsync(client, url, 0, null, cooperatedToken.Token);
@@ -314,12 +318,21 @@ namespace Hi3Helper.Sophon
                         {
                             sourceStream = new ZstdStream(httpResponseStream, ZstdBufferSize);
                         }
+#if DEBUG
+                        this.PushLogDebug($"[Complete init.] by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
+#endif
 
                         int read;
-                        while ((read = await sourceStream.ReadAsync(buffer, 0, buffer.Length, cooperatedToken.Token)) >
+                        while ((read = await sourceStream.ReadAsync(
+#if NET6_0_OR_GREATER
+                            buffer
+#else
+                            buffer, 0, buffer.Length
+#endif
+                            , cooperatedToken.Token)) >
                                0)
                         {
-                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
+                            outStream.Write(buffer, 0, read);
                             currentWriteOffset += read;
                             hashInstance.TransformBlock(buffer, 0, read, buffer, 0);
                             readInfoDelegate?.Invoke(read);
@@ -329,15 +342,13 @@ namespace Hi3Helper.Sophon
                             cooperatedToken.Dispose();
 
                             innerTimeoutToken =
-                                new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec));
+                                new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec), TimeProvider.System);
                             cooperatedToken =
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
                         }
 
                         hashInstance.TransformFinalBlock(buffer, 0, read);
-                        string hashString = Extension.BytesToHexUnsafe(hashInstance.Hash);
-                        bool isHashVerified =
-                            hashString.Equals(chunk.ChunkHashDecompressed, StringComparison.OrdinalIgnoreCase);
+                        bool isHashVerified = hashInstance.Hash.AsSpan().SequenceEqual(chunk.ChunkHashDecompressed);
 
                         if (!isHashVerified)
                         {
@@ -376,8 +387,8 @@ namespace Hi3Helper.Sophon
                         if (allowDispose)
                         {
 #if NET6_0_OR_GREATER
-                            if (sourceStream != null) await sourceStream.DisposeAsync();
                             if (httpResponseStream != null) await httpResponseStream.DisposeAsync();
+                            if (sourceStream != null) await sourceStream.DisposeAsync();
 #else
                             sourceStream?.Dispose();
                             httpResponseStream?.Dispose();
