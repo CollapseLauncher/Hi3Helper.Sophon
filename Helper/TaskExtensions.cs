@@ -2,6 +2,8 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+// ReSharper disable ConvertIfStatementToNullCoalescingAssignment
+
 // ReSharper disable once IdentifierTypo
 namespace Hi3Helper.Sophon.Helper
 {
@@ -25,11 +27,14 @@ namespace Hi3Helper.Sophon.Helper
         #if NETSTANDARD2_0 || NET6_0_OR_GREATER
             ValueTask<TResult>
         #else
-        Task<TResult>
+            Task<TResult>
         #endif
-            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback, int? timeout = null,
-                                       int? timeoutStep = null, int? retryAttempt = null,
-                                       ActionOnTimeOutRetry actionOnRetry = null, CancellationToken fromToken = default)
+            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback,
+                                       int?                                          timeout       = null,
+                                       int?                                          timeoutStep   = null,
+                                       int?                                          retryAttempt  = null,
+                                       ActionOnTimeOutRetry                          actionOnRetry = null,
+                                       CancellationToken                             fromToken     = default)
         {
             if (timeout == null)
             {
@@ -46,8 +51,8 @@ namespace Hi3Helper.Sophon.Helper
                 timeoutStep = 0;
             }
 
-            int retryAttemptCurrent = 1;
-            Exception lastException = null;
+            int       retryAttemptCurrent = 1;
+            Exception lastException       = null;
             while (retryAttemptCurrent < retryAttempt)
             {
                 fromToken.ThrowIfCancellationRequested();
@@ -102,46 +107,13 @@ namespace Hi3Helper.Sophon.Helper
 
             if (lastException != null
                 && !fromToken.IsCancellationRequested)
-                throw lastException is TaskCanceledException ?
-                    new TimeoutException($"The operation has timed out with inner exception!", lastException) :
-                    lastException;
+            {
+                throw lastException is TaskCanceledException
+                    ? new TimeoutException("The operation has timed out with inner exception!", lastException)
+                    : lastException;
+            }
 
             throw new TimeoutException("The operation has timed out!");
-        }
-
-        internal static async
-        #if NETSTANDARD2_0 || NET6_0_OR_GREATER
-            ValueTask<TResult>
-        #else
-        Task<TResult>
-        #endif
-            TimeoutAfter<TResult>(this Task<TResult> task, CancellationToken token = default,
-                                  int                timeout = DefaultTimeoutSec)
-        {
-            Task<TResult> completedTask =
-                await Task.WhenAny(task, ThrowExceptionAfterTimeout<TResult>(timeout, task, token));
-            return await completedTask;
-        }
-
-        private static async Task<TResult> ThrowExceptionAfterTimeout<TResult>(
-            int? timeout, Task mainTask, CancellationToken token = default)
-        {
-            if (token.IsCancellationRequested)
-            {
-                throw new OperationCanceledException();
-            }
-
-            await Task.Delay(TimeSpan.FromSeconds(timeout ?? DefaultTimeoutSec), token);
-            if (!(mainTask.IsCompleted ||
-              #if NET6_0_OR_GREATER
-                mainTask.IsCompletedSuccessfully ||
-              #endif
-                  mainTask.IsCanceled || mainTask.IsFaulted || mainTask.Exception != null))
-            {
-                throw new TimeoutException("The operation for task has timed out!");
-            }
-
-            return default;
         }
     }
 }

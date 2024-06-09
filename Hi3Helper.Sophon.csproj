@@ -8,8 +8,8 @@
 		<IsAotCompatible>true</IsAotCompatible>
 		<IsTrimmable>true</IsTrimmable>
 
-		<Version>1.1.2</Version>
-		<AssemblyVersion>1.1.2</AssemblyVersion>
+		<Version>1.2.0</Version>
+		<AssemblyVersion>1.2.0</AssemblyVersion>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<AssemblyName>Hi3Helper.Sophon</AssemblyName>
 		<AssemblyTitle>Hi3Helper.Sophon - A deserializer and downloader for the new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</AssemblyTitle>
@@ -39,6 +39,7 @@
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="*" />
 		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
+		<PackageReference Include="System.IO.Hashing" Version="*" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET45'))" />
 		<PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 		<PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />

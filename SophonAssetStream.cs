@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable ConvertIfStatementToNullCoalescingAssignment
+// ReSharper disable OptionalParameterHierarchyMismatch
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
@@ -53,10 +55,10 @@ namespace Hi3Helper.Sophon
             {
                 throw new
                     HttpRequestException("Http request to the manifest file returns a non-successful status!"
-#if NET6_0_OR_GREATER
+                                     #if NET6_0_OR_GREATER
                                         ,
                                          null, httpResponseInputStream.StatusCode
-#endif
+                                     #endif
                                         );
             }
 
@@ -83,7 +85,7 @@ namespace Hi3Helper.Sophon
                     HttpRequestException(string.Format("HttpResponse for URL: \"{1}\" has returned unsuccessful code: {0}",
                                                        httpResponseInputStream.NetworkResponse.StatusCode, url));
             }
-#if NET6_0_OR_GREATER
+        #if NET6_0_OR_GREATER
             await httpResponseInputStream.DisposeAsync();
         #else
             httpResponseInputStream.Dispose();
@@ -98,16 +100,25 @@ namespace Hi3Helper.Sophon
 
     #if NET6_0_OR_GREATER
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken =
- default)
-            => await NetworkStream.ReadAsync(buffer, cancellationToken);
+                                                           default)
+        {
+            return await NetworkStream.ReadAsync(buffer, cancellationToken);
+        }
 
         public override int Read(Span<byte> buffer)
-            => NetworkStream.Read(buffer);
+        {
+            return NetworkStream.Read(buffer);
+        }
 
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-            => throw new NotSupportedException();
+        {
+            throw new NotSupportedException();
+        }
 
-        public override void Write(ReadOnlySpan<byte> buffer) => throw new NotSupportedException();
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            throw new NotSupportedException();
+        }
     #endif
 
         public override async Task<int> ReadAsync(byte[]            buffer, int offset, int count,
@@ -178,7 +189,10 @@ namespace Hi3Helper.Sophon
         {
             NetworkRequest?.Dispose();
             NetworkResponse?.Dispose();
-            if (NetworkStream != null) await NetworkStream.DisposeAsync();
+            if (NetworkStream != null)
+            {
+                await NetworkStream.DisposeAsync();
+            }
 
             await base.DisposeAsync();
             GC.SuppressFinalize(this);
