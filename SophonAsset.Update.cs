@@ -59,7 +59,7 @@ namespace Hi3Helper.Sophon
                              string                        oldInputDir,
                              string                        newOutputDir,
                              string                        chunkDir,
-                             bool                          removeChunkAfterApply,
+                             bool                          removeChunkAfterApply    = false,
                              DelegateReadStreamInfo        readInfoDelegate         = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null,
                              CancellationToken             token                    = default)
@@ -87,8 +87,8 @@ namespace Hi3Helper.Sophon
 
             foreach (SophonChunk chunk in Chunks)
             {
-                await InnerWriteUpdateAsync(client,                chunkDir, readInfoDelegate, outputOldFileInfo,
-                                            outputNewTempFileInfo, chunk,    token);
+                await InnerWriteUpdateAsync(client,                chunkDir, readInfoDelegate,      outputOldFileInfo,
+                                            outputNewTempFileInfo, chunk,    removeChunkAfterApply, token);
             }
 
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)
@@ -152,7 +152,7 @@ namespace Hi3Helper.Sophon
                              string                        oldInputDir,
                              string                        newOutputDir,
                              string                        chunkDir,
-                             bool                          removeChunkAfterApply,
+                             bool                          removeChunkAfterApply    = false,
                              ParallelOptions               parallelOptions          = null,
                              DelegateReadStreamInfo        readInfoDelegate         = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null)
@@ -217,7 +217,7 @@ namespace Hi3Helper.Sophon
                                             {
                                                 await InnerWriteUpdateAsync(client, chunkDir, readInfoDelegate,
                                                                             outputOldFileInfo, outputNewTempFileInfo,
-                                                                            chunk,
+                                                                            chunk, removeChunkAfterApply,
                                                                             threadToken);
                                             });
             }
@@ -243,6 +243,7 @@ namespace Hi3Helper.Sophon
                                                  FileInfo               outputOldFileInfo,
                                                  FileInfo               outputNewFileInfo,
                                                  SophonChunk            chunk,
+                                                 bool                   removeChunkAfterApply,
                                                  CancellationToken      token)
         {
             Stream           inputStream  = null;
@@ -257,7 +258,7 @@ namespace Hi3Helper.Sophon
 
                 if (isUseOldFile)
                 {
-                    inputStream = outputOldFileInfo.OpenRead();
+                    inputStream = outputOldFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
                     streamType  = SourceStreamType.OldReference;
                     this.PushLogDebug($"Using old file as reference at offset: 0x{chunk.ChunkOldOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                 }
@@ -274,7 +275,8 @@ namespace Hi3Helper.Sophon
                     else if (cachedChunkInfo.Exists)
                     {
                         inputStream = new FileStream(cachedChunkInfo.FullName, FileMode.Open, FileAccess.Read,
-                                                     FileShare.Read, 4 << 10, FileOptions.None);
+                                                     FileShare.Read, 4 << 10, removeChunkAfterApply ?
+                                                     FileOptions.DeleteOnClose : FileOptions.None);
                         streamType = SourceStreamType.CachedLocal;
                         this.PushLogDebug($"Using cached/preloaded chunk as reference at offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                     }
