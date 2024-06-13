@@ -1,8 +1,4 @@
-﻿// ReSharper disable IdentifierTypo
-
-// ReSharper disable ConvertIfStatementToSwitchStatement
-
-using Hi3Helper.Sophon.Helper;
+﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Structs;
 using System.IO;
 using System.Net.Http;
@@ -10,11 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 #if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
+#endif
 
 // ReSharper disable InvalidXmlDocComment
 // ReSharper disable PossibleNullReferenceException
 // ReSharper disable AccessToDisposedClosure
-#endif
+// ReSharper disable IdentifierTypo
+// ReSharper disable ConvertIfStatementToSwitchStatement
 
 namespace Hi3Helper.Sophon
 {

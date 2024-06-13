@@ -206,57 +206,10 @@ namespace Hi3Helper.Sophon
         /// <param name="httpClient">
         ///     The <seealso cref="HttpClient" /> to be used to fetch the metadata information.
         /// </param>
-        /// <param name="infoPairOld">
-        ///     Pair of the old Manifest and Chunks information struct.
-        /// </param>
-        /// <param name="infoPairNew">
-        ///     Pair of the new Manifest and Chunks information struct.
-        /// </param>
-        /// <param name="isGetDecompressSize">
-        ///     Determine whether to get the decompressed or compressed size of the diff files.
-        /// </param>
-        /// <param name="token">
-        ///     Cancellation token for handling cancellation while the routine is running.
-        /// </param>
-        /// <returns>
-        ///     The calculated size of the diff from between the manifest.
-        /// </returns>
-        public static async
-        #if NET6_0_OR_GREATER
-            ValueTask<long>
-        #else
-            Task<long>
-        # endif
-            GetCalculatedDiffSizeAsync(HttpClient                  httpClient,
-                                       SophonChunkManifestInfoPair infoPairOld,
-                                       SophonChunkManifestInfoPair infoPairNew,
-                                       bool                        isGetDecompressSize = true,
-                                       CancellationToken           token               = default)
-            => await GetCalculatedDiffSizeAsync(httpClient,
-                                                infoPairOld.ManifestInfo,
-                                                infoPairOld.ChunksInfo,
-                                                infoPairNew.ManifestInfo,
-                                                infoPairNew.ChunksInfo,
-                                                isGetDecompressSize,
-                                                token);
-
-        /// <summary>
-        ///     Get the calculated diff size of an update between the old and new manifest.
-        /// </summary>
-        /// <param name="httpClient">
-        ///     The <seealso cref="HttpClient" /> to be used to fetch the metadata information.
-        /// </param>
-        /// <param name="manifestInfoFrom">
-        ///     Old manifest information struct.
-        /// </param>
-        /// <param name="chunksInfoFrom">
-        ///     Old chunks information struct.
-        /// </param>
-        /// <param name="manifestInfoTo">
-        ///     New manifest information struct.
-        /// </param>
-        /// <param name="chunksInfoTo">
-        ///     New chunks information struct.
+        /// <param name="sophonAssetsEnumerable">
+        ///     The enumerable of the asset. Use this as an extension of these methods:<br/>
+        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonChunkManifestInfoPair, SophonChunkManifestInfoPair, bool, CancellationToken)"/><br/>
+        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonManifestInfo, SophonChunksInfo, SophonManifestInfo, SophonChunksInfo, bool, CancellationToken)"/>
         /// </param>
         /// <param name="isGetDecompressSize">
         ///     Determine whether to get the decompressed or compressed size of the diff files.
@@ -273,23 +226,13 @@ namespace Hi3Helper.Sophon
         #else
             Task<long>
         #endif
-            GetCalculatedDiffSizeAsync(HttpClient         httpClient,
-                                       SophonManifestInfo manifestInfoFrom,
-                                       SophonChunksInfo   chunksInfoFrom,
-                                       SophonManifestInfo manifestInfoTo,
-                                       SophonChunksInfo   chunksInfoTo,
+            GetCalculatedDiffSizeAsync(this IAsyncEnumerable<SophonAsset> sophonAssetsEnumerable,
                                        bool               isGetDecompressSize = true,
                                        CancellationToken  token               = default)
         {
             long sizeDiff = 0;
 
-            await foreach (SophonAsset asset in EnumerateUpdateAsync(httpClient,
-                                                                     manifestInfoFrom,
-                                                                     chunksInfoFrom,
-                                                                     manifestInfoTo,
-                                                                     chunksInfoTo,
-                                                                     false)
-                              .WithCancellation(token))
+            await foreach (SophonAsset asset in sophonAssetsEnumerable.WithCancellation(token))
             {
                 if (asset.IsDirectory)
                 {
@@ -298,6 +241,48 @@ namespace Hi3Helper.Sophon
 
                 SophonChunk[] chunks    = asset.Chunks;
                 int           chunksLen = chunks.Length;
+                for (int i = 0; i < chunksLen; i++)
+                {
+                    if (chunks[i].ChunkOldOffset != -1)
+                    {
+                        continue;
+                    }
+
+                    sizeDiff += isGetDecompressSize ? chunks[i].ChunkSizeDecompressed : chunks[i].ChunkSize;
+                }
+            }
+
+            return sizeDiff;
+        }
+
+        /// <summary>
+        ///     Get the calculated diff size of an update between the old and new manifest.
+        ///     Use this as an extension of any <seealso cref="IEnumerable{T}"/> where <typeparamref name="T"/> is <seealso cref="SophonAsset"/>.
+        /// </summary>
+        /// <param name="sophonAssetsEnumerable">
+        ///     The enumerable of the asset.
+        /// </param>
+        /// <param name="isGetDecompressSize">
+        ///     Determine whether to get the decompressed or compressed size of the diff files.
+        /// </param>
+        /// <returns>
+        ///     The calculated size of the diff from between the manifest.
+        /// </returns>
+        public static long GetCalculatedDiffSize<T>(this IEnumerable<T> sophonAssetsEnumerable,
+                                                    bool isGetDecompressSize = true)
+            where T : SophonAsset
+        {
+            long sizeDiff = 0;
+
+            foreach (SophonAsset asset in sophonAssetsEnumerable)
+            {
+                if (asset.IsDirectory)
+                {
+                    continue;
+                }
+
+                SophonChunk[] chunks = asset.Chunks;
+                int chunksLen = chunks.Length;
                 for (int i = 0; i < chunksLen; i++)
                 {
                     if (chunks[i].ChunkOldOffset != -1)
