@@ -165,7 +165,7 @@ namespace Hi3Helper.Sophon
                 {
                     bool isChunkUnmatch = fileStream.Length != chunk.ChunkSize;
                     bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
-                    if ((!isChunkVerified || isChunkUnmatch) && !forceVerification)
+                    if (forceVerification || !isChunkVerified || isChunkUnmatch)
                     {
                         isChunkUnmatch = !(chunk.TryGetChunkXxh64Hash(out byte[] hash)
                                            && await chunk.CheckChunkXxh64HashAsync(this, fileStream, hash, true, token));
