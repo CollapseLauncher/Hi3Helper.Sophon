@@ -1,9 +1,4 @@
-﻿// ReSharper disable IdentifierTypo
-
-#if !NET6_0_OR_GREATER
-using System.Threading.Tasks.Dataflow;
-#endif
-using Hi3Helper.Sophon.Helper;
+﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
 using System;
@@ -14,11 +9,16 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
+#if !NET6_0_OR_GREATER
+using System.Threading.Tasks.Dataflow;
+#endif
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
+
 // ReSharper disable ConvertIfStatementToNullCoalescingAssignment
 // ReSharper disable UseAwaitUsing
 // ReSharper disable InvalidXmlDocComment
+// ReSharper disable IdentifierTypo
 
 namespace Hi3Helper.Sophon
 {
@@ -158,10 +158,11 @@ namespace Hi3Helper.Sophon
 
             if (parallelOptions == null)
             {
+                int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
                 parallelOptions = new ParallelOptions
                 {
-                    CancellationToken      = default,
-                    MaxDegreeOfParallelism = Environment.ProcessorCount
+                    CancellationToken       = default,
+                    MaxDegreeOfParallelism  = maxChunksTask
                 };
             }
 

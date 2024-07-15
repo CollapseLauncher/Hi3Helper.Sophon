@@ -1,5 +1,6 @@
 ﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Structs;
+using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -172,6 +173,16 @@ namespace Hi3Helper.Sophon
                 Directory.CreateDirectory(outputNewDir);
             }
 
+            if (parallelOptions == null)
+            {
+                int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
+                parallelOptions = new ParallelOptions
+                {
+                    CancellationToken       = default,
+                    MaxDegreeOfParallelism  = maxChunksTask
+                };
+            }
+
             FileInfo outputOldFileInfo     = new FileInfo(outputOldPath);
             FileInfo outputNewFileInfo     = new FileInfo(outputNewPath);
             FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath);
@@ -264,6 +275,7 @@ namespace Hi3Helper.Sophon
                 {
                     string   cachedChunkName = chunk.GetChunkStagingFilenameHash(this);
                     string   cachedChunkPath = Path.Combine(chunkDir, cachedChunkName);
+                    string   cachedChunkFileCheckedPath = cachedChunkPath + ".verified";
                     FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath);
                     if (cachedChunkInfo.Exists && cachedChunkInfo.Length != chunk.ChunkSize)
                     {
@@ -276,6 +288,9 @@ namespace Hi3Helper.Sophon
                                                      FileShare.Read, 4 << 10, removeChunkAfterApply ?
                                                      FileOptions.DeleteOnClose : FileOptions.None);
                         streamType = SourceStreamType.CachedLocal;
+                        if (File.Exists(cachedChunkFileCheckedPath))
+                            File.Delete(cachedChunkFileCheckedPath);
+
                         this.PushLogDebug($"Using cached/preloaded chunk as reference at offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                     }
                 }
