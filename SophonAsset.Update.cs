@@ -39,8 +39,11 @@ namespace Hi3Helper.Sophon
         /// <param name="removeChunkAfterApply">
         ///     Remove chunk file after applying update
         /// </param>
-        /// <param name="readInfoDelegate">
-        ///     <inheritdoc cref="DelegateReadStreamInfo" />
+        /// <param name="writeInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        /// </param>
+        /// <param name="downloadInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -59,7 +62,8 @@ namespace Hi3Helper.Sophon
                              string                        newOutputDir,
                              string                        chunkDir,
                              bool                          removeChunkAfterApply    = false,
-                             DelegateReadStreamInfo        readInfoDelegate         = null,
+                             DelegateWriteStreamInfo       writeInfoDelegate        = null,
+                             DelegateWriteStreamInfo       downloadInfoDelegate     = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null,
                              CancellationToken             token                    = default)
         {
@@ -86,7 +90,7 @@ namespace Hi3Helper.Sophon
 
             foreach (SophonChunk chunk in Chunks)
             {
-                await InnerWriteUpdateAsync(client,                chunkDir, readInfoDelegate,      outputOldFileInfo,
+                await InnerWriteUpdateAsync(client,                chunkDir, writeInfoDelegate, downloadInfoDelegate,  outputOldFileInfo,
                                             outputNewTempFileInfo, chunk,    removeChunkAfterApply, token);
             }
 
@@ -135,8 +139,11 @@ namespace Hi3Helper.Sophon
         ///     MaxDegreeOfParallelism = [Number of CPU threads/cores available]
         ///     </code>
         /// </param>
-        /// <param name="readInfoDelegate">
-        ///     <inheritdoc cref="DelegateReadStreamInfo" />
+        /// <param name="writeInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        /// </param>
+        /// <param name="downloadInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -153,7 +160,8 @@ namespace Hi3Helper.Sophon
                              string                        chunkDir,
                              bool                          removeChunkAfterApply    = false,
                              ParallelOptions               parallelOptions          = null,
-                             DelegateReadStreamInfo        readInfoDelegate         = null,
+                             DelegateWriteStreamInfo       writeInfoDelegate        = null,
+                             DelegateWriteStreamInfo       downloadInfoDelegate     = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null)
         {
             const string tempExt = "_tempUpdate";
@@ -200,7 +208,7 @@ namespace Hi3Helper.Sophon
                     ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
                      async chunk =>
                      {
-                         await InnerWriteUpdateAsync(client, chunkDir, readInfoDelegate, outputOldFileInfo,
+                         await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate, outputOldFileInfo,
                                                      outputNewTempFileInfo, chunk, linkedToken.Token);
                      },
                      new ExecutionDataflowBlockOptions
@@ -224,7 +232,7 @@ namespace Hi3Helper.Sophon
                 await Parallel.ForEachAsync(Chunks, parallelOptions,
                                             async (chunk, threadToken) =>
                                             {
-                                                await InnerWriteUpdateAsync(client, chunkDir, readInfoDelegate,
+                                                await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
                                                                             outputOldFileInfo, outputNewTempFileInfo,
                                                                             chunk, removeChunkAfterApply,
                                                                             threadToken);
@@ -246,14 +254,15 @@ namespace Hi3Helper.Sophon
             downloadCompleteDelegate?.Invoke(this);
         }
 
-        private async Task InnerWriteUpdateAsync(HttpClient             client,
-                                                 string                 chunkDir,
-                                                 DelegateReadStreamInfo readInfoDelegate,
-                                                 FileInfo               outputOldFileInfo,
-                                                 FileInfo               outputNewFileInfo,
-                                                 SophonChunk            chunk,
-                                                 bool                   removeChunkAfterApply,
-                                                 CancellationToken      token)
+        private async Task InnerWriteUpdateAsync(HttpClient                 client,
+                                                 string                     chunkDir,
+                                                 DelegateWriteStreamInfo    writeInfoDelegate,
+                                                 DelegateWriteStreamInfo    downloadInfoDelegate,
+                                                 FileInfo                   outputOldFileInfo,
+                                                 FileInfo                   outputNewFileInfo,
+                                                 SophonChunk                chunk,
+                                                 bool                       removeChunkAfterApply,
+                                                 CancellationToken          token)
         {
             Stream           inputStream  = null;
             Stream           outputStream = null;
@@ -297,7 +306,7 @@ namespace Hi3Helper.Sophon
 
                 outputStream = outputNewFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
                 await PerformWriteStreamThreadAsync(client, inputStream, streamType, outputStream, chunk, token,
-                                                    readInfoDelegate);
+                                                    writeInfoDelegate, downloadInfoDelegate);
             }
             finally
             {
