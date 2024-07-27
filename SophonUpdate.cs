@@ -122,7 +122,7 @@ namespace Hi3Helper.Sophon
                                                                                SophonChunksInfo   chunksInfoTo,
                                                                                bool               removeChunkAfterApply,
                                                                                [EnumeratorCancellation]
-                                                                               CancellationToken token = default)
+                                                                               CancellationToken  token = default)
         {
         #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -268,9 +268,8 @@ namespace Hi3Helper.Sophon
         /// <returns>
         ///     The calculated size of the diff from between the manifest.
         /// </returns>
-        public static long GetCalculatedDiffSize<T>(this IEnumerable<T> sophonAssetsEnumerable,
+        public static long GetCalculatedDiffSize(this IEnumerable<SophonAsset> sophonAssetsEnumerable,
                                                     bool isGetDecompressSize = true)
-            where T : SophonAsset
         {
             long sizeDiff = 0;
 

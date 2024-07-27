@@ -49,7 +49,7 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -60,13 +60,13 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            DownloadDiffChunksAsync(HttpClient client,
-                                    string chunkDirOutput,
-                                    ParallelOptions parallelOptions = null,
-                                    DelegateWriteStreamInfo writeInfoDelegate = null,
-                                    DelegateWriteStreamInfo downloadInfoDelegate = null,
-                                    DelegateDownloadAssetComplete downloadCompleteDelegate = null,
-                                    bool forceVerification = false)
+            DownloadDiffChunksAsync(HttpClient                      client,
+                                    string                          chunkDirOutput,
+                                    ParallelOptions                 parallelOptions             = null,
+                                    DelegateWriteStreamInfo         writeInfoDelegate           = null,
+                                    DelegateWriteDownloadInfo       downloadInfoDelegate        = null,
+                                    DelegateDownloadAssetComplete   downloadCompleteDelegate    = null,
+                                    bool                            forceVerification           = false)
         {
             this.EnsureOrThrowChunksState();
             this.EnsureOrThrowOutputDirectoryExistence(chunkDirOutput);
@@ -149,13 +149,13 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            PerformWriteDiffChunksThreadAsync(HttpClient client,
-                                              string chunkDirOutput,
-                                              SophonChunk chunk,
-                                              CancellationToken token = default,
-                                              DelegateWriteStreamInfo writeInfoDelegate = null,
-                                              DelegateWriteStreamInfo downloadInfoDelegate = null,
-                                              bool forceVerification = false)
+            PerformWriteDiffChunksThreadAsync(HttpClient                client,
+                                              string                    chunkDirOutput,
+                                              SophonChunk               chunk,
+                                              CancellationToken         token                   = default,
+                                              DelegateWriteStreamInfo   writeInfoDelegate       = null,
+                                              DelegateWriteDownloadInfo downloadInfoDelegate    = null,
+                                              bool                      forceVerification       = false)
         {
             string chunkNameHashed = chunk.GetChunkStagingFilenameHash(this);
             string chunkFilePathHashed = Path.Combine(chunkDirOutput, chunkNameHashed);
@@ -182,6 +182,7 @@ namespace Hi3Helper.Sophon
                     {
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                         writeInfoDelegate?.Invoke(chunk.ChunkSize);
+                        downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
                         if (!File.Exists(chunkFileCheckedPath))
                             File.Create(chunkFileCheckedPath).Dispose();
                         return;
@@ -204,12 +205,12 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            InnerWriteChunkCopyAsync(HttpClient client,
-                                     Stream outStream,
-                                     SophonChunk chunk,
-                                     CancellationToken token,
-                                     DelegateWriteStreamInfo writeInfoDelegate = null,
-                                     DelegateWriteStreamInfo downloadInfoDelegate = null)
+            InnerWriteChunkCopyAsync(HttpClient                 client,
+                                     Stream                     outStream,
+                                     SophonChunk                chunk,
+                                     CancellationToken          token,
+                                     DelegateWriteStreamInfo    writeInfoDelegate       = null,
+                                     DelegateWriteDownloadInfo  downloadInfoDelegate    = null)
         {
             const int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
@@ -274,7 +275,7 @@ namespace Hi3Helper.Sophon
                             await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
                             currentWriteOffset += read;
                             writeInfoDelegate?.Invoke(read);
-                            downloadInfoDelegate?.Invoke(read);
+                            downloadInfoDelegate?.Invoke(read, read);
 
                             currentRetry = 0;
                             innerTimeoutToken.Dispose();
@@ -314,7 +315,7 @@ namespace Hi3Helper.Sophon
                         if (!isHashVerified)
                         {
                             writeInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
-                            downloadInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
+                            downloadInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed, 0);
                             this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                             continue;
                         }
@@ -332,7 +333,7 @@ namespace Hi3Helper.Sophon
                         if (currentRetry < retryCount)
                         {
                             writeInfoDelegate?.Invoke(-currentWriteOffset);
-                            downloadInfoDelegate?.Invoke(-currentWriteOffset);
+                            downloadInfoDelegate?.Invoke(-currentWriteOffset, 0);
                             currentWriteOffset = 0;
                             currentRetry++;
 

@@ -43,7 +43,7 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -63,7 +63,7 @@ namespace Hi3Helper.Sophon
                              string                        chunkDir,
                              bool                          removeChunkAfterApply    = false,
                              DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                             DelegateWriteStreamInfo       downloadInfoDelegate     = null,
+                             DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null,
                              CancellationToken             token                    = default)
         {
@@ -143,7 +143,7 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -161,7 +161,7 @@ namespace Hi3Helper.Sophon
                              bool                          removeChunkAfterApply    = false,
                              ParallelOptions               parallelOptions          = null,
                              DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                             DelegateWriteStreamInfo       downloadInfoDelegate     = null,
+                             DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
                              DelegateDownloadAssetComplete downloadCompleteDelegate = null)
         {
             const string tempExt = "_tempUpdate";
@@ -257,7 +257,7 @@ namespace Hi3Helper.Sophon
         private async Task InnerWriteUpdateAsync(HttpClient                 client,
                                                  string                     chunkDir,
                                                  DelegateWriteStreamInfo    writeInfoDelegate,
-                                                 DelegateWriteStreamInfo    downloadInfoDelegate,
+                                                 DelegateWriteDownloadInfo  downloadInfoDelegate,
                                                  FileInfo                   outputOldFileInfo,
                                                  FileInfo                   outputNewFileInfo,
                                                  SophonChunk                chunk,

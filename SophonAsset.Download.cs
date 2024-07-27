@@ -64,7 +64,7 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -81,7 +81,7 @@ namespace Hi3Helper.Sophon
             WriteToStreamAsync(HttpClient                    client,
                                Stream                        outStream,
                                DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                               DelegateWriteStreamInfo       downloadInfoDelegate     = null,
+                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
                                DelegateDownloadAssetComplete downloadCompleteDelegate = null,
                                CancellationToken             token                    = default)
         {
@@ -134,7 +134,7 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateWriteStreamInfo" />
         /// </param>
         /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
         /// </param>
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
@@ -149,7 +149,7 @@ namespace Hi3Helper.Sophon
                                Func<Stream>                  outStreamFunc,
                                ParallelOptions               parallelOptions          = null,
                                DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                               DelegateWriteStreamInfo       downloadInfoDelegate     = null,
+                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
                                DelegateDownloadAssetComplete downloadCompleteDelegate = null)
         {
             this.EnsureOrThrowChunksState();
@@ -241,7 +241,7 @@ namespace Hi3Helper.Sophon
                                           SophonChunk                   chunk,
                                           CancellationToken             token                   = default,
                                           DelegateWriteStreamInfo       writeInfoDelegate       = null,
-                                          DelegateWriteStreamInfo       downloadInfoDelegate    = null)
+                                          DelegateWriteDownloadInfo     downloadInfoDelegate    = null)
         {
             long totalSizeFromOffset = chunk.ChunkOffset + chunk.ChunkSizeDecompressed;
             bool isSkipChunk         = outStream.Length >= totalSizeFromOffset;
@@ -256,11 +256,12 @@ namespace Hi3Helper.Sophon
             {
                 this.PushLogDebug($"Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                 writeInfoDelegate?.Invoke(chunk.ChunkSizeDecompressed);
+                downloadInfoDelegate?.Invoke(chunk.ChunkOldOffset != -1 ? 0 : chunk.ChunkSizeDecompressed, 0);
                 return;
             }
 
             await InnerWriteStreamToAsync(client, sourceStream, sourceStreamType, outStream, chunk, token,
-                                          writeInfoDelegate);
+                                          writeInfoDelegate, downloadInfoDelegate);
         }
 
         private async
@@ -276,7 +277,7 @@ namespace Hi3Helper.Sophon
                                     SophonChunk                 chunk,
                                     CancellationToken           token,
                                     DelegateWriteStreamInfo     writeInfoDelegate       = null,
-                                    DelegateWriteStreamInfo     downloadInfoDelegate    = null)
+                                    DelegateWriteDownloadInfo   downloadInfoDelegate    = null)
         {
             if (sourceStreamType != SourceStreamType.Internet && sourceStream == null)
             {
@@ -378,8 +379,8 @@ namespace Hi3Helper.Sophon
                             writeInfoDelegate?.Invoke(read);
 
                             // Add network activity read indicator
-                            if (sourceStreamType == SourceStreamType.Internet)
-                                downloadInfoDelegate?.Invoke(read);
+                            if (sourceStreamType != SourceStreamType.OldReference)
+                                downloadInfoDelegate?.Invoke(read, sourceStreamType == SourceStreamType.Internet ? read : 0);
 
                             currentRetry = 0;
                             innerTimeoutToken.Dispose();
@@ -405,9 +406,9 @@ namespace Hi3Helper.Sophon
 
                         if (!isHashVerified)
                         {
-                            writeInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
-                            if (sourceStreamType == SourceStreamType.Internet)
-                                downloadInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
+                            writeInfoDelegate?.Invoke(-currentWriteOffset);
+                            if (sourceStreamType != SourceStreamType.OldReference)
+                                downloadInfoDelegate?.Invoke(-currentWriteOffset, 0);
 
                             allowDispose = true;
                             this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
@@ -446,8 +447,8 @@ namespace Hi3Helper.Sophon
                         if (currentRetry < retryCount)
                         {
                             writeInfoDelegate?.Invoke(-currentWriteOffset);
-                            if (lastSourceStreamType == SourceStreamType.Internet)
-                                downloadInfoDelegate?.Invoke(-currentWriteOffset);
+                            if (lastSourceStreamType != SourceStreamType.OldReference)
+                                downloadInfoDelegate?.Invoke(-currentWriteOffset, 0);
 
                             currentWriteOffset = 0;
                             currentRetry++;
