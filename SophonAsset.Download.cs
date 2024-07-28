@@ -411,7 +411,8 @@ namespace Hi3Helper.Sophon
                                 downloadInfoDelegate?.Invoke(-currentWriteOffset, 0);
 
                             allowDispose = true;
-                            this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                            this.PushLogWarning($"Source data from type: {sourceStreamType} seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                            sourceStreamType = SourceStreamType.Internet;
                             continue;
                         }
 
