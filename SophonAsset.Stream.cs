@@ -173,28 +173,26 @@ namespace Hi3Helper.Sophon
 
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
-            if (disposing)
+            if (!disposing)
             {
-                NetworkRequest?.Dispose();
-                NetworkResponse?.Dispose();
-                NetworkStream?.Dispose();
+                return;
             }
+
+            NetworkRequest.Dispose();
+            NetworkResponse?.Dispose();
+            NetworkStream?.Dispose();
         }
 
-    #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
         public override async ValueTask DisposeAsync()
         {
-            NetworkRequest?.Dispose();
+            NetworkRequest.Dispose();
             NetworkResponse?.Dispose();
             if (NetworkStream != null)
-            {
                 await NetworkStream.DisposeAsync();
-            }
 
-            await base.DisposeAsync();
             GC.SuppressFinalize(this);
         }
-    #endif
+#endif
     }
 }
