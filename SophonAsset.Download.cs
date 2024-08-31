@@ -3,6 +3,7 @@ using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -34,12 +35,13 @@ namespace Hi3Helper.Sophon
         internal const int BufferSize     = 256 << 10;
         private const  int ZstdBufferSize = 0; // Default
 
-        public string        AssetName   { get; internal set; }
-        public long          AssetSize   { get; internal set; }
-        public string        AssetHash   { get; internal set; }
-        public bool          IsDirectory { get; internal set; }
-        public bool          IsHasPatch  { get; internal set; }
-        public SophonChunk[] Chunks      { get; internal set; }
+        public   string                     AssetName            { get; internal set; }
+        public   long                       AssetSize            { get; internal set; }
+        public   string                     AssetHash            { get; internal set; }
+        public   bool                       IsDirectory          { get; internal set; }
+        public   bool                       IsHasPatch           { get; internal set; }
+        public   SophonChunk[]              Chunks               { get; internal set; }
+        internal SophonDownloadSpeedLimiter DownloadSpeedLimiter { get;          set; }
 
         internal SophonChunksInfo SophonChunksInfo;
 
@@ -96,7 +98,7 @@ namespace Hi3Helper.Sophon
             foreach (SophonChunk chunk in Chunks)
             {
                 await PerformWriteStreamThreadAsync(client, null, SourceStreamType.Internet, outStream, chunk, token,
-                                                    writeInfoDelegate, downloadInfoDelegate);
+                                                    writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter);
             }
 
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
@@ -214,7 +216,8 @@ namespace Hi3Helper.Sophon
                                                                          await PerformWriteStreamThreadAsync(client,
                                                                                   null,      SourceStreamType.Internet,
                                                                                   outStream, chunk, threadToken,
-                                                                                  writeInfoDelegate, downloadInfoDelegate);
+                                                                                  writeInfoDelegate, downloadInfoDelegate,
+                                                                                  DownloadSpeedLimiter);
                                                                      });
             #endif
             }
@@ -239,9 +242,10 @@ namespace Hi3Helper.Sophon
                                           SourceStreamType              sourceStreamType,
                                           Stream                        outStream,
                                           SophonChunk                   chunk,
-                                          CancellationToken             token                   = default,
-                                          DelegateWriteStreamInfo       writeInfoDelegate       = null,
-                                          DelegateWriteDownloadInfo     downloadInfoDelegate    = null)
+                                          CancellationToken             token,
+                                          DelegateWriteStreamInfo       writeInfoDelegate,
+                                          DelegateWriteDownloadInfo     downloadInfoDelegate,
+                                          SophonDownloadSpeedLimiter    downloadSpeedLimiter)
         {
             long totalSizeFromOffset = chunk.ChunkOffset + chunk.ChunkSizeDecompressed;
             bool isSkipChunk         = outStream.Length >= totalSizeFromOffset;
@@ -261,7 +265,7 @@ namespace Hi3Helper.Sophon
             }
 
             await InnerWriteStreamToAsync(client, sourceStream, sourceStreamType, outStream, chunk, token,
-                                          writeInfoDelegate, downloadInfoDelegate);
+                                          writeInfoDelegate, downloadInfoDelegate, downloadSpeedLimiter);
         }
 
         private async
@@ -276,8 +280,9 @@ namespace Hi3Helper.Sophon
                                     Stream                      outStream,
                                     SophonChunk                 chunk,
                                     CancellationToken           token,
-                                    DelegateWriteStreamInfo     writeInfoDelegate       = null,
-                                    DelegateWriteDownloadInfo   downloadInfoDelegate    = null)
+                                    DelegateWriteStreamInfo     writeInfoDelegate,
+                                    DelegateWriteDownloadInfo   downloadInfoDelegate,
+                                    SophonDownloadSpeedLimiter  downloadSpeedLimiter)
         {
             if (sourceStreamType != SourceStreamType.Internet && sourceStream == null)
             {
@@ -298,13 +303,28 @@ namespace Hi3Helper.Sophon
 
             string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
 
-        #if !NOSTREAMLOCK
+            long      written                       = 0;
+            long      thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
+            Stopwatch currentStopwatch              = Stopwatch.StartNew();
+
+            double maximumBytesPerSecond;
+            double bitPerUnit;
+
+            CalculateBps();
+
+            if (downloadSpeedLimiter != null)
+            {
+                downloadSpeedLimiter.CurrentChunkProcessingChangedEvent += UpdateChunkRangesCountEvent;
+                downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
+            }
+
+#if !NOSTREAMLOCK
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
                 this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
-        #endif
+#endif
 
             while (true)
             {
@@ -314,6 +334,7 @@ namespace Hi3Helper.Sophon
                 MD5    hashInstance = MD5.Create();
                 byte[] buffer       = ArrayPool<byte>.Shared.Rent(BufferSize);
 
+                SourceStreamType currentSourceStreamType = sourceStreamType;
                 {
                     try
                     {
@@ -336,6 +357,8 @@ namespace Hi3Helper.Sophon
                         {
                             case SourceStreamType.Internet:
                             {
+                                downloadSpeedLimiter?.IncrementChunkProcessedCount();
+                                
                                 httpResponseStream =
                                     await SophonAssetStream.CreateStreamAsync(client, url, 0, null,
                                                                               cooperatedToken.Token) ??
@@ -378,6 +401,9 @@ namespace Hi3Helper.Sophon
                             hashInstance.TransformBlock(buffer, 0, read, buffer, 0);
                             writeInfoDelegate?.Invoke(read);
 
+                            if (currentSourceStreamType == SourceStreamType.Internet)
+                                written += read;
+
                             // Add network activity read indicator
                             if (sourceStreamType != SourceStreamType.OldReference)
                                 downloadInfoDelegate?.Invoke(read, sourceStreamType == SourceStreamType.Internet ? read : 0);
@@ -399,6 +425,9 @@ namespace Hi3Helper.Sophon
                                 throw new
                                     InvalidDataException($"Chunk has remained data while the read is already 0 due to corrupted compressed data. Remained data: {remain} bytes");
                             }
+
+                            if (currentSourceStreamType == SourceStreamType.Internet)
+                                await ThrottleAsync();
                         }
 
                         hashInstance.TransformFinalBlock(buffer, 0, 0);
@@ -465,6 +494,10 @@ namespace Hi3Helper.Sophon
                     }
                     finally
                     {
+                        if (downloadSpeedLimiter != null && currentSourceStreamType == SourceStreamType.Internet
+                         && downloadSpeedLimiter.CurrentChunkProcessing > 0)
+                            downloadSpeedLimiter?.DecrementChunkProcessedCount();
+
                         if (allowDispose)
                         {
                         #if NET6_0_OR_GREATER
@@ -484,6 +517,65 @@ namespace Hi3Helper.Sophon
                         }
 
                         ArrayPool<byte>.Shared.Return(buffer);
+                    }
+                }
+            }
+
+            void CalculateBps()
+            {
+                if (thisInstanceDownloadLimitBase <= 0)
+                    thisInstanceDownloadLimitBase = -1;
+                else
+                    thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
+
+                double threadNum = Math.Min(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1);
+                maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
+                bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
+            }
+
+            void DownloadClient_DownloadSpeedLimitChanged(object sender, long e)
+            {
+                thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
+                CalculateBps();
+            }
+
+            void UpdateChunkRangesCountEvent(object sender, int e)
+            {
+                CalculateBps();
+            }
+
+            async Task ThrottleAsync()
+            {
+                // Make sure the buffer isn't empty.
+                if (maximumBytesPerSecond <= 0 || written <= 0)
+                {
+                    return;
+                }
+
+                long elapsedMilliseconds = currentStopwatch.ElapsedMilliseconds;
+
+                if (elapsedMilliseconds > 0)
+                {
+                    // Calculate the current bps.
+                    double bps = written * bitPerUnit / elapsedMilliseconds;
+
+                    // If the bps are more then the maximum bps, try to throttle.
+                    if (bps > maximumBytesPerSecond)
+                    {
+                        // Calculate the time to sleep.
+                        double wakeElapsed = written * bitPerUnit / maximumBytesPerSecond;
+                        double toSleep = wakeElapsed - elapsedMilliseconds;
+
+                        if (toSleep > 1)
+                        {
+                            // The time to sleep is more than a millisecond, so sleep.
+                            await Task.Delay(TimeSpan.FromMilliseconds(toSleep), token);
+
+                            // A sleep has been done, reset.
+                            currentStopwatch.Restart();
+
+                            written = 0;
+                        }
                     }
                 }
             }

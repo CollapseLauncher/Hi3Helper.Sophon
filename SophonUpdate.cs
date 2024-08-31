@@ -46,6 +46,9 @@ namespace Hi3Helper.Sophon
         /// <param name="infoPairNew">
         ///     Pair of the new Manifest and Chunks information struct.
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
@@ -61,12 +64,13 @@ namespace Hi3Helper.Sophon
         /// <exception cref="NullReferenceException">
         ///     Indicates if an argument or Http response returns a <c>null</c>.
         /// </exception>
-        public static async IAsyncEnumerable<SophonAsset> EnumerateUpdateAsync(HttpClient httpClient,
-                                                                               SophonChunkManifestInfoPair infoPairOld,
-                                                                               SophonChunkManifestInfoPair infoPairNew,
-                                                                               bool removeChunkAfterApply,
+        public static async IAsyncEnumerable<SophonAsset> EnumerateUpdateAsync(HttpClient                   httpClient,
+                                                                               SophonChunkManifestInfoPair  infoPairOld,
+                                                                               SophonChunkManifestInfoPair  infoPairNew,
+                                                                               bool                         removeChunkAfterApply,
+                                                                               SophonDownloadSpeedLimiter   downloadSpeedLimiter    = null,
                                                                                [EnumeratorCancellation]
-                                                                               CancellationToken token = default)
+                                                                               CancellationToken            token                   = default)
 
         {
             await foreach (SophonAsset asset in EnumerateUpdateAsync(httpClient,
@@ -100,6 +104,9 @@ namespace Hi3Helper.Sophon
         /// <param name="chunksInfoTo">
         ///     New chunks information struct.
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
@@ -115,14 +122,15 @@ namespace Hi3Helper.Sophon
         /// <exception cref="NullReferenceException">
         ///     Indicates if an argument or Http response returns a <c>null</c>.
         /// </exception>
-        public static async IAsyncEnumerable<SophonAsset> EnumerateUpdateAsync(HttpClient         httpClient,
-                                                                               SophonManifestInfo manifestInfoFrom,
-                                                                               SophonChunksInfo   chunksInfoFrom,
-                                                                               SophonManifestInfo manifestInfoTo,
-                                                                               SophonChunksInfo   chunksInfoTo,
-                                                                               bool               removeChunkAfterApply,
-                                                                               [EnumeratorCancellation]
-                                                                               CancellationToken  token = default)
+        public static async IAsyncEnumerable<SophonAsset> EnumerateUpdateAsync(HttpClient                 httpClient,
+                                                                               SophonManifestInfo         manifestInfoFrom,
+                                                                               SophonChunksInfo           chunksInfoFrom,
+                                                                               SophonManifestInfo         manifestInfoTo,
+                                                                               SophonChunksInfo           chunksInfoTo,
+                                                                               bool                       removeChunkAfterApply,
+                                                                               SophonDownloadSpeedLimiter downloadSpeedLimiter   = null,
+                                                                               [EnumeratorCancellation]                          
+                                                                               CancellationToken          token                  = default)
         {
         #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -196,7 +204,8 @@ namespace Hi3Helper.Sophon
                 yield return GetPatchedTargetAsset(oldAssetNameIdx,
                                                    manifestFromProto,
                                                    newAssetProperty,
-                                                   chunksInfoTo);
+                                                   chunksInfoTo,
+                                                   downloadSpeedLimiter);
             }
         }
 
@@ -296,10 +305,11 @@ namespace Hi3Helper.Sophon
             return sizeDiff;
         }
 
-        private static SophonAsset GetPatchedTargetAsset(Dictionary<string, int> oldAssetNameIdx,
-                                                         SophonManifestProto     oldAssetProto,
-                                                         AssetProperty           newAssetProperty,
-                                                         SophonChunksInfo        newChunksInfo)
+        private static SophonAsset GetPatchedTargetAsset(Dictionary<string, int>    oldAssetNameIdx,
+                                                         SophonManifestProto        oldAssetProto,
+                                                         AssetProperty              newAssetProperty,
+                                                         SophonChunksInfo           newChunksInfo,
+                                                         SophonDownloadSpeedLimiter downloadSpeedLimiter)
         {
             // If the targeted asset has asset type != 0 or has no MD5 hash (is directory)
             // Or if the targeted asset is not exist in the old Hash set, then act it as a new asset.
@@ -307,7 +317,7 @@ namespace Hi3Helper.Sophon
                                                 || !oldAssetNameIdx.TryGetValue(newAssetProperty.AssetName,
                                                                                     out int oldAssetIdx))
             {
-                return SophonManifest.AssetProperty2SophonAsset(newAssetProperty, newChunksInfo);
+                return SophonManifest.AssetProperty2SophonAsset(newAssetProperty, newChunksInfo, downloadSpeedLimiter);
             }
 
             // Now check if the asset has a patch or not.
@@ -330,13 +340,14 @@ namespace Hi3Helper.Sophon
             long   assetSize = newAssetProperty.AssetSize;
             return new SophonAsset
             {
-                AssetName        = assetName,
-                AssetHash        = assetHash,
-                AssetSize        = assetSize,
-                Chunks           = newAssetPatchedChunks,
-                SophonChunksInfo = newChunksInfo,
-                IsDirectory      = false,
-                IsHasPatch       = isNewAssetHasPatch
+                AssetName            = assetName,
+                AssetHash            = assetHash,
+                AssetSize            = assetSize,
+                Chunks               = newAssetPatchedChunks,
+                SophonChunksInfo     = newChunksInfo,
+                IsDirectory          = false,
+                IsHasPatch           = isNewAssetHasPatch,
+                DownloadSpeedLimiter = downloadSpeedLimiter
             };
         }
 

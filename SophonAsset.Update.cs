@@ -227,17 +227,14 @@ namespace Hi3Helper.Sophon
                 }
             }
         #else
-            if (parallelOptions != null)
-            {
-                await Parallel.ForEachAsync(Chunks, parallelOptions,
-                                            async (chunk, threadToken) =>
-                                            {
-                                                await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
-                                                                            outputOldFileInfo, outputNewTempFileInfo,
-                                                                            chunk, removeChunkAfterApply,
-                                                                            threadToken);
-                                            });
-            }
+            await Parallel.ForEachAsync(Chunks, parallelOptions,
+                                        async (chunk, threadToken) =>
+                                        {
+                                            await InnerWriteUpdateAsync(client,            chunkDir, writeInfoDelegate, downloadInfoDelegate,
+                                                                        outputOldFileInfo, outputNewTempFileInfo,
+                                                                        chunk,             removeChunkAfterApply,
+                                                                        threadToken);
+                                        });
         #endif
 
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)

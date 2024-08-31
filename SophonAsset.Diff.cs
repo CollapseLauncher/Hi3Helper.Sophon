@@ -2,6 +2,7 @@
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -129,7 +130,8 @@ namespace Hi3Helper.Sophon
 
                                                                          await PerformWriteDiffChunksThreadAsync(client,
                                                                              chunkDirOutput, chunk, threadToken,
-                                                                             writeInfoDelegate, downloadInfoDelegate, forceVerification);
+                                                                             writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
+                                                                             forceVerification);
                                                                      });
 #endif
             }
@@ -149,13 +151,14 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            PerformWriteDiffChunksThreadAsync(HttpClient                client,
-                                              string                    chunkDirOutput,
-                                              SophonChunk               chunk,
-                                              CancellationToken         token                   = default,
-                                              DelegateWriteStreamInfo   writeInfoDelegate       = null,
-                                              DelegateWriteDownloadInfo downloadInfoDelegate    = null,
-                                              bool                      forceVerification       = false)
+            PerformWriteDiffChunksThreadAsync(HttpClient                 client,
+                                              string                     chunkDirOutput,
+                                              SophonChunk                chunk,
+                                              CancellationToken          token,
+                                              DelegateWriteStreamInfo    writeInfoDelegate,
+                                              DelegateWriteDownloadInfo  downloadInfoDelegate,
+                                              SophonDownloadSpeedLimiter downloadSpeedLimiter,
+                                              bool                       forceVerification)
         {
             string chunkNameHashed = chunk.GetChunkStagingFilenameHash(this);
             string chunkFilePathHashed = Path.Combine(chunkDirOutput, chunkNameHashed);
@@ -170,7 +173,7 @@ namespace Hi3Helper.Sophon
                 {
                     bool isChunkUnmatch = fileStream.Length != chunk.ChunkSize;
                     bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
-                    if (forceVerification || !isChunkVerified || isChunkUnmatch)
+                    if (forceVerification || !isChunkVerified)
                     {
                         isChunkUnmatch = !(chunk.TryGetChunkXxh64Hash(out byte[] hash)
                                            && await chunk.CheckChunkXxh64HashAsync(this, fileStream, hash, true, token));
@@ -189,7 +192,7 @@ namespace Hi3Helper.Sophon
                     }
 
                     fileStream.Position = 0;
-                    await InnerWriteChunkCopyAsync(client, fileStream, chunk, token, writeInfoDelegate, downloadInfoDelegate);
+                    await InnerWriteChunkCopyAsync(client, fileStream, chunk, token, writeInfoDelegate, downloadInfoDelegate, downloadSpeedLimiter);
                     File.Create(chunkFileCheckedPath).Dispose();
                 }
             }
@@ -209,8 +212,9 @@ namespace Hi3Helper.Sophon
                                      Stream                     outStream,
                                      SophonChunk                chunk,
                                      CancellationToken          token,
-                                     DelegateWriteStreamInfo    writeInfoDelegate       = null,
-                                     DelegateWriteDownloadInfo  downloadInfoDelegate    = null)
+                                     DelegateWriteStreamInfo    writeInfoDelegate,
+                                     DelegateWriteDownloadInfo  downloadInfoDelegate,
+                                     SophonDownloadSpeedLimiter downloadSpeedLimiter)
         {
             const int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
@@ -226,6 +230,21 @@ namespace Hi3Helper.Sophon
                 this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
 #endif
+
+            long      written                       = 0;
+            long      thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
+            Stopwatch currentStopwatch              = Stopwatch.StartNew();
+
+            double maximumBytesPerSecond;
+            double bitPerUnit;
+
+            CalculateBps();
+
+            if (downloadSpeedLimiter != null)
+            {
+                downloadSpeedLimiter.CurrentChunkProcessingChangedEvent += UpdateChunkRangesCountEvent;
+                downloadSpeedLimiter.DownloadSpeedChangedEvent += DownloadClient_DownloadSpeedLimitChanged;
+            }
 
             while (true)
             {
@@ -262,6 +281,7 @@ namespace Hi3Helper.Sophon
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] [Complete init.] by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
 #endif
 
+                        downloadSpeedLimiter?.IncrementChunkProcessedCount();
                         int read;
                         while ((read = await sourceStream.ReadAsync(
 #if NET6_0_OR_GREATER
@@ -276,6 +296,7 @@ namespace Hi3Helper.Sophon
                             currentWriteOffset += read;
                             writeInfoDelegate?.Invoke(read);
                             downloadInfoDelegate?.Invoke(read, read);
+                            written += read;
 
                             currentRetry = 0;
                             innerTimeoutToken.Dispose();
@@ -289,12 +310,14 @@ namespace Hi3Helper.Sophon
                                                            );
                             cooperatedToken =
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
+
+                            await ThrottleAsync();
                         }
 
                         outStream.Position = 0;
                         Stream checkHashStream = outStream;
 
-                        bool isHashVerified = true;
+                        bool isHashVerified;
                         if (chunk.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
@@ -366,7 +389,67 @@ namespace Hi3Helper.Sophon
 #endif
                         }
 
+                        downloadSpeedLimiter?.DecrementChunkProcessedCount();
                         ArrayPool<byte>.Shared.Return(buffer);
+                    }
+                }
+            }
+
+            void CalculateBps()
+            {
+                if (thisInstanceDownloadLimitBase <= 0)
+                    thisInstanceDownloadLimitBase = -1;
+                else
+                    thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
+
+                double threadNum = Math.Min(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1);
+                maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
+                bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
+            }
+
+            void DownloadClient_DownloadSpeedLimitChanged(object sender, long e)
+            {
+                thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
+                CalculateBps();
+            }
+
+            void UpdateChunkRangesCountEvent(object sender, int e)
+            {
+                CalculateBps();
+            }
+
+            async Task ThrottleAsync()
+            {
+                // Make sure the buffer isn't empty.
+                if (maximumBytesPerSecond <= 0 || written <= 0)
+                {
+                    return;
+                }
+
+                long elapsedMilliseconds = currentStopwatch.ElapsedMilliseconds;
+
+                if (elapsedMilliseconds > 0)
+                {
+                    // Calculate the current bps.
+                    double bps = written * bitPerUnit / elapsedMilliseconds;
+
+                    // If the bps are more then the maximum bps, try to throttle.
+                    if (bps > maximumBytesPerSecond)
+                    {
+                        // Calculate the time to sleep.
+                        double wakeElapsed = written * bitPerUnit / maximumBytesPerSecond;
+                        double toSleep = wakeElapsed - elapsedMilliseconds;
+
+                        if (toSleep > 1)
+                        {
+                            // The time to sleep is more than a millisecond, so sleep.
+                            await Task.Delay(TimeSpan.FromMilliseconds(toSleep), token);
+
+                            // A sleep has been done, reset.
+                            currentStopwatch.Restart();
+
+                            written = 0;
+                        }
                     }
                 }
             }

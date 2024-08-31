@@ -180,8 +180,6 @@ namespace Hi3Helper.Sophon
                 NetworkResponse?.Dispose();
                 NetworkStream?.Dispose();
             }
-
-            GC.SuppressFinalize(this);
         }
 
     #if NET6_0_OR_GREATER

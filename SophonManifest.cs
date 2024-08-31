@@ -40,6 +40,9 @@ namespace Hi3Helper.Sophon
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <returns>
         ///     An enumeration to enumerate the Sophon asset from the manifest.
         /// </returns>
@@ -54,11 +57,12 @@ namespace Hi3Helper.Sophon
         /// </exception>
         public static async IAsyncEnumerable<SophonAsset> EnumerateAsync(HttpClient                  httpClient,
                                                                          SophonChunkManifestInfoPair infoPair,
+                                                                         SophonDownloadSpeedLimiter  downloadSpeedLimiter = null,
                                                                          [EnumeratorCancellation]
-                                                                         CancellationToken token = default)
+                                                                         CancellationToken           token                = default)
 
         {
-            await foreach (SophonAsset asset in EnumerateAsync(httpClient, infoPair.ManifestInfo, infoPair.ChunksInfo)
+            await foreach (SophonAsset asset in EnumerateAsync(httpClient, infoPair.ManifestInfo, infoPair.ChunksInfo, downloadSpeedLimiter)
                               .WithCancellation(token))
             {
                 yield return asset;
@@ -77,6 +81,9 @@ namespace Hi3Helper.Sophon
         /// <param name="chunksInfo">
         ///     Chunks information struct.
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
@@ -92,11 +99,12 @@ namespace Hi3Helper.Sophon
         /// <exception cref="NullReferenceException">
         ///     Indicates if an argument or Http response returns a <c>null</c>.
         /// </exception>
-        public static async IAsyncEnumerable<SophonAsset> EnumerateAsync(HttpClient         httpClient,
-                                                                         SophonManifestInfo manifestInfo,
-                                                                         SophonChunksInfo   chunksInfo,
+        public static async IAsyncEnumerable<SophonAsset> EnumerateAsync(HttpClient                 httpClient,
+                                                                         SophonManifestInfo         manifestInfo,
+                                                                         SophonChunksInfo           chunksInfo,
+                                                                         SophonDownloadSpeedLimiter downloadSpeedLimiter = null,
                                                                          [EnumeratorCancellation]
-                                                                         CancellationToken token = default)
+                                                                         CancellationToken          token                = default)
         {
         #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -131,12 +139,13 @@ namespace Hi3Helper.Sophon
 
             foreach (AssetProperty asset in manifestProto.Assets)
             {
-                yield return AssetProperty2SophonAsset(asset, chunksInfo);
+                yield return AssetProperty2SophonAsset(asset, chunksInfo, downloadSpeedLimiter);
             }
         }
 
-        internal static SophonAsset AssetProperty2SophonAsset(AssetProperty    asset,
-                                                              SophonChunksInfo chunksInfo)
+        internal static SophonAsset AssetProperty2SophonAsset(AssetProperty              asset,
+                                                              SophonChunksInfo           chunksInfo,
+                                                              SophonDownloadSpeedLimiter downloadSpeedLimiter)
         {
             SophonAsset assetAdd;
             string      assetName = asset.AssetName;
@@ -145,8 +154,9 @@ namespace Hi3Helper.Sophon
             {
                 assetAdd = new SophonAsset
                 {
-                    AssetName   = assetName,
-                    IsDirectory = true
+                    AssetName            = assetName,
+                    IsDirectory          = true,
+                    DownloadSpeedLimiter = downloadSpeedLimiter
                 };
                 return assetAdd;
             }
@@ -159,7 +169,7 @@ namespace Hi3Helper.Sophon
                 ChunkHashDecompressed = Extension.HexToBytes(x.ChunkDecompressedHashMd5
                                                            #if !NET6_0_OR_GREATER
                                                               .AsSpan()
-                                                         #endif
+                                                           #endif
                                                             ),
                 ChunkOffset           = x.ChunkOnFileOffset,
                 ChunkSize             = x.ChunkSize,
@@ -168,50 +178,15 @@ namespace Hi3Helper.Sophon
 
             assetAdd = new SophonAsset
             {
-                AssetName        = assetName,
-                AssetHash        = assetHash,
-                AssetSize        = assetSize,
-                Chunks           = assetChunks,
-                SophonChunksInfo = chunksInfo,
-                IsDirectory      = false
+                AssetName            = assetName,
+                AssetHash            = assetHash,
+                AssetSize            = assetSize,
+                Chunks               = assetChunks,
+                SophonChunksInfo     = chunksInfo,
+                IsDirectory          = false,
+                DownloadSpeedLimiter = downloadSpeedLimiter
             };
             return assetAdd;
-        }
-
-        private static async
-        #if NET6_0_OR_GREATER
-            ValueTask<Stream>
-        #else
-            Task<Stream>
-        #endif
-            GetSophonHttpStream(HttpResponseMessage responseMessage,
-                                bool                isCompressed,
-                                CancellationToken   token)
-        {
-        #if NET6_0_OR_GREATER
-            // ReSharper disable once ConvertToUsingDeclaration
-            await using (Stream networkStream = await responseMessage.Content.ReadAsStreamAsync(token))
-        #else
-            using (Stream networkStream = await responseMessage.Content.ReadAsStreamAsync())
-        #endif
-            {
-                Stream source = networkStream;
-                if (isCompressed)
-                {
-                    source = new ZstdStream(networkStream);
-                }
-
-            #if NET6_0_OR_GREATER
-                await
-            #endif
-                using (source)
-                {
-                    MemoryStream tempStream = new MemoryStream();
-                    await source.CopyToAsync(tempStream, 16 << 10, token);
-                    tempStream.Position = 0;
-                    return tempStream;
-                }
-            }
         }
     }
 }
