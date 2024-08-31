@@ -528,7 +528,7 @@ namespace Hi3Helper.Sophon
                 else
                     thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
 
-                double threadNum = Math.Min(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1);
+                double threadNum = Math.Clamp(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1, 16 << 10);
                 maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
                 bitPerUnit = 940 - (threadNum - 2) / (16 - 2) * 400;
             }

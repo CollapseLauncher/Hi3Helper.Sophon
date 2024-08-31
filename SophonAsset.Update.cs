@@ -90,8 +90,8 @@ namespace Hi3Helper.Sophon
 
             foreach (SophonChunk chunk in Chunks)
             {
-                await InnerWriteUpdateAsync(client,                chunkDir, writeInfoDelegate, downloadInfoDelegate,  outputOldFileInfo,
-                                            outputNewTempFileInfo, chunk,    removeChunkAfterApply, token);
+                await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter, outputOldFileInfo,
+                                            outputNewTempFileInfo, chunk, removeChunkAfterApply, token);
             }
 
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)
@@ -230,9 +230,9 @@ namespace Hi3Helper.Sophon
             await Parallel.ForEachAsync(Chunks, parallelOptions,
                                         async (chunk, threadToken) =>
                                         {
-                                            await InnerWriteUpdateAsync(client,            chunkDir, writeInfoDelegate, downloadInfoDelegate,
-                                                                        outputOldFileInfo, outputNewTempFileInfo,
-                                                                        chunk,             removeChunkAfterApply,
+                                            await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
+                                                                        DownloadSpeedLimiter, outputOldFileInfo, outputNewTempFileInfo,
+                                                                        chunk, removeChunkAfterApply,
                                                                         threadToken);
                                         });
         #endif
@@ -255,6 +255,7 @@ namespace Hi3Helper.Sophon
                                                  string                     chunkDir,
                                                  DelegateWriteStreamInfo    writeInfoDelegate,
                                                  DelegateWriteDownloadInfo  downloadInfoDelegate,
+                                                 SophonDownloadSpeedLimiter downloadSpeedLimiter,
                                                  FileInfo                   outputOldFileInfo,
                                                  FileInfo                   outputNewFileInfo,
                                                  SophonChunk                chunk,
@@ -303,7 +304,7 @@ namespace Hi3Helper.Sophon
 
                 outputStream = outputNewFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
                 await PerformWriteStreamThreadAsync(client, inputStream, streamType, outputStream, chunk, token,
-                                                    writeInfoDelegate, downloadInfoDelegate);
+                                                    writeInfoDelegate, downloadInfoDelegate, downloadSpeedLimiter);
             }
             finally
             {
