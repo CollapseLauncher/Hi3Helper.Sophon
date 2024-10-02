@@ -11,8 +11,8 @@
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "1.6.2",
-        "contentHash": "8fx2KaLe9SAAODCNY0qXHIFNbloELXIIPUPGquxjIBj6YIznhTAynzH3RJeOQSFrtkdH37BwEFY2YAw4fW9ghQ=="
+        "resolved": "1.6.3",
+        "contentHash": "NbVTqRjA7QrXj5lS9bIy111LtEKqrESOXAjC4e4gliuq/cyeEIIDS9DaqXYO8oLJL7xzMHtMHBjxjXI8l8N7jg=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
