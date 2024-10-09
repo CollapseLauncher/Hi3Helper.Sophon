@@ -40,7 +40,7 @@
 	<ItemGroup>
 		<PackageReference Include="Google.Protobuf" Version="*" />
 		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
-		<PackageReference Include="System.IO.Hashing" Version="9.0.0-rc.1.24431.7" />
+		<PackageReference Include="System.IO.Hashing" Version="9.0.0-rc.2.24473.5" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET45'))" />
 		<PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 		<PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
