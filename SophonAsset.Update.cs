@@ -237,8 +237,13 @@ namespace Hi3Helper.Sophon
                                         });
         #endif
 
-            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)
+            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName && outputNewTempFileInfo.Exists)
             {
+                string newPathDir = Path.GetDirectoryName(outputNewFileInfo.FullName);
+
+                if (!string.IsNullOrEmpty(newPathDir) && !Directory.Exists(newPathDir))
+                    Directory.CreateDirectory(newPathDir);
+
             #if NET6_0_OR_GREATER
                 outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
             #else
