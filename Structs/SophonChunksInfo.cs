@@ -1,11 +1,12 @@
 ﻿using Hi3Helper.Sophon.Infos;
+using System;
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Infos
 {
-    public struct SophonChunksInfo
+    public struct SophonChunksInfo : IEquatable<SophonChunksInfo>
     {
         public string ChunksBaseUrl;
         public int    ChunksCount;
@@ -13,6 +14,26 @@ namespace Hi3Helper.Sophon.Infos
         public long   TotalSize;
         public long   TotalCompressedSize;
         public bool   IsUseCompression;
+
+        public bool Equals(SophonChunksInfo other)
+        {
+            return ChunksBaseUrl == other.ChunksBaseUrl && 
+                   ChunksCount == other.ChunksCount &&
+                   FilesCount == other.FilesCount && 
+                   TotalSize == other.TotalSize &&
+                   TotalCompressedSize == other.TotalCompressedSize &&
+                   IsUseCompression == other.IsUseCompression;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is SophonChunksInfo other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(ChunksBaseUrl, ChunksCount, FilesCount, TotalSize, TotalCompressedSize, IsUseCompression);
+        }
     }
 }
 
