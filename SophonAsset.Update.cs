@@ -238,6 +238,10 @@ namespace Hi3Helper.Sophon
                                         });
         #endif
 
+            // Refresh temp and current file info
+            outputNewTempFileInfo.Refresh();
+            outputNewFileInfo.Refresh();
+
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName && outputNewTempFileInfo.Exists)
             {
                 string newPathDir = Path.GetDirectoryName(outputNewFileInfo.FullName);
