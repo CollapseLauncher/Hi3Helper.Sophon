@@ -221,8 +221,6 @@ namespace Hi3Helper.Sophon
 
             long currentWriteOffset = 0;
 
-            string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
-
 #if !NOSTREAMLOCK
             if (outStream is FileStream fs)
             {
@@ -273,9 +271,10 @@ namespace Hi3Helper.Sophon
 #endif
                         outStream.SetLength(chunk.ChunkSize);
                         outStream.Position = 0;
-                        httpResponseMessage = await client.GetAsync(
-                            url,
-                            HttpCompletionOption.ResponseHeadersRead,
+                        httpResponseMessage = await client.GetChunkAndIfAltAsync(
+                            chunk.ChunkName,
+                            SophonChunksInfo,
+                            SophonChunksInfoAlt,
                             cooperatedToken.Token);
                         httpResponseStream = await httpResponseMessage
                             .EnsureSuccessStatusCode()

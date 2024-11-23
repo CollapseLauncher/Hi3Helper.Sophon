@@ -42,8 +42,8 @@ namespace Hi3Helper.Sophon
         public   bool                       IsHasPatch           { get; internal set; }
         public   SophonChunk[]              Chunks               { get; internal set; }
         internal SophonDownloadSpeedLimiter DownloadSpeedLimiter { get;          set; }
-
-        internal SophonChunksInfo SophonChunksInfo;
+        internal SophonChunksInfo           SophonChunksInfo     { get;          set; }
+        internal SophonChunksInfo?          SophonChunksInfoAlt  { get;          set; }
 
         /// <summary>
         ///     Perform a download process by file and run each chunk download sequentially.
@@ -301,8 +301,6 @@ namespace Hi3Helper.Sophon
 
             long currentWriteOffset = 0;
 
-            string url = SophonChunksInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunk.ChunkName;
-
             long      written                       = 0;
             long      thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
             Stopwatch currentStopwatch              = Stopwatch.StartNew();
@@ -360,10 +358,12 @@ namespace Hi3Helper.Sophon
                             {
                                 downloadSpeedLimiter?.IncrementChunkProcessedCount();
                                 
-                                httpResponseMessage = await client.GetAsync(
-                                    url,
-                                    HttpCompletionOption.ResponseHeadersRead,
+                                httpResponseMessage = await client.GetChunkAndIfAltAsync(
+                                    chunk.ChunkName,
+                                    SophonChunksInfo,
+                                    SophonChunksInfoAlt,
                                     cooperatedToken.Token);
+
                                 httpResponseStream = await httpResponseMessage
                                         .EnsureSuccessStatusCode()
                                         .Content

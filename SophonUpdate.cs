@@ -218,6 +218,7 @@ namespace Hi3Helper.Sophon
                 yield return GetPatchedTargetAsset(oldAssetNameIdx,
                                                    manifestFromProto,
                                                    newAssetProperty,
+                                                   chunksInfoFrom,
                                                    chunksInfoTo,
                                                    downloadSpeedLimiter);
             }
@@ -322,6 +323,7 @@ namespace Hi3Helper.Sophon
         private static SophonAsset GetPatchedTargetAsset(Dictionary<string, int>    oldAssetNameIdx,
                                                          SophonManifestProto        oldAssetProto,
                                                          AssetProperty              newAssetProperty,
+                                                         SophonChunksInfo           oldChunksInfo,
                                                          SophonChunksInfo           newChunksInfo,
                                                          SophonDownloadSpeedLimiter downloadSpeedLimiter)
         {
@@ -359,6 +361,7 @@ namespace Hi3Helper.Sophon
                 AssetSize            = assetSize,
                 Chunks               = newAssetPatchedChunks,
                 SophonChunksInfo     = newChunksInfo,
+                SophonChunksInfoAlt  = oldChunksInfo,
                 IsDirectory          = false,
                 IsHasPatch           = isNewAssetHasPatch,
                 DownloadSpeedLimiter = downloadSpeedLimiter

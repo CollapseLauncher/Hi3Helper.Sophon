@@ -1,8 +1,11 @@
-﻿using Hi3Helper.Sophon.Structs;
+﻿using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
 using System.IO;
 using System.IO.Hashing;
+using System.Net.Http;
+
 #if !NET9_0_OR_GREATER
 using System.Runtime.InteropServices;
 #endif
@@ -358,6 +361,52 @@ namespace Hi3Helper.Sophon.Helper
             }
 
             return fileInfo;
+        }
+
+        internal static async Task<HttpResponseMessage> GetChunkAndIfAltAsync(
+            this HttpClient httpClient,
+            string chunkName,
+            SophonChunksInfo  currentSophonChunkInfo,
+            SophonChunksInfo? altSophonChunkInfo,
+            CancellationToken token = default)
+        {
+            // Concat the string
+            string url = currentSophonChunkInfo.ChunksBaseUrl.TrimEnd('/') + '/' + chunkName;
+
+            bool isDispose = false;
+            HttpResponseMessage httpResponseMessage = null;
+            try
+            {
+                // Try get the HttpResponseMessage
+                httpResponseMessage = await httpClient.GetAsync(
+                    url,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    token);
+
+                // If it fails and does have the alt SophonChunksInfo, then try to return
+                // with the alt one
+                if (!httpResponseMessage.IsSuccessStatusCode && altSophonChunkInfo.HasValue)
+                {
+                    // Dispose the previous HttpResponseMessage
+                    isDispose = true;
+
+                    // Return another one from alt
+                    return await httpClient.GetChunkAndIfAltAsync(
+                        chunkName,
+                        altSophonChunkInfo.Value,
+                        null,
+                        token);
+                }
+
+                // If it doesn't fail or has no alt even though it's failing or not, then return
+                return httpResponseMessage;
+            }
+            finally
+            {
+                // If the old one is asked to be dispose, then do it.
+                if (isDispose)
+                    httpResponseMessage?.Dispose();
+            }
         }
     }
 }
