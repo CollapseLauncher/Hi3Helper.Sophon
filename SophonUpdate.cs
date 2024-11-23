@@ -20,6 +20,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
+using System.Linq;
 // ReSharper disable ArrangeObjectCreationWhenTypeEvident
 
 // ReSharper disable ConvertToUsingDeclaration
@@ -213,7 +214,21 @@ namespace Hi3Helper.Sophon
 
             Dictionary<string, int> oldAssetNameIdx = GetProtoAssetHashKvpSet(manifestFromProto, x => x.AssetName);
 
-            foreach (AssetProperty newAssetProperty in manifestToProto.Assets)
+            HashSet<string> oldAssetNameHashSet = new HashSet<string>(manifestFromProto.Assets.Select(x => x.AssetName));
+            HashSet<string> newAssetNameHashSet = new HashSet<string>(manifestToProto.Assets.Select(x => x.AssetName));
+
+            foreach (AssetProperty newAssetProperty in manifestToProto.Assets.Where(x => {
+                // Try check both availabilities
+                bool isOldExist = oldAssetNameHashSet.Contains(x.AssetName);
+                bool isNewExist = newAssetNameHashSet.Contains(x.AssetName);
+
+                // If it was exist on old version but no longer exist on new version, return false
+                if (isOldExist && !isNewExist)
+                    return false;
+
+                // If the file is new or actually already exist on both, return true. Otherwise, false
+                return (!isOldExist && isNewExist) || (isOldExist && isNewExist);
+            }))
             {
                 yield return GetPatchedTargetAsset(oldAssetNameIdx,
                                                    manifestFromProto,
