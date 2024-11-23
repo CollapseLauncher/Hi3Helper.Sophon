@@ -1,11 +1,11 @@
 ﻿using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
-
 #if !NET9_0_OR_GREATER
 using System.Runtime.InteropServices;
 #endif
@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ZstdStream = ZstdNet.DecompressionStream;
 // ReSharper disable UseCollectionExpression
 
 // ReSharper disable once IdentifierTypo
@@ -406,6 +407,34 @@ namespace Hi3Helper.Sophon.Helper
                 // If the old one is asked to be dispose, then do it.
                 if (isDispose)
                     httpResponseMessage?.Dispose();
+            }
+        }
+
+        internal static async ValueTask<SophonManifestProto> ReadProtoFromManifestInfo(this HttpClient httpClient, SophonManifestInfo manifestInfo, CancellationToken innerToken)
+        {
+            using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
+                manifestInfo.ManifestFileUrl,
+                HttpCompletionOption.ResponseHeadersRead,
+                innerToken
+                ))
+#if NET6_0_OR_GREATER
+            await
+#endif
+            using (Stream manifestProtoStream = await httpResponseMessage
+                .EnsureSuccessStatusCode()
+                .Content
+                .ReadAsStreamAsync(
+#if NET6_0_OR_GREATER
+                    innerToken
+#endif
+                ))
+            {
+                using (Stream decompressedProtoStream = manifestInfo.IsUseCompression
+                           ? new ZstdStream(manifestProtoStream)
+                           : manifestProtoStream)
+                {
+                    return SophonManifestProto.Parser.ParseFrom(decompressedProtoStream);
+                }
             }
         }
     }

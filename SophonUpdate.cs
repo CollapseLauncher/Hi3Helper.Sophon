@@ -13,14 +13,12 @@ using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
-using ZstdStream = ZstdNet.DecompressionStream;
 // ReSharper disable ArrangeObjectCreationWhenTypeEvident
 
 // ReSharper disable ConvertToUsingDeclaration
@@ -140,33 +138,11 @@ namespace Hi3Helper.Sophon
             }
         #endif
 
-            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback = async innerToken =>
-            {
-                using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
-                    manifestInfoFrom.ManifestFileUrl,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    innerToken
-                    ))
-            #if NET6_0_OR_GREATER
-                await
-            #endif
-                using (Stream manifestProtoStream = await httpResponseMessage
-                    .EnsureSuccessStatusCode()
-                    .Content
-                    .ReadAsStreamAsync(
-            #if NET6_0_OR_GREATER
-                        innerToken
-            #endif
-                    ))
-                {
-                    using (Stream decompressedProtoStream = manifestInfoFrom.IsUseCompression
-                               ? new ZstdStream(manifestProtoStream)
-                               : manifestProtoStream)
-                    {
-                        return SophonManifestProto.Parser.ParseFrom(decompressedProtoStream);
-                    }
-                }
-            };
+            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback =
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoFrom, innerToken);
+
+            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestToProtoTaskCallback =
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoTo, innerToken);
 
             SophonManifestProto manifestFromProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
@@ -175,34 +151,6 @@ namespace Hi3Helper.Sophon
                                   null,
                                   null,
                                   token);
-
-            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestToProtoTaskCallback = async innerToken =>
-            {
-                using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
-                    manifestInfoTo.ManifestFileUrl,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    innerToken
-                    ))
-            #if NET6_0_OR_GREATER
-                await
-            #endif
-                using (Stream manifestProtoStream = await httpResponseMessage
-                    .EnsureSuccessStatusCode()
-                    .Content
-                    .ReadAsStreamAsync(
-            #if NET6_0_OR_GREATER
-                        innerToken
-            #endif
-                    ))
-                {
-                    using (Stream decompressedProtoStream = manifestInfoTo.IsUseCompression
-                               ? new ZstdStream(manifestProtoStream)
-                               : manifestProtoStream)
-                    {
-                        return SophonManifestProto.Parser.ParseFrom(decompressedProtoStream);
-                    }
-                }
-            };
 
             SophonManifestProto manifestToProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestToProtoTaskCallback,
