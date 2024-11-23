@@ -3,7 +3,9 @@ using System;
 using System.Buffers;
 using System.IO;
 using System.IO.Hashing;
+#if !NET9_0_OR_GREATER
 using System.Runtime.InteropServices;
+#endif
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -17,7 +19,7 @@ namespace Hi3Helper.Sophon.Helper
     {
         private static readonly object This = new();
 
-    #if !NET5_0_OR_GREATER
+#if !NET5_0_OR_GREATER
         private static readonly byte[] _lookupFromHexTable = new byte[] {
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -90,12 +92,12 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
     #else
+#else
         internal static byte[] HexToBytes(ReadOnlySpan<char> source)
-        {
-            return Convert.FromHexString(source);
-        }
-    #endif
+            => Convert.FromHexString(source);
+#endif
 
+#if !NET9_0_OR_GREATER
         private static readonly uint[] Lookup32Unsafe =
         {
             0x300030, 0x310030, 0x320030, 0x330030, 0x340030, 0x350030, 0x360030, 0x370030, 0x380030, 0x390030,
@@ -145,8 +147,10 @@ namespace Hi3Helper.Sophon.Helper
 
         private static readonly unsafe uint* Lookup32UnsafeP =
             (uint*)GCHandle.Alloc(Lookup32Unsafe, GCHandleType.Pinned).AddrOfPinnedObject();
+#endif
 
         internal static unsafe string BytesToHex(ReadOnlySpan<byte> bytes)
+#if !NET9_0_OR_GREATER
         {
             uint* lookupP = Lookup32UnsafeP;
             char* result  = stackalloc char[bytes.Length * 2];
@@ -161,6 +165,9 @@ namespace Hi3Helper.Sophon.Helper
 
             return new string(result, 0, bytes.Length * 2);
         }
+#else
+            => Convert.ToHexStringLower(bytes);
+#endif
 
 
         internal static async
