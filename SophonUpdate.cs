@@ -179,7 +179,7 @@ namespace Hi3Helper.Sophon
             ActionTimeoutValueTaskCallback<SophonManifestProto> manifestToProtoTaskCallback = async innerToken =>
             {
                 using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
-                    manifestInfoFrom.ManifestFileUrl,
+                    manifestInfoTo.ManifestFileUrl,
                     HttpCompletionOption.ResponseHeadersRead,
                     innerToken
                     ))
@@ -308,7 +308,7 @@ namespace Hi3Helper.Sophon
         ///     The calculated size of the diff from between the manifest.
         /// </returns>
         public static long GetCalculatedDiffSize(this IEnumerable<SophonAsset> sophonAssetsEnumerable,
-                                                    bool isGetDecompressSize = true)
+                                                 bool isGetDecompressSize = true)
         {
             long sizeDiff = 0;
 
