@@ -91,7 +91,6 @@ namespace Hi3Helper.Sophon.Helper
                 }
             }
         }
-    #else
 #else
         internal static byte[] HexToBytes(ReadOnlySpan<char> source)
             => Convert.FromHexString(source);
@@ -171,13 +170,13 @@ namespace Hi3Helper.Sophon.Helper
 
 
         internal static async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask<bool>
-        #else
+#else
             Task<bool>
-        #endif
+#endif
             CheckChunkXxh64HashAsync(this SophonChunk chunk, SophonAsset asset, Stream outStream, byte[] chunkXxh64Hash,
-                                     bool             isSingularStream, CancellationToken token)
+                                     bool isSingularStream, CancellationToken token)
         {
             try
             {
@@ -203,18 +202,18 @@ namespace Hi3Helper.Sophon.Helper
         }
 
         internal static async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask<bool>
-        #else
+#else
             Task<bool>
-        #endif
-            CheckChunkMd5HashAsync(this SophonChunk  chunk,
-                                   Stream            outStream,
-                                   bool              isSingularStream,
+#endif
+            CheckChunkMd5HashAsync(this SophonChunk chunk,
+                                   Stream outStream,
+                                   bool isSingularStream,
                                    CancellationToken token)
         {
-            byte[] buffer     = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
-            int    bufferSize = buffer.Length;
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
+            int bufferSize = buffer.Length;
 
             try
             {
@@ -226,7 +225,7 @@ namespace Hi3Helper.Sophon.Helper
                 while (remain > 0)
                 {
                     int toRead = (int)Math.Min(bufferSize, remain);
-                    int read   = await outStream.ReadAsync(buffer, 0, toRead, token);
+                    int read = await outStream.ReadAsync(buffer, 0, toRead, token);
 
                     hash.TransformBlock(buffer, 0, read, buffer, 0);
 
@@ -248,9 +247,9 @@ namespace Hi3Helper.Sophon.Helper
 
         internal static unsafe string GetChunkStagingFilenameHash(this SophonChunk chunk, SophonAsset asset)
         {
-            string concatName       = $"{asset.AssetName}${asset.AssetHash}${chunk.ChunkName}";
+            string concatName = $"{asset.AssetName}${asset.AssetHash}${chunk.ChunkName}";
             byte[] concatNameBuffer = ArrayPool<byte>.Shared.Rent(concatName.Length);
-            byte[] hash             = ArrayPool<byte>.Shared.Rent(16);
+            byte[] hash = ArrayPool<byte>.Shared.Rent(16);
 
             fixed (char* concatNamePtr = concatName)
             {
@@ -275,7 +274,7 @@ namespace Hi3Helper.Sophon.Helper
 
         internal static bool TryGetChunkXxh64Hash(this SophonChunk chunk, out byte[] outHash)
         {
-        #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
             outHash = null;
             Span<Range> ranges = stackalloc Range[2];
             if (chunk.ChunkName.AsSpan().Split(ranges, '_') != 2)
@@ -283,7 +282,7 @@ namespace Hi3Helper.Sophon.Helper
                 return false;
             }
 
-            ReadOnlySpan<char> nameSpan       = chunk.ChunkName.AsSpan();
+            ReadOnlySpan<char> nameSpan = chunk.ChunkName.AsSpan();
             ReadOnlySpan<char> chunkXxh64Hash = nameSpan[ranges[0]];
 
             if (chunkXxh64Hash.Length != 16)
@@ -293,7 +292,7 @@ namespace Hi3Helper.Sophon.Helper
 
             outHash = HexToBytes(chunkXxh64Hash);
             return true;
-        #else
+#else
             outHash = null;
             string[] splits = chunk.ChunkName.Split('_');
             if (splits.Length != 2)
@@ -304,7 +303,7 @@ namespace Hi3Helper.Sophon.Helper
 
             outHash = HexToBytes(splits[0].AsSpan());
             return true;
-        #endif
+#endif
         }
 
         internal static void EnsureOrThrowOutputDirectoryExistence(this SophonAsset asset, string outputDirPath)
@@ -349,6 +348,16 @@ namespace Hi3Helper.Sophon.Helper
             {
                 throw new NotSupportedException("Output stream must be seekable!");
             }
+        }
+
+        internal static FileInfo UnassignReadOnlyFromFileInfo(this FileInfo fileInfo)
+        {
+            if (fileInfo.Exists && fileInfo.IsReadOnly)
+            {
+                fileInfo.IsReadOnly = false;
+            }
+
+            return fileInfo;
         }
     }
 }

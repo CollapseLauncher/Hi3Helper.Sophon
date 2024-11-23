@@ -84,9 +84,10 @@ namespace Hi3Helper.Sophon
                 Directory.CreateDirectory(outputNewDir);
             }
 
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath);
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath);
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath);
+            // Assign path to FileInfo and try unassign readonly attribute from existing new file info
+            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
 
             foreach (SophonChunk chunk in Chunks)
             {
@@ -191,9 +192,9 @@ namespace Hi3Helper.Sophon
                 };
             }
 
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath);
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath);
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath);
+            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
             if (outputNewFileInfo.Exists && outputNewFileInfo.Length == AssetSize)
             {
                 outputNewTempFileInfo = outputNewFileInfo;
