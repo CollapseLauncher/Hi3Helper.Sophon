@@ -293,7 +293,7 @@ namespace Hi3Helper.Sophon
                     string   cachedChunkName = chunk.GetChunkStagingFilenameHash(this);
                     string   cachedChunkPath = Path.Combine(chunkDir, cachedChunkName);
                     string   cachedChunkFileCheckedPath = cachedChunkPath + ".verified";
-                    FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath);
+                    FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
                     if (cachedChunkInfo.Exists && cachedChunkInfo.Length != chunk.ChunkSize)
                     {
                         cachedChunkInfo.Delete();

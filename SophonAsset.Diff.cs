@@ -162,14 +162,15 @@ namespace Hi3Helper.Sophon
         {
             string chunkNameHashed = chunk.GetChunkStagingFilenameHash(this);
             string chunkFilePathHashed = Path.Combine(chunkDirOutput, chunkNameHashed);
+            FileInfo chunkFilePathHashedFileInfo = new FileInfo(chunkFilePathHashed).UnassignReadOnlyFromFileInfo();
             string chunkFileCheckedPath = chunkFilePathHashed + ".verified";
 
             try
             {
                 Interlocked.Increment(ref _currentChunksDownloadPos);
                 Interlocked.Increment(ref _currentChunksDownloadQueue);
-                using (FileStream fileStream = new FileStream(chunkFilePathHashed, FileMode.OpenOrCreate,
-                                                              FileAccess.ReadWrite, FileShare.ReadWrite))
+                using (FileStream fileStream = chunkFilePathHashedFileInfo
+                    .Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     bool isChunkUnmatch = fileStream.Length != chunk.ChunkSize;
                     bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
