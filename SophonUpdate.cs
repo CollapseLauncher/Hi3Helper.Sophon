@@ -141,15 +141,22 @@ namespace Hi3Helper.Sophon
 
             ActionTimeoutValueTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback = async innerToken =>
             {
+                using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
+                    manifestInfoFrom.ManifestFileUrl,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    innerToken
+                    ))
             #if NET6_0_OR_GREATER
                 await
-                #endif
-                    using (Stream manifestProtoStream =
-                           await SophonAssetStream.CreateStreamAsync(httpClient,
-                                                                     manifestInfoFrom.ManifestFileUrl,
-                                                                     0,
-                                                                     null,
-                                                                     innerToken))
+            #endif
+                using (Stream manifestProtoStream = await httpResponseMessage
+                    .EnsureSuccessStatusCode()
+                    .Content
+                    .ReadAsStreamAsync(
+            #if NET6_0_OR_GREATER
+                        innerToken
+            #endif
+                    ))
                 {
                     using (Stream decompressedProtoStream = manifestInfoFrom.IsUseCompression
                                ? new ZstdStream(manifestProtoStream)
@@ -170,15 +177,22 @@ namespace Hi3Helper.Sophon
 
             ActionTimeoutValueTaskCallback<SophonManifestProto> manifestToProtoTaskCallback = async innerToken =>
             {
+                using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
+                    manifestInfoFrom.ManifestFileUrl,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    innerToken
+                    ))
             #if NET6_0_OR_GREATER
                 await
-                #endif
-                    using (Stream manifestProtoStream =
-                           await SophonAssetStream.CreateStreamAsync(httpClient,
-                                                                     manifestInfoTo.ManifestFileUrl,
-                                                                     0,
-                                                                     null,
-                                                                     innerToken))
+            #endif
+                using (Stream manifestProtoStream = await httpResponseMessage
+                    .EnsureSuccessStatusCode()
+                    .Content
+                    .ReadAsStreamAsync(
+            #if NET6_0_OR_GREATER
+                        innerToken
+            #endif
+                    ))
                 {
                     using (Stream decompressedProtoStream = manifestInfoTo.IsUseCompression
                                ? new ZstdStream(manifestProtoStream)

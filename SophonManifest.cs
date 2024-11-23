@@ -117,12 +117,22 @@ namespace Hi3Helper.Sophon
 
             ActionTimeoutValueTaskCallback<SophonManifestProto> manifestProtoTaskCallback = async innerToken =>
             {
+                using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
+                    manifestInfo.ManifestFileUrl,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    innerToken))
             #if NET6_0_OR_GREATER
                 await
             #endif
                 using (Stream manifestProtoStream =
-                       await SophonAssetStream.CreateStreamAsync(httpClient, manifestInfo.ManifestFileUrl, 0,
-                                                                 null, innerToken))
+                       await httpResponseMessage
+                       .EnsureSuccessStatusCode()
+                       .Content
+                       .ReadAsStreamAsync(
+            #if NET6_0_OR_GREATER
+                           innerToken
+            #endif
+                           ))
                 {
                     using (Stream decompressedProtoStream = manifestInfo.IsUseCompression
                                ? new ZstdStream(manifestProtoStream)

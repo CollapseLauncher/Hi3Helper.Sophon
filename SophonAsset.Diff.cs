@@ -249,6 +249,7 @@ namespace Hi3Helper.Sophon
             while (true)
             {
                 bool allowDispose = false;
+                HttpResponseMessage httpResponseMessage = null;
                 Stream httpResponseStream = null;
                 Stream sourceStream = null;
 
@@ -272,11 +273,20 @@ namespace Hi3Helper.Sophon
 #endif
                         outStream.SetLength(chunk.ChunkSize);
                         outStream.Position = 0;
-                        httpResponseStream =
-                            await SophonAssetStream.CreateStreamAsync(client, url, 0, null, cooperatedToken.Token);
+                        httpResponseMessage = await client.GetAsync(
+                            url,
+                            HttpCompletionOption.ResponseHeadersRead,
+                            cooperatedToken.Token);
+                        httpResponseStream = await httpResponseMessage
+                            .EnsureSuccessStatusCode()
+                            .Content
+                            .ReadAsStreamAsync(
+#if NET6_0_OR_GREATER
+                                cooperatedToken.Token
+#endif
+                            );
 
-                        sourceStream = httpResponseStream ??
-                                       throw new HttpRequestException("Response stream returns an empty stream!");
+                        sourceStream = httpResponseStream;
 #if DEBUG
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] [Complete init.] by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
 #endif
@@ -373,6 +383,7 @@ namespace Hi3Helper.Sophon
                     {
                         if (allowDispose)
                         {
+                            httpResponseMessage?.Dispose();
 #if NET6_0_OR_GREATER
                             if (httpResponseStream != null)
                             {

@@ -329,6 +329,7 @@ namespace Hi3Helper.Sophon
             while (true)
             {
                 bool   allowDispose       = false;
+                HttpResponseMessage httpResponseMessage = null;
                 Stream httpResponseStream = null;
 
                 MD5    hashInstance = MD5.Create();
@@ -359,10 +360,21 @@ namespace Hi3Helper.Sophon
                             {
                                 downloadSpeedLimiter?.IncrementChunkProcessedCount();
                                 
-                                httpResponseStream =
-                                    await SophonAssetStream.CreateStreamAsync(client, url, 0, null,
-                                                                              cooperatedToken.Token) ??
-                                    throw new HttpRequestException("Response stream returns an empty stream!");
+                                httpResponseMessage = await client.GetAsync(
+                                    url,
+                                    HttpCompletionOption.ResponseHeadersRead,
+                                    cooperatedToken.Token);
+                                httpResponseStream = await httpResponseMessage
+                                        .EnsureSuccessStatusCode()
+                                        .Content
+                                        .ReadAsStreamAsync(
+#if NET6_0_OR_GREATER
+                                    cooperatedToken.Token
+#endif
+                                    );
+
+                                sourceStream = httpResponseStream;
+
                                 if (SophonChunksInfo.IsUseCompression)
                                 {
                                     sourceStream = new ZstdStream(httpResponseStream, ZstdBufferSize);
@@ -456,6 +468,7 @@ namespace Hi3Helper.Sophon
                     }
                     catch (Exception ex)
                     {
+                        httpResponseMessage?.Dispose();
                     #if NET6_0_OR_GREATER
                         if (httpResponseStream != null)
                         {
