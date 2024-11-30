@@ -5,8 +5,8 @@
       "Google.Protobuf": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "3.28.3",
-        "contentHash": "OewySX3aQCdKfMJsj2DzBMXQJPI+lm0CBzamU9ViFu3CU9tXYrQWqJ1CZ+/UWtkwOjUeIzbXmoOjRc7B8pbMrA=="
+        "resolved": "3.29.0",
+        "contentHash": "l1012jd1Y2XsLQ+h9cXE7Bo3WruXql3Xc3KP/z+yZDJMSkfb2guslHCxwFsqd2ScHB0h2J7Yuy255RrBD/DGBw=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
