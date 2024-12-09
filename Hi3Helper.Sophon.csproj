@@ -38,7 +38,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Google.Protobuf" Version="*" />
+		<PackageReference Include="Google.Protobuf" Version="3.29.1" />
 		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
 		<PackageReference Include="System.IO.Hashing" Version="9.0.0" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET45'))" />
