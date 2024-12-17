@@ -120,7 +120,7 @@ namespace Hi3Helper.Sophon
 
             SophonManifestProto manifestProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestProtoTaskCallback, TaskExtensions.DefaultTimeoutSec, null, null, null,
-                                  token);
+                                  token).ConfigureAwait(false);
 
             foreach (AssetProperty asset in manifestProto.Assets)
             {

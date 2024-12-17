@@ -97,13 +97,17 @@ namespace Hi3Helper.Sophon
                          async chunk =>
                          {
                              await PerformWriteDiffChunksThreadAsync(client,
-                                                                     chunkDirOutput, chunk, linkedToken.Token,
-                                                                     writeInfoDelegate, downloadInfoDelegate, forceVerification);
+                                 chunkDirOutput, chunk, linkedToken.Token,
+                                 writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
+                                 forceVerification)
+                             .ConfigureAwait(false);
                          },
                          new ExecutionDataflowBlockOptions
                          {
                              MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                             CancellationToken      = linkedToken.Token
+                             TaskScheduler          = TaskScheduler.Default,
+                             CancellationToken      = linkedToken.Token,
+                             MaxMessagesPerTask     = parallelOptions.MaxDegreeOfParallelism * Math.Max(4, Environment.ProcessorCount)
                          });
 
                         foreach (SophonChunk chunk in Chunks)
@@ -113,11 +117,13 @@ namespace Hi3Helper.Sophon
                                 return;
                             }
 
-                            await actionBlock.SendAsync(chunk, linkedToken.Token);
+                            await actionBlock.SendAsync(chunk, linkedToken.Token)
+                             .ConfigureAwait(false);
                         }
 
                         actionBlock.Complete();
-                        await actionBlock.Completion;
+                        await actionBlock.Completion
+                             .ConfigureAwait(false);
                     }
                 }
 #else
@@ -131,8 +137,10 @@ namespace Hi3Helper.Sophon
                                                                          await PerformWriteDiffChunksThreadAsync(client,
                                                                              chunkDirOutput, chunk, threadToken,
                                                                              writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
-                                                                             forceVerification);
-                                                                     });
+                                                                             forceVerification)
+                                                                         .ConfigureAwait(false);
+                                                                     })
+                    .ConfigureAwait(false);
 #endif
             }
             catch (AggregateException ex)
