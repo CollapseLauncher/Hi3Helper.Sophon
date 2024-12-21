@@ -62,7 +62,7 @@ namespace Hi3Helper.Sophon.Helper
                 try
                 {
                     innerCancellationToken =
-                        new CancellationTokenSource(TimeSpan.FromSeconds(timeout ?? DefaultTimeoutSec));
+                        new CancellationTokenSource(TimeSpan.FromSeconds((int)timeout));
                     consolidatedToken =
                         CancellationTokenSource.CreateLinkedTokenSource(innerCancellationToken.Token, fromToken);
 
@@ -80,18 +80,20 @@ namespace Hi3Helper.Sophon.Helper
                 catch (Exception ex)
                 {
                     lastException = ex;
-                    actionOnRetry?.Invoke(retryAttemptCurrent, retryAttempt ?? 0, timeout ?? 0, timeoutStep ?? 0);
+                    actionOnRetry?.Invoke(retryAttemptCurrent, (int)retryAttempt, (int)timeout, (int)timeoutStep);
 
                     if (ex is TimeoutException)
                     {
                         string msg =
-                            $"The operation has timed out! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}";
+                            $"The operation has timed out! Retrying attempt left: " +
+                            $"{retryAttemptCurrent}/{retryAttempt}";
                         Logger.PushLogWarning(null, msg);
                     }
                     else
                     {
                         string msg =
-                            $"The operation has thrown an exception! Retrying attempt left: {retryAttemptCurrent}/{retryAttempt}\r\n{ex}";
+                            $"The operation has thrown an exception! Retrying attempt left: " +
+                            $"{retryAttemptCurrent}/{retryAttempt}\r\n{ex}";
                         Logger.PushLogError(null, msg);
                     }
 
