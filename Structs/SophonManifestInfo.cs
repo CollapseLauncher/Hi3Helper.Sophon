@@ -5,7 +5,7 @@
 // ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Infos
 {
-    public struct SophonManifestInfo
+    public class SophonManifestInfo
     {
         public string ManifestBaseUrl;
         public string ManifestId;

@@ -43,7 +43,7 @@ namespace Hi3Helper.Sophon
         public   SophonChunk[]              Chunks               { get; internal set; }
         internal SophonDownloadSpeedLimiter DownloadSpeedLimiter { get;          set; }
         internal SophonChunksInfo           SophonChunksInfo     { get;          set; }
-        internal SophonChunksInfo?          SophonChunksInfoAlt  { get;          set; }
+        internal SophonChunksInfo           SophonChunksInfoAlt  { get;          set; }
 
         /// <summary>
         ///     Perform a download process by file and run each chunk download sequentially.

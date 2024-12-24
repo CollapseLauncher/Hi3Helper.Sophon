@@ -7,7 +7,7 @@ using System.Linq;
 // ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Structs
 {
-    public struct SophonChunkManifestInfoPair
+    public class SophonChunkManifestInfoPair
     {
         public SophonChunksInfo   ChunksInfo;
         public SophonManifestInfo ManifestInfo;

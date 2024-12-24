@@ -7,13 +7,7 @@ using System.Threading.Tasks;
 // ReSharper disable once IdentifierTypo
 namespace Hi3Helper.Sophon.Helper
 {
-    internal delegate
-    #if NETSTANDARD2_0 || NET6_0_OR_GREATER
-        ValueTask<TResult>
-    #else
-        Task<TResult>
-    #endif
-        ActionTimeoutValueTaskCallback<TResult>(CancellationToken token);
+    internal delegate Task<TResult> ActionTimeoutTaskCallback<TResult>(CancellationToken token);
 
     internal delegate void ActionOnTimeOutRetry(int retryAttemptCount, int retryAttemptTotal, int timeOutSecond,
                                                 int timeOutStep);
@@ -23,18 +17,12 @@ namespace Hi3Helper.Sophon.Helper
         internal const int DefaultTimeoutSec   = 20;
         internal const int DefaultRetryAttempt = 10;
 
-        internal static async
-        #if NETSTANDARD2_0 || NET6_0_OR_GREATER
-            ValueTask<TResult>
-        #else
-            Task<TResult>
-        #endif
-            WaitForRetryAsync<TResult>(Func<ActionTimeoutValueTaskCallback<TResult>> funcCallback,
-                                       int?                                          timeout       = null,
-                                       int?                                          timeoutStep   = null,
-                                       int?                                          retryAttempt  = null,
-                                       ActionOnTimeOutRetry                          actionOnRetry = null,
-                                       CancellationToken                             fromToken     = default)
+        internal static async Task<TResult> WaitForRetryAsync<TResult>(Func<ActionTimeoutTaskCallback<TResult>> funcCallback,
+                                                                       int?                                     timeout       = null,
+                                                                       int?                                     timeoutStep   = null,
+                                                                       int?                                     retryAttempt  = null,
+                                                                       ActionOnTimeOutRetry                     actionOnRetry = null,
+                                                                       CancellationToken                        fromToken     = default)
         {
             if (timeout == null)
             {
@@ -66,7 +54,7 @@ namespace Hi3Helper.Sophon.Helper
                     consolidatedToken =
                         CancellationTokenSource.CreateLinkedTokenSource(innerCancellationToken.Token, fromToken);
 
-                    ActionTimeoutValueTaskCallback<TResult> delegateCallback = funcCallback();
+                    ActionTimeoutTaskCallback<TResult> delegateCallback = funcCallback();
                     return await delegateCallback(consolidatedToken.Token);
                 }
                 catch (TaskCanceledException)

@@ -138,10 +138,10 @@ namespace Hi3Helper.Sophon
             }
         #endif
 
-            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback =
+            ActionTimeoutTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback =
                 async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoFrom, innerToken);
 
-            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestToProtoTaskCallback =
+            ActionTimeoutTaskCallback<SophonManifestProto> manifestToProtoTaskCallback =
                 async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoTo, innerToken);
 
             SophonManifestProto manifestFromProto = await TaskExtensions

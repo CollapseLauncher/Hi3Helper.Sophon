@@ -115,12 +115,11 @@ namespace Hi3Helper.Sophon
             List<SophonAsset> assetList = new List<SophonAsset>();
         #endif
 
-            ActionTimeoutValueTaskCallback<SophonManifestProto> manifestProtoTaskCallback =
+            ActionTimeoutTaskCallback<SophonManifestProto> manifestProtoTaskCallback =
                 async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfo, innerToken);
 
             SophonManifestProto manifestProto = await TaskExtensions
-               .WaitForRetryAsync(() => manifestProtoTaskCallback, TaskExtensions.DefaultTimeoutSec, null, null, null,
-                                  token).ConfigureAwait(false);
+               .WaitForRetryAsync(() => manifestProtoTaskCallback, TaskExtensions.DefaultTimeoutSec, null, null, null, token);
 
             foreach (AssetProperty asset in manifestProto.Assets)
             {

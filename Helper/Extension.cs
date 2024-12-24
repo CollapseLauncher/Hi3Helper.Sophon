@@ -368,7 +368,7 @@ namespace Hi3Helper.Sophon.Helper
             this HttpClient httpClient,
             string chunkName,
             SophonChunksInfo  currentSophonChunkInfo,
-            SophonChunksInfo? altSophonChunkInfo,
+            SophonChunksInfo  altSophonChunkInfo,
             CancellationToken token = default)
         {
             // Concat the string
@@ -386,7 +386,7 @@ namespace Hi3Helper.Sophon.Helper
 
                 // If it fails and does have the alt SophonChunksInfo, then try to return
                 // with the alt one
-                if (!httpResponseMessage.IsSuccessStatusCode && altSophonChunkInfo.HasValue)
+                if (!httpResponseMessage.IsSuccessStatusCode && altSophonChunkInfo != null)
                 {
                     // Dispose the previous HttpResponseMessage
                     isDispose = true;
@@ -394,7 +394,7 @@ namespace Hi3Helper.Sophon.Helper
                     // Return another one from alt
                     return await httpClient.GetChunkAndIfAltAsync(
                         chunkName,
-                        altSophonChunkInfo.Value,
+                        altSophonChunkInfo,
                         null,
                         token);
                 }
@@ -410,7 +410,7 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static async ValueTask<SophonManifestProto> ReadProtoFromManifestInfo(this HttpClient httpClient, SophonManifestInfo manifestInfo, CancellationToken innerToken)
+        internal static async Task<SophonManifestProto> ReadProtoFromManifestInfo(this HttpClient httpClient, SophonManifestInfo manifestInfo, CancellationToken innerToken)
         {
             using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
                 manifestInfo.ManifestFileUrl,
@@ -433,7 +433,11 @@ namespace Hi3Helper.Sophon.Helper
                            ? new ZstdStream(manifestProtoStream)
                            : manifestProtoStream)
                 {
-                    return SophonManifestProto.Parser.ParseFrom(decompressedProtoStream);
+                    return await Task<SophonManifestProto>.Factory.StartNew(
+                        () => SophonManifestProto.Parser.ParseFrom(decompressedProtoStream),
+                        innerToken,
+                        TaskCreationOptions.DenyChildAttach,
+                        TaskScheduler.Default);
                 }
             }
         }

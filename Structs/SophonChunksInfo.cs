@@ -6,7 +6,7 @@ using System;
 // ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Infos
 {
-    public struct SophonChunksInfo : IEquatable<SophonChunksInfo>
+    public class SophonChunksInfo : IEquatable<SophonChunksInfo>
     {
         public string ChunksBaseUrl;
         public int    ChunksCount;

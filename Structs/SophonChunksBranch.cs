@@ -16,11 +16,7 @@ namespace Hi3Helper.Sophon
     public static partial class SophonManifest
     {
         public static async
-        #if NET6_0_OR_GREATER
-            ValueTask<SophonBranch>
-        #else
             Task<SophonBranch>
-        #endif
             GetSophonBranchInfo(HttpClient        client,
                                 string            url,
                                 CancellationToken token)
@@ -44,11 +40,7 @@ namespace Hi3Helper.Sophon
         }
 
         public static async
-        #if NET6_0_OR_GREATER
-            ValueTask<SophonChunkManifestInfoPair>
-        #else
             Task<SophonChunkManifestInfoPair>
-        #endif
             CreateSophonChunkManifestInfoPair(HttpClient        client,
                                               string            url,
                                               string            matchingField,
