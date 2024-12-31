@@ -1,7 +1,9 @@
 ﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Structs;
 using System;
+using System.Buffers;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -334,6 +336,53 @@ namespace Hi3Helper.Sophon
                 inputStream?.Dispose();
                 outputStream?.Dispose();
             #endif
+            }
+        }
+
+        /// <summary>
+        ///    Get the total size of the downloaded preload chunks.
+        /// </summary>
+        /// <param name="chunkDir">Directory of where the chunks are located</param>
+        /// <param name="token">Cancellation token context</param>
+        /// <returns>The size of downloaded chunks for preload</returns>
+        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, CancellationToken token = default)
+        {
+            // Create a task to create a list of chunks that are already downloaded
+            long GetLength(SophonChunk chunk)
+            {
+                string cachedChunkName = chunk.GetChunkStagingFilenameHash(this);
+                string cachedChunkPath = Path.Combine(chunkDir, cachedChunkName);
+                FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                return cachedChunkInfo.Exists && cachedChunkInfo.Length <= chunk.ChunkSize ? cachedChunkInfo.Length : 0L;
+            }
+
+            // If the chunk array is null or empty, return 0
+            if (Chunks == null || Chunks.Length == 0)
+            {
+                return 0L;
+            }
+
+            // Use iteration sum if chunk item is less than 512
+            if (Chunks.Length < 512)
+            {
+                return Chunks.Select(GetLength).Sum();
+            }
+
+            // Otherwise, use SIMD way
+            long[] chunkBuffers = ArrayPool<long>.Shared.Rent(Chunks.Length);
+            try
+            {
+                // Select length of the file using parallel
+                await Task.Run(
+                    () => Parallel.For(0, Chunks.Length, i => chunkBuffers[i] = GetLength(Chunks[i])),
+                    token);
+
+                // Return it using .NET's SIMD Sum() for Array iteration
+                return chunkBuffers.Sum();
+            }
+            finally
+            {
+                ArrayPool<long>.Shared.Return(chunkBuffers);
             }
         }
     }
