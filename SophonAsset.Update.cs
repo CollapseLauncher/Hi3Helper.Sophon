@@ -84,7 +84,7 @@ namespace Hi3Helper.Sophon
                 Directory.CreateDirectory(outputNewDir);
             }
 
-            // Assign path to FileInfo and try unassign readonly attribute from existing new file info
+            // Assign path to FileInfo and try to unassign readonly attribute from existing new file info
             FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
             FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
             FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
@@ -187,8 +187,8 @@ namespace Hi3Helper.Sophon
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
                 parallelOptions = new ParallelOptions
                 {
-                    CancellationToken       = default,
-                    MaxDegreeOfParallelism  = maxChunksTask
+                    CancellationToken      = default,
+                    MaxDegreeOfParallelism = maxChunksTask
                 };
             }
 
@@ -209,8 +209,10 @@ namespace Hi3Helper.Sophon
                     ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
                      async chunk =>
                      {
-                         await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate, outputOldFileInfo,
-                                                     outputNewTempFileInfo, chunk, linkedToken.Token);
+                         await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
+                                                     DownloadSpeedLimiter, outputOldFileInfo, outputNewTempFileInfo,
+                                                     chunk, removeChunkAfterApply,
+                                                     linkedToken.Token);
                      },
                      new ExecutionDataflowBlockOptions
                      {
