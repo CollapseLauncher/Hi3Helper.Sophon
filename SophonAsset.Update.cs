@@ -343,18 +343,31 @@ namespace Hi3Helper.Sophon
         ///    Get the total size of the downloaded preload chunks.
         /// </summary>
         /// <param name="chunkDir">Directory of where the chunks are located</param>
+        /// <param name="chunkDir">Directory of where the output assets are located</param>
         /// <param name="useCompressedSize">If set true, it will return compressed size of the chunk. Set false to return the decompressed size of the chunk.</param>
         /// <param name="token">Cancellation token context</param>
         /// <returns>The size of downloaded chunks for preload</returns>
-        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, bool useCompressedSize, CancellationToken token = default)
+        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, string outputDir, bool useCompressedSize, CancellationToken token = default)
         {
+            // Check if the asset path has been completely downloaded, then return 0
+            string   assetFullPath       = Path.Combine(outputDir, AssetName);
+            FileInfo assetFileInfo       = new FileInfo(assetFullPath).UnassignReadOnlyFromFileInfo();
+            bool     isAssetExist        = assetFileInfo.Exists;
+            long     assetDownloadedSize = isAssetExist ? assetFileInfo.Length : 0L;
+
             // Selector to get the size of the downloaded chunks.
             long GetLength(SophonChunk chunk)
             {
-                string cachedChunkName   = chunk.GetChunkStagingFilenameHash(this);
-                string cachedChunkPath   = Path.Combine(chunkDir, cachedChunkName);
-                FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
-                long chunkSizeToReturn   = useCompressedSize ? chunk.ChunkSize : chunk.ChunkSizeDecompressed;
+                string   cachedChunkName   = chunk.GetChunkStagingFilenameHash(this);
+                string   cachedChunkPath   = Path.Combine(chunkDir, cachedChunkName);
+                FileInfo cachedChunkInfo   = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                long     chunkSizeToReturn = useCompressedSize ? chunk.ChunkSize : chunk.ChunkSizeDecompressed;
+
+                // If the asset is fully downloaded, return the chunkSize.
+                if (isAssetExist && assetDownloadedSize == AssetSize && !cachedChunkInfo.Exists)
+                {
+                    return 0L;
+                }
 
                 return cachedChunkInfo.Exists && cachedChunkInfo.Length <= chunk.ChunkSize ? chunkSizeToReturn : 0L;
             }
