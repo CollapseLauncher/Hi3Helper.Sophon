@@ -343,17 +343,20 @@ namespace Hi3Helper.Sophon
         ///    Get the total size of the downloaded preload chunks.
         /// </summary>
         /// <param name="chunkDir">Directory of where the chunks are located</param>
+        /// <param name="useCompressedSize">If set true, it will return compressed size of the chunk. Set false to return the decompressed size of the chunk.</param>
         /// <param name="token">Cancellation token context</param>
         /// <returns>The size of downloaded chunks for preload</returns>
-        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, CancellationToken token = default)
+        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, bool useCompressedSize, CancellationToken token = default)
         {
-            // Create a task to create a list of chunks that are already downloaded
+            // Selector to get the size of the downloaded chunks.
             long GetLength(SophonChunk chunk)
             {
-                string cachedChunkName = chunk.GetChunkStagingFilenameHash(this);
-                string cachedChunkPath = Path.Combine(chunkDir, cachedChunkName);
+                string cachedChunkName   = chunk.GetChunkStagingFilenameHash(this);
+                string cachedChunkPath   = Path.Combine(chunkDir, cachedChunkName);
                 FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
-                return cachedChunkInfo.Exists && cachedChunkInfo.Length <= chunk.ChunkSize ? cachedChunkInfo.Length : 0L;
+                long chunkSizeToReturn   = useCompressedSize ? chunk.ChunkSize : chunk.ChunkSizeDecompressed;
+
+                return cachedChunkInfo.Exists && cachedChunkInfo.Length <= chunk.ChunkSize ? chunkSizeToReturn : 0L;
             }
 
             // If the chunk array is null or empty, return 0
