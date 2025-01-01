@@ -314,7 +314,7 @@ namespace Hi3Helper.Sophon.Helper
         {
             if (string.IsNullOrEmpty(outputDirPath))
             {
-                throw new ArgumentNullException("Directory path cannot be empty or null!");
+                throw new ArgumentNullException(nameof(asset), "Directory path cannot be empty or null!");
             }
 
             if (!Directory.Exists(outputDirPath))

@@ -12,14 +12,12 @@ using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
-using ZstdStream = ZstdNet.DecompressionStream;
 
 // ReSharper disable ConvertToUsingDeclaration
 // ReSharper disable UseAwaitUsing
