@@ -47,9 +47,14 @@ namespace Hi3Helper.Sophon
                                               CancellationToken token)
         {
             var sophonBranch = await GetSophonBranchInfo(client, url, token);
-            if (sophonBranch?.Data == null)
+            if (sophonBranch.Data == null)
             {
-                throw new NullReferenceException("Url returns an empty/null data!");
+                return new SophonChunkManifestInfoPair
+                {
+                    IsFound       = false,
+                    ReturnCode    = sophonBranch.ReturnCode,
+                    ReturnMessage = sophonBranch.ReturnMessage
+                };
             }
 
             if (string.IsNullOrEmpty(matchingField))
