@@ -12,7 +12,7 @@ namespace Hi3Helper.Sophon.Structs
         public SophonChunksInfo   ChunksInfo;
         public SophonManifestInfo ManifestInfo;
         public SophonData         OtherSophonData;
-        public bool               IsFound;
+        public bool               IsFound = true;
         public int                ReturnCode = 0;
         public string             ReturnMessage;
 
