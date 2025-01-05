@@ -93,7 +93,8 @@ namespace Hi3Helper.Sophon
 
             foreach (SophonChunk chunk in Chunks)
             {
-                await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter, outputOldFileInfo,
+                await InnerWriteUpdateAsync(client,                chunkDir, writeInfoDelegate, downloadInfoDelegate,
+                                            DownloadSpeedLimiter,  outputOldFileInfo,
                                             outputNewTempFileInfo, chunk, removeChunkAfterApply, token);
             }
 
@@ -107,7 +108,9 @@ namespace Hi3Helper.Sophon
             #endif
             }
 
+        #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
+        #endif
             downloadCompleteDelegate?.Invoke(this);
         }
 
@@ -219,7 +222,7 @@ namespace Hi3Helper.Sophon
                      new ExecutionDataflowBlockOptions
                      {
                          MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                         CancellationToken      = linkedToken.Token
+                         CancellationToken = linkedToken.Token
                      });
 
                     foreach (SophonChunk chunk in Chunks)
@@ -235,8 +238,10 @@ namespace Hi3Helper.Sophon
             await Parallel.ForEachAsync(Chunks, parallelOptions,
                                         async (chunk, threadToken) =>
                                         {
-                                            await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
-                                                                        DownloadSpeedLimiter, outputOldFileInfo, outputNewTempFileInfo,
+                                            await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate,
+                                                                        downloadInfoDelegate,
+                                                                        DownloadSpeedLimiter, outputOldFileInfo,
+                                                                        outputNewTempFileInfo,
                                                                         chunk, removeChunkAfterApply,
                                                                         threadToken);
                                         });
@@ -251,7 +256,9 @@ namespace Hi3Helper.Sophon
                 string newPathDir = Path.GetDirectoryName(outputNewFileInfo.FullName);
 
                 if (!string.IsNullOrEmpty(newPathDir) && !Directory.Exists(newPathDir))
+                {
                     Directory.CreateDirectory(newPathDir);
+                }
 
             #if NET6_0_OR_GREATER
                 outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
@@ -261,7 +268,9 @@ namespace Hi3Helper.Sophon
             #endif
             }
 
+        #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
+        #endif
             downloadCompleteDelegate?.Invoke(this);
         }
 
@@ -290,29 +299,39 @@ namespace Hi3Helper.Sophon
                 {
                     inputStream = outputOldFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
                     streamType  = SourceStreamType.OldReference;
+                #if DEBUG
                     this.PushLogDebug($"Using old file as reference at offset: 0x{chunk.ChunkOldOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                #endif
                 }
                 else
                 {
-                    string   cachedChunkName = chunk.GetChunkStagingFilenameHash(this);
-                    string   cachedChunkPath = Path.Combine(chunkDir, cachedChunkName);
+                    string   cachedChunkName            = chunk.GetChunkStagingFilenameHash(this);
+                    string   cachedChunkPath            = Path.Combine(chunkDir, cachedChunkName);
                     string   cachedChunkFileCheckedPath = cachedChunkPath + ".verified";
-                    FileInfo cachedChunkInfo = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                    FileInfo cachedChunkInfo            = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
                     if (cachedChunkInfo.Exists && cachedChunkInfo.Length != chunk.ChunkSize)
                     {
                         cachedChunkInfo.Delete();
+                    #if DEBUG
                         this.PushLogDebug($"Cached/preloaded chunk has invalid size for: {AssetName}. Expecting: 0x{chunk.ChunkSize:x8} but get: 0x{cachedChunkInfo.Length:x8} instead. Fallback to download it instead!");
+                    #endif
                     }
                     else if (cachedChunkInfo.Exists)
                     {
                         inputStream = new FileStream(cachedChunkInfo.FullName, FileMode.Open, FileAccess.Read,
-                                                     FileShare.Read, 4 << 10, removeChunkAfterApply ?
-                                                     FileOptions.DeleteOnClose : FileOptions.None);
+                                                     FileShare.Read, 4 << 10,
+                                                     removeChunkAfterApply
+                                                         ? FileOptions.DeleteOnClose
+                                                         : FileOptions.None);
                         streamType = SourceStreamType.CachedLocal;
                         if (File.Exists(cachedChunkFileCheckedPath))
+                        {
                             File.Delete(cachedChunkFileCheckedPath);
+                        }
 
+                    #if DEBUG
                         this.PushLogDebug($"Using cached/preloaded chunk as reference at offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                    #endif
                     }
                 }
 
@@ -340,14 +359,18 @@ namespace Hi3Helper.Sophon
         }
 
         /// <summary>
-        ///    Get the total size of the downloaded preload chunks.
+        ///     Get the total size of the downloaded preload chunks.
         /// </summary>
         /// <param name="chunkDir">Directory of where the chunks are located</param>
         /// <param name="chunkDir">Directory of where the output assets are located</param>
-        /// <param name="useCompressedSize">If set true, it will return compressed size of the chunk. Set false to return the decompressed size of the chunk.</param>
+        /// <param name="useCompressedSize">
+        ///     If set true, it will return compressed size of the chunk. Set false to return the
+        ///     decompressed size of the chunk.
+        /// </param>
         /// <param name="token">Cancellation token context</param>
         /// <returns>The size of downloaded chunks for preload</returns>
-        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, string outputDir, bool useCompressedSize, CancellationToken token = default)
+        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, string outputDir, bool useCompressedSize,
+                                                              CancellationToken token = default)
         {
             // Check if the asset path has been completely downloaded, then return 0
             string   assetFullPath       = Path.Combine(outputDir, AssetName);
@@ -390,8 +413,8 @@ namespace Hi3Helper.Sophon
             {
                 // Select length of the file using parallel
                 await Task.Run(
-                    () => Parallel.For(0, Chunks.Length, i => chunkBuffers[i] = GetLength(Chunks[i])),
-                    token);
+                               () => Parallel.For(0, Chunks.Length, i => chunkBuffers[i] = GetLength(Chunks[i])),
+                               token);
 
                 // Return it using .NET's SIMD Sum() for Array iteration
                 return chunkBuffers.Sum();
