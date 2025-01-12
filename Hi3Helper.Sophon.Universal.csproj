@@ -18,6 +18,7 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <Copyright>Copyright (c) 2025 Collapse Project Team, Kemal Setya Adhi (neon-nyan)</Copyright>
         <Authors>neon-nyan</Authors>
+        <PackageId>Hi3Helper.Sophon</PackageId>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>sophon</PackageTags>
