@@ -56,11 +56,11 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
         public async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             DownloadDiffChunksAsync(HttpClient                    client,
                                     string                        chunkDirOutput,
                                     ParallelOptions               parallelOptions          = null,
@@ -87,46 +87,41 @@ namespace Hi3Helper.Sophon
 
             try
             {
-            #if !NET6_0_OR_GREATER
-                using (CancellationTokenSource actionToken = new CancellationTokenSource())
-                {
-                    using (CancellationTokenSource linkedToken = CancellationTokenSource
-                              .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken))
+#if !NET6_0_OR_GREATER
+                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource linkedToken = CancellationTokenSource
+                    .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken);
+                ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
+                    async chunk =>
                     {
-                        ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
-                         async chunk =>
-                         {
-                             await PerformWriteDiffChunksThreadAsync(client,
-                                 chunkDirOutput, chunk, linkedToken.Token,
-                                 writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
-                                 forceVerification)
-                             .ConfigureAwait(false);
-                         },
-                         new ExecutionDataflowBlockOptions
-                         {
-                             MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                             TaskScheduler = TaskScheduler.Default,
-                             CancellationToken = linkedToken.Token,
-                             MaxMessagesPerTask = parallelOptions.MaxDegreeOfParallelism * Math.Max(4, Environment.ProcessorCount)
-                         });
+                        await PerformWriteDiffChunksThreadAsync(client,
+                                chunkDirOutput, chunk, linkedToken.Token,
+                                writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
+                                forceVerification)
+                            .ConfigureAwait(false);
+                    },
+                    new ExecutionDataflowBlockOptions
+                    {
+                        MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
+                        TaskScheduler = TaskScheduler.Default,
+                        CancellationToken = linkedToken.Token,
+                        MaxMessagesPerTask = parallelOptions.MaxDegreeOfParallelism * Math.Max(4, Environment.ProcessorCount)
+                    });
 
-                        foreach (SophonChunk chunk in Chunks)
-                        {
-                            if (chunk.ChunkOldOffset > -1)
-                            {
-                                return;
-                            }
-
-                            await actionBlock.SendAsync(chunk, linkedToken.Token)
-                             .ConfigureAwait(false);
-                        }
-
-                        actionBlock.Complete();
-                        await actionBlock.Completion
-                             .ConfigureAwait(false);
+                foreach (SophonChunk chunk in Chunks)
+                {
+                    if (chunk.ChunkOldOffset > -1)
+                    {
+                        return;
                     }
+
+                    await actionBlock.SendAsync(chunk, linkedToken.Token).ConfigureAwait(false);
                 }
-            #else
+
+                actionBlock.Complete();
+                await actionBlock.Completion.ConfigureAwait(false);
+
+#else
                 await Parallel.ForEachAsync(Chunks, parallelOptions, async (chunk, threadToken) =>
                                                                      {
                                                                          if (chunk.ChunkOldOffset > -1)
@@ -144,7 +139,7 @@ namespace Hi3Helper.Sophon
                                                                             .ConfigureAwait(false);
                                                                      })
                               .ConfigureAwait(false);
-            #endif
+#endif
             }
             catch (AggregateException ex)
             {
@@ -152,18 +147,18 @@ namespace Hi3Helper.Sophon
             }
             // Throw all other exceptions
 
-        #if DEBUG
+#if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
-        #endif
+#endif
             downloadCompleteDelegate?.Invoke(this);
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             PerformWriteDiffChunksThreadAsync(HttpClient                 client,
                                               string                     chunkDirOutput,
                                               SophonChunk                chunk,
@@ -200,9 +195,9 @@ namespace Hi3Helper.Sophon
 
                     if (!isChunkUnmatch)
                     {
-                    #if DEBUG
+#if DEBUG
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-                    #endif
+#endif
                         writeInfoDelegate?.Invoke(chunk.ChunkSize);
                         downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
                         if (!File.Exists(chunkFileCheckedPath))
@@ -226,11 +221,11 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             InnerWriteChunkCopyAsync(HttpClient                 client,
                                      Stream                     outStream,
                                      SophonChunk                chunk,
@@ -244,13 +239,13 @@ namespace Hi3Helper.Sophon
 
             long currentWriteOffset = 0;
 
-        #if !NOSTREAMLOCK
+#if !NOSTREAMLOCK
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
                 this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
-        #endif
+#endif
 
             long      written                       = 0;
             long      thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
@@ -264,7 +259,7 @@ namespace Hi3Helper.Sophon
             if (downloadSpeedLimiter != null)
             {
                 downloadSpeedLimiter.CurrentChunkProcessingChangedEvent += UpdateChunkRangesCountEvent;
-                downloadSpeedLimiter.DownloadSpeedChangedEvent          += DownloadClient_DownloadSpeedLimitChanged;
+                downloadSpeedLimiter.DownloadSpeedChangedEvent          += DownloadClientDownloadSpeedLimitChanged;
             }
 
             while (true)
@@ -281,17 +276,17 @@ namespace Hi3Helper.Sophon
                     {
                         CancellationTokenSource innerTimeoutToken =
                             new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                                                    #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                                       , TimeProvider.System
-                                                    #endif
+#endif
                                                        );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
-                    #if DEBUG
+#if DEBUG
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Init. by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
 
-                    #endif
+#endif
                         outStream.SetLength(chunk.ChunkSize);
                         outStream.Position = 0;
                         httpResponseMessage = await client.GetChunkAndIfAltAsync(
@@ -303,24 +298,24 @@ namespace Hi3Helper.Sophon
                                                   .EnsureSuccessStatusCode()
                                                   .Content
                                                   .ReadAsStreamAsync(
-                                                                 #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                                                                      cooperatedToken.Token
-                                                                 #endif
+#endif
                                                                     );
 
                         sourceStream = httpResponseStream;
-                    #if DEBUG
+#if DEBUG
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] [Complete init.] by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
-                    #endif
+#endif
 
                         downloadSpeedLimiter?.IncrementChunkProcessedCount();
                         int read;
                         while ((read = await sourceStream.ReadAsync(
-                                                                #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                                                                     buffer
-                                                                #else
+#else
                                                                     buffer, 0, buffer.Length
-                                                                #endif
+#endif
                                                                   , cooperatedToken.Token)) >
                                0)
                         {
@@ -336,9 +331,9 @@ namespace Hi3Helper.Sophon
 
                             innerTimeoutToken =
                                 new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                                                        #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                                           , TimeProvider.System
-                                                        #endif
+#endif
                                                            );
                             cooperatedToken =
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
@@ -375,9 +370,9 @@ namespace Hi3Helper.Sophon
                             continue;
                         }
 
-                    #if DEBUG
+#if DEBUG
                         this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Download completed! Chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-                    #endif
+#endif
                         return;
                     }
                     catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -408,7 +403,7 @@ namespace Hi3Helper.Sophon
                         if (allowDispose)
                         {
                             httpResponseMessage?.Dispose();
-                        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                             if (httpResponseStream != null)
                             {
                                 await httpResponseStream.DisposeAsync();
@@ -418,10 +413,10 @@ namespace Hi3Helper.Sophon
                             {
                                 await sourceStream.DisposeAsync();
                             }
-                        #else
+#else
                             sourceStream?.Dispose();
                             httpResponseStream?.Dispose();
-                        #endif
+#endif
                         }
 
                         downloadSpeedLimiter?.DecrementChunkProcessedCount();
@@ -441,12 +436,22 @@ namespace Hi3Helper.Sophon
                     thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
                 }
 
+#if NET6_0_OR_GREATER
                 double threadNum = Math.Clamp(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1, 16 << 10);
+#else
+                double threadNum = downloadSpeedLimiter?.CurrentChunkProcessing ?? 1;
+                threadNum = threadNum switch
+                {
+                    < 1 => 1,
+                    > 16 << 10 => 16 << 10,
+                    _ => threadNum
+                };
+#endif
                 maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
                 bitPerUnit            = 940 - (threadNum - 2) / (16 - 2) * 400;
             }
 
-            void DownloadClient_DownloadSpeedLimitChanged(object sender, long e)
+            void DownloadClientDownloadSpeedLimitChanged(object sender, long e)
             {
                 thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
                 CalculateBps();

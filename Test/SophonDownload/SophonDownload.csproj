@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFrameworks>net462;net6.0;net8.0;net9.0</TargetFrameworks>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Platforms>x64</Platforms>
+        <EntryPointExe>SophonDownload</EntryPointExe>
+        <LangVersion>11</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.Threading.Tasks" Version="*" Condition="$(DefineConstants.Contains('net462'))" />
+        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" Condition="$(DefineConstants.Contains('net462'))" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Hi3Helper.Sophon.Universal.csproj" />
+	</ItemGroup>
+</Project>

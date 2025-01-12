@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35617.110
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hi3Helper.Sophon.Universal", "..\Hi3Helper.Sophon.Universal.csproj", "{4C3BF983-77B2-8AAE-EA06-79FD3BC1E3DC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonUpdatePreload", "SophonUpdatePreload\SophonUpdatePreload.csproj", "{7C8F925F-3758-1E7A-FCAB-9F714225FCD7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hi3Helper.Sophon", "..\Hi3Helper.Sophon.csproj", "{CC6DA1C6-31E7-0C5B-ED49-ACBF2FA59141}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonDownload", "SophonDownload\SophonDownload.csproj", "{8DEBA00E-AD92-D32E-4572-31A11067EB8C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonManifestInfo2Json", "SophonManifestInfo\SophonManifestInfo2Json.csproj", "{AD008F60-1DD9-5536-64DD-58DB6D03A80A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4C3BF983-77B2-8AAE-EA06-79FD3BC1E3DC}.Debug|x64.ActiveCfg = Debug|x64
+		{4C3BF983-77B2-8AAE-EA06-79FD3BC1E3DC}.Debug|x64.Build.0 = Debug|x64
+		{4C3BF983-77B2-8AAE-EA06-79FD3BC1E3DC}.Release|x64.ActiveCfg = Release|x64
+		{4C3BF983-77B2-8AAE-EA06-79FD3BC1E3DC}.Release|x64.Build.0 = Release|x64
+		{7C8F925F-3758-1E7A-FCAB-9F714225FCD7}.Debug|x64.ActiveCfg = Debug|x64
+		{7C8F925F-3758-1E7A-FCAB-9F714225FCD7}.Debug|x64.Build.0 = Debug|x64
+		{7C8F925F-3758-1E7A-FCAB-9F714225FCD7}.Release|x64.ActiveCfg = Release|x64
+		{7C8F925F-3758-1E7A-FCAB-9F714225FCD7}.Release|x64.Build.0 = Release|x64
+		{CC6DA1C6-31E7-0C5B-ED49-ACBF2FA59141}.Debug|x64.ActiveCfg = Debug|x64
+		{CC6DA1C6-31E7-0C5B-ED49-ACBF2FA59141}.Debug|x64.Build.0 = Debug|x64
+		{CC6DA1C6-31E7-0C5B-ED49-ACBF2FA59141}.Release|x64.ActiveCfg = Release|x64
+		{CC6DA1C6-31E7-0C5B-ED49-ACBF2FA59141}.Release|x64.Build.0 = Release|x64
+		{8DEBA00E-AD92-D32E-4572-31A11067EB8C}.Debug|x64.ActiveCfg = Debug|x64
+		{8DEBA00E-AD92-D32E-4572-31A11067EB8C}.Debug|x64.Build.0 = Debug|x64
+		{8DEBA00E-AD92-D32E-4572-31A11067EB8C}.Release|x64.ActiveCfg = Release|x64
+		{8DEBA00E-AD92-D32E-4572-31A11067EB8C}.Release|x64.Build.0 = Release|x64
+		{AD008F60-1DD9-5536-64DD-58DB6D03A80A}.Debug|x64.ActiveCfg = Debug|x64
+		{AD008F60-1DD9-5536-64DD-58DB6D03A80A}.Debug|x64.Build.0 = Debug|x64
+		{AD008F60-1DD9-5536-64DD-58DB6D03A80A}.Release|x64.ActiveCfg = Release|x64
+		{AD008F60-1DD9-5536-64DD-58DB6D03A80A}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {FBF7313E-FEC6-4988-94A0-8100BE6A434E}
+	EndGlobalSection
+EndGlobal

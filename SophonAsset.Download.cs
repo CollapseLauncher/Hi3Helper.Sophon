@@ -180,38 +180,34 @@ namespace Hi3Helper.Sophon
 
             try
             {
-            #if !NET6_0_OR_GREATER
-                using (CancellationTokenSource actionToken = new CancellationTokenSource())
-                {
-                    using (CancellationTokenSource linkedToken = CancellationTokenSource
-                              .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken))
+#if !NET6_0_OR_GREATER
+                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource linkedToken = CancellationTokenSource.CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken);
+                ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
+                    async chunk =>
                     {
-                        ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
-                         async chunk =>
-                         {
-                             using (Stream outStream = outStreamFunc())
-                             {
-                                 await PerformWriteStreamThreadAsync(client,    null,  SourceStreamType.Internet,
-                                                                     outStream, chunk, linkedToken.Token,
-                                                                     writeInfoDelegate, downloadInfoDelegate);
-                             }
-                         },
-                         new ExecutionDataflowBlockOptions
-                         {
-                             MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                             CancellationToken = linkedToken.Token
-                         });
+                        using Stream outStream = outStreamFunc();
+                        await PerformWriteStreamThreadAsync(client,
+                            null, SourceStreamType.Internet,
+                            outStream, chunk, linkedToken.Token,
+                            writeInfoDelegate,
+                            downloadInfoDelegate,
+                            DownloadSpeedLimiter);
+                    },
+                    new ExecutionDataflowBlockOptions
+                    {
+                        MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
+                        CancellationToken = linkedToken.Token
+                    });
 
-                        foreach (SophonChunk chunk in Chunks)
-                        {
-                            await actionBlock.SendAsync(chunk, linkedToken.Token);
-                        }
-
-                        actionBlock.Complete();
-                        await actionBlock.Completion;
-                    }
+                foreach (SophonChunk chunk in Chunks)
+                {
+                    await actionBlock.SendAsync(chunk, linkedToken.Token);
                 }
-            #else
+
+                actionBlock.Complete();
+                await actionBlock.Completion;
+#else
                 await Parallel.ForEachAsync(Chunks, parallelOptions, async (chunk, threadToken) =>
                                                                      {
                                                                          await using Stream outStream = outStreamFunc();
@@ -320,7 +316,7 @@ namespace Hi3Helper.Sophon
             if (downloadSpeedLimiter != null)
             {
                 downloadSpeedLimiter.CurrentChunkProcessingChangedEvent += UpdateChunkRangesCountEvent;
-                downloadSpeedLimiter.DownloadSpeedChangedEvent          += DownloadClient_DownloadSpeedLimitChanged;
+                downloadSpeedLimiter.DownloadSpeedChangedEvent          += DownloadClientDownloadSpeedLimitChanged;
             }
 
         #if !NOSTREAMLOCK
@@ -567,12 +563,22 @@ namespace Hi3Helper.Sophon
                     thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
                 }
 
+#if NET6_0_OR_GREATER
                 double threadNum = Math.Clamp(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1, 16 << 10);
+#else
+                double threadNum = downloadSpeedLimiter?.CurrentChunkProcessing ?? 1;
+                threadNum = threadNum switch
+                {
+                    < 1 => 1,
+                    > 16 << 10 => 16 << 10,
+                    _ => threadNum
+                };
+#endif
                 maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
                 bitPerUnit            = 940 - (threadNum - 2) / (16 - 2) * 400;
             }
 
-            void DownloadClient_DownloadSpeedLimitChanged(object sender, long e)
+            void DownloadClientDownloadSpeedLimitChanged(object sender, long e)
             {
                 thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
                 CalculateBps();

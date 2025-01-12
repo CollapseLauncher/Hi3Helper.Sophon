@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFrameworks>net462;net6.0;net8.0;net9.0</TargetFrameworks>
+        <ImplicitUsings>disable</ImplicitUsings>
+        <Platforms>x64</Platforms>
+        <EntryPointExe>SophonManifestInfo2Json</EntryPointExe>
+        <LangVersion>11</LangVersion>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+        <DebugType>portable</DebugType>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Text.Json" Version="9.0.0" />
+    </ItemGroup>
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\Hi3Helper.Sophon.Universal.csproj" />
+	</ItemGroup>
+</Project>

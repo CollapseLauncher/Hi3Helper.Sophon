@@ -4,7 +4,7 @@ dotnet restore Hi3Helper.Sophon.Universal.csproj || goto :Fail
 dotnet clean -c Release Hi3Helper.Sophon.Universal.csproj || goto :Fail
 call :Clean
 dotnet build -c Release Hi3Helper.Sophon.Universal.csproj || goto :Fail
-dotnet pack -c Release -o artifacts Hi3Helper.Sophon.Universal.csproj || goto :Fail
+dotnet pack -c Release -o artifacts -p:IncludeSymbols=true -p:SymbolPackageFormat=snupkg Hi3Helper.Sophon.Universal.csproj || goto :Fail
 goto :Success
 
 :Fail

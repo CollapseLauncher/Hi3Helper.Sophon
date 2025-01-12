@@ -30,10 +30,12 @@ namespace Hi3Helper.Sophon.Infos
             return obj is SophonChunksInfo other && Equals(other);
         }
 
+#if NET6_0_OR_GREATER
         public override int GetHashCode()
         {
             return HashCode.Combine(ChunksBaseUrl, ChunksCount, FilesCount, TotalSize, TotalCompressedSize, IsUseCompression);
         }
+#endif
     }
 }
 

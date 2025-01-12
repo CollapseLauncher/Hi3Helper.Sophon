@@ -3,7 +3,7 @@
 // ReSharper disable CommentTypo
 // ReSharper disable InvalidXmlDocComment
 
-#if NET6_0_OR_GREATER
+#if NET9_0_OR_GREATER
 using ZstdNet;
 #endif
 using Hi3Helper.Sophon.Helper;
@@ -104,7 +104,7 @@ namespace Hi3Helper.Sophon
                                                                          [EnumeratorCancellation]
                                                                          CancellationToken          token                = default)
         {
-        #if NET6_0_OR_GREATER
+        #if NET9_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
                 throw new DllNotFoundException("libzstd is not found!");
