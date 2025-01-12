@@ -1,4 +1,7 @@
-# Hi3Helper.Sophon
+# Hi3Helper.Sophon - Sophon Download Library
+### Now Available on [NuGet!](https://www.nuget.org/packages/Hi3Helper.Sophon/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Hi3Helper.Sophon.svg?style=flat-square)](https://www.nuget.org/packages/Hi3Helper.Sophon/) [![NuGet version](https://img.shields.io/nuget/v/Hi3Helper.Sophon.svg?style=flat-square)](https://www.nuget.org/packages/Hi3Helper.Sophon/)
+
 **Hi3Helper.Sophon** is a **Sophon-compatible** library to download certain well-known games created by miHoYo/HoYoverse (for example: [**Genshin Impact**](https://genshin.hoyoverse.com/en/home) and [**Zenless Zone Zero**](https://zenless.hoyoverse.com/main)). **Hi3Helper.Sophon** was written and compatible for .NET implementations listed below:
 * .NET Standard 2.0 (including .NET Framework 4.6.2, 4.7, 4.7.1, 4.7.2, 4.8 and 4.8.1)
 * .NET 6.0
