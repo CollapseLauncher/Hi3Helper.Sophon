@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hi3Helper.Sophon", "..\Hi3H
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonDownload", "SophonDownload\SophonDownload.csproj", "{8DEBA00E-AD92-D32E-4572-31A11067EB8C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonManifestInfo2Json", "SophonManifestInfo\SophonManifestInfo2Json.csproj", "{AD008F60-1DD9-5536-64DD-58DB6D03A80A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SophonManifestInfo2Json", "SophonManifestInfo2Json\SophonManifestInfo2Json.csproj", "{AD008F60-1DD9-5536-64DD-58DB6D03A80A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
