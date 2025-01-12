@@ -99,7 +99,7 @@ namespace SophonUpdatePreload
                 }
             }
 
-            // Get the output stream whether it will be using file stream our Console StdOut
+            // Get the output stream whether it will be using file stream or Console StdOut
             using Stream outputStream = writeToConsole ? Console.OpenStandardOutput() : File.Create(filePath);
 
             // Write the result as JSON into the output stream
