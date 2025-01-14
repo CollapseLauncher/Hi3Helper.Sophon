@@ -152,7 +152,11 @@ namespace Hi3Helper.Sophon.Helper
             (uint*)GCHandle.Alloc(Lookup32Unsafe, GCHandleType.Pinned).AddrOfPinnedObject();
 #endif
 
-        internal static unsafe string BytesToHex(ReadOnlySpan<byte> bytes)
+        internal static
+#if !NET9_0_OR_GREATER
+            unsafe
+#endif
+            string BytesToHex(ReadOnlySpan<byte> bytes)
 #if !NET9_0_OR_GREATER
         {
             uint* lookupP = Lookup32UnsafeP;
