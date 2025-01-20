@@ -409,8 +409,20 @@ namespace Hi3Helper.Sophon
                         {
                             int toRead = Math.Min((int)remain, buffer.Length);
 
-                            int read = await sourceStream.ReadAsync(buffer, 0, toRead, cooperatedToken.Token);
-                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
+                            int read = await sourceStream.ReadAsync(
+#if NET6_0_OR_GREATER
+                                                                    buffer.AsMemory(0, toRead)
+#else
+                                                                    buffer, 0, toRead
+#endif
+                                                                    , cooperatedToken.Token);
+                            await outStream.WriteAsync(
+#if NET6_0_OR_GREATER
+                                                       buffer.AsMemory(0, read)
+#else
+                                                       buffer, 0, read
+#endif
+                                                       , cooperatedToken.Token);
                             currentWriteOffset += read;
                             remain             -= read;
                             hashInstance.TransformBlock(buffer, 0, read, buffer, 0);

@@ -232,7 +232,13 @@ namespace Hi3Helper.Sophon.Helper
                 while (remain > 0)
                 {
                     int toRead = (int)Math.Min(bufferSize, remain);
-                    int read = await outStream.ReadAsync(buffer, 0, toRead, token);
+                    int read = await outStream.ReadAsync(
+#if NET6_0_OR_GREATER
+                            buffer.AsMemory(0, toRead)
+#else
+                            buffer, 0, toRead
+#endif
+                            , token);
 
                     hash.TransformBlock(buffer, 0, read, buffer, 0);
 
