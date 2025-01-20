@@ -333,8 +333,8 @@ namespace Hi3Helper.Sophon
                 HttpResponseMessage httpResponseMessage = null;
                 Stream              httpResponseStream  = null;
 
-                MD5    hashInstance = MD5.Create();
-                byte[] buffer       = ArrayPool<byte>.Shared.Rent(BufferSize);
+                using MD5 hashInstance = MD5.Create();
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
 
                 SourceStreamType currentSourceStreamType = sourceStreamType;
                 {

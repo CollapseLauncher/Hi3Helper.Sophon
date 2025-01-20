@@ -222,11 +222,10 @@ namespace Hi3Helper.Sophon.Helper
         {
             byte[] buffer = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
             int bufferSize = buffer.Length;
+            MD5 hash = MD5.Create();
 
             try
             {
-                MD5 hash = MD5.Create();
-
                 outStream.Position = chunk.ChunkOffset;
                 long remain = chunk.ChunkSizeDecompressed;
 
@@ -250,6 +249,7 @@ namespace Hi3Helper.Sophon.Helper
             finally
             {
                 ArrayPool<byte>.Shared.Return(buffer);
+                hash.Dispose();
             }
         }
 
