@@ -1,5 +1,6 @@
 ﻿using Hi3Helper.Sophon.Infos;
 using System;
+// ReSharper disable NonReadonlyMemberInGetHashCode
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
@@ -8,17 +9,17 @@ namespace Hi3Helper.Sophon.Infos
 {
     public class SophonChunksInfo : IEquatable<SophonChunksInfo>
     {
-        public string ChunksBaseUrl;
-        public int    ChunksCount;
-        public int    FilesCount;
-        public long   TotalSize;
-        public long   TotalCompressedSize;
-        public bool   IsUseCompression;
+        public string ChunksBaseUrl       { get; set; }
+        public int    ChunksCount         { get; set; }
+        public int    FilesCount          { get; set; }
+        public long   TotalSize           { get; set; }
+        public long   TotalCompressedSize { get; set; }
+        public bool   IsUseCompression    { get; set; }
 
         public bool Equals(SophonChunksInfo other)
         {
-            return ChunksBaseUrl == other.ChunksBaseUrl && 
-                   ChunksCount == other.ChunksCount &&
+            return ChunksBaseUrl == other?.ChunksBaseUrl && 
+                   ChunksCount == other?.ChunksCount &&
                    FilesCount == other.FilesCount && 
                    TotalSize == other.TotalSize &&
                    TotalCompressedSize == other.TotalCompressedSize &&

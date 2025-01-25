@@ -1,17 +1,16 @@
 using Hi3Helper.Sophon.Helper;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
-
+// ReSharper disable PartialTypeWithSinglePart
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
+
 namespace Hi3Helper.Sophon.Structs
 {
 #if NET6_0_OR_GREATER
     [JsonSerializable(typeof(SophonBranch))]
-    public partial class SophonContext : JsonSerializerContext
-    {
-    }
+    public partial class SophonContext : JsonSerializerContext;
 #endif
 
     public class SophonBranch

@@ -15,6 +15,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ZstdStream = ZstdNet.DecompressionStream;
 // ReSharper disable UseCollectionExpression
+// ReSharper disable IdentifierTypo
+// ReSharper disable CommentTypo
+// ReSharper disable ConvertToUsingDeclaration
 
 // ReSharper disable once IdentifierTypo
 namespace Hi3Helper.Sophon.Helper
@@ -388,7 +391,7 @@ namespace Hi3Helper.Sophon.Helper
             HttpResponseMessage httpResponseMessage = null;
             try
             {
-                // Try get the HttpResponseMessage
+                // Try to get the HttpResponseMessage
                 httpResponseMessage = await httpClient.GetAsync(
                     url,
                     HttpCompletionOption.ResponseHeadersRead,
@@ -396,27 +399,28 @@ namespace Hi3Helper.Sophon.Helper
 
                 // If it fails and does have the alt SophonChunksInfo, then try to return
                 // with the alt one
-                if (!httpResponseMessage.IsSuccessStatusCode && altSophonChunkInfo != null)
+                if (httpResponseMessage.IsSuccessStatusCode || altSophonChunkInfo == null)
                 {
-                    // Dispose the previous HttpResponseMessage
-                    isDispose = true;
-
-                    // Return another one from alt
-                    return await httpClient.GetChunkAndIfAltAsync(
-                        chunkName,
-                        altSophonChunkInfo,
-                        null,
-                        token);
+                    return httpResponseMessage;
                 }
 
+                // Dispose the previous HttpResponseMessage
+                isDispose = true;
+
+                // Return another one from alt
+                return await httpClient.GetChunkAndIfAltAsync(
+                                                              chunkName,
+                                                              altSophonChunkInfo,
+                                                              null,
+                                                              token);
+
                 // If it doesn't fail or has no alt even though it's failing or not, then return
-                return httpResponseMessage;
             }
             finally
             {
-                // If the old one is asked to be dispose, then do it.
+                // If the old one is asked to be disposed, then do it.
                 if (isDispose)
-                    httpResponseMessage?.Dispose();
+                    httpResponseMessage.Dispose();
             }
         }
 
@@ -439,9 +443,12 @@ namespace Hi3Helper.Sophon.Helper
 #endif
                 ))
             {
+            #if NET6_0_OR_GREATER
+                await
+            #endif
                 using (Stream decompressedProtoStream = manifestInfo.IsUseCompression
-                           ? new ZstdStream(manifestProtoStream)
-                           : manifestProtoStream)
+                                 ? new ZstdStream(manifestProtoStream)
+                                 : manifestProtoStream)
                 {
                     return await Task<SophonManifestProto>.Factory.StartNew(
                         () => SophonManifestProto.Parser.ParseFrom(decompressedProtoStream),

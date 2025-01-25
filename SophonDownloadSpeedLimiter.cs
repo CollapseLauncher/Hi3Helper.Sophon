@@ -13,7 +13,7 @@ namespace Hi3Helper.Sophon
         // ReSharper disable once MemberCanBePrivate.Global
         internal long? InitialRequestedSpeed { get; set; }
         private EventHandler<long> InnerListener { get; set; }
-        internal int CurrentChunkProcessing = 0;
+        internal int CurrentChunkProcessing;
 
         private SophonDownloadSpeedLimiter(long initialRequestedSpeed)
         {
@@ -26,7 +26,7 @@ namespace Hi3Helper.Sophon
         /// <param name="initialSpeed">The initial speed to be requested</param>
         /// <returns>An instance of the speed limiter</returns>
         public static SophonDownloadSpeedLimiter CreateInstance(long initialSpeed)
-            => new SophonDownloadSpeedLimiter(initialSpeed);
+            => new(initialSpeed);
 
         /// <summary>
         /// Get the listener for the parent event

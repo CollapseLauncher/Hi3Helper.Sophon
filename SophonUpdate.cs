@@ -20,10 +20,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 // ReSharper disable ArrangeObjectCreationWhenTypeEvident
-
 // ReSharper disable ConvertToUsingDeclaration
 // ReSharper disable UseAwaitUsing
-
 // ReSharper disable SuggestBaseTypeForParameter
 // ReSharper disable ForCanBeConvertedToForeach
 
@@ -77,8 +75,8 @@ namespace Hi3Helper.Sophon
                                                                      infoPairOld.ChunksInfo,
                                                                      infoPairNew.ManifestInfo,
                                                                      infoPairNew.ChunksInfo,
-                                                                     removeChunkAfterApply)
-                              .WithCancellation(token))
+                                                                     removeChunkAfterApply,
+                                                                     token: token))
             {
                 yield return asset;
             }
@@ -162,20 +160,20 @@ namespace Hi3Helper.Sophon
 
             Dictionary<string, int> oldAssetNameIdx = GetProtoAssetHashKvpSet(manifestFromProto, x => x.AssetName);
 
-            HashSet<string> oldAssetNameHashSet = new HashSet<string>(manifestFromProto.Assets.Select(x => x.AssetName));
-            HashSet<string> newAssetNameHashSet = new HashSet<string>(manifestToProto.Assets.Select(x => x.AssetName));
+            HashSet<string> oldAssetNameHashSet = [..manifestFromProto.Assets.Select(x => x.AssetName)];
+            HashSet<string> newAssetNameHashSet = [..manifestToProto.Assets.Select(x => x.AssetName)];
 
             foreach (AssetProperty newAssetProperty in manifestToProto.Assets.Where(x => {
                 // Try check both availabilities
                 bool isOldExist = oldAssetNameHashSet.Contains(x.AssetName);
                 bool isNewExist = newAssetNameHashSet.Contains(x.AssetName);
 
-                // If it was exist on old version but no longer exist on new version, return false
+                // If it was existed on old version but no longer exist on new version, return false
                 if (isOldExist && !isNewExist)
                     return false;
 
                 // If the file is new or actually already exist on both, return true. Otherwise, false
-                return (!isOldExist && isNewExist) || (isOldExist && isNewExist);
+                return (!isOldExist && isNewExist) || isOldExist;
             }))
             {
                 yield return GetPatchedTargetAsset(oldAssetNameIdx,
@@ -194,7 +192,7 @@ namespace Hi3Helper.Sophon
         ///     The <seealso cref="HttpClient" /> to be used to fetch the metadata information.
         /// </param>
         /// <param name="sophonAssetsEnumerable">
-        ///     The enumerable of the asset. Use this as an extension of these methods:<br/>
+        ///     The enumeration of the asset. Use this as an extension of these methods:<br/>
         ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonChunkManifestInfoPair, SophonChunkManifestInfoPair, bool, CancellationToken)"/><br/>
         ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonManifestInfo, SophonChunksInfo, SophonManifestInfo, SophonChunksInfo, bool, CancellationToken)"/>
         /// </param>
@@ -244,10 +242,10 @@ namespace Hi3Helper.Sophon
 
         /// <summary>
         ///     Get the calculated diff size of an update between the old and new manifest.
-        ///     Use this as an extension of any <seealso cref="IEnumerable{T}"/> where <typeparamref name="T"/> is <seealso cref="SophonAsset"/>.
+        ///     Use this as an extension of any <seealso cref="IEnumerable{T}"/> member where <typeparamref name="T"/> is <seealso cref="SophonAsset"/>.
         /// </summary>
         /// <param name="sophonAssetsEnumerable">
-        ///     The enumerable of the asset.
+        ///     The enumeration of the asset.
         /// </param>
         /// <param name="isGetDecompressSize">
         ///     Determine whether to get the decompressed or compressed size of the diff files.

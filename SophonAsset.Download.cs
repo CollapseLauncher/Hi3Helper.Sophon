@@ -15,6 +15,7 @@ using System.Threading.Tasks.Dataflow;
 #endif
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
+// ReSharper disable AccessToModifiedClosure
 
 // ReSharper disable ConvertIfStatementToNullCoalescingAssignment
 // ReSharper disable UseAwaitUsing
