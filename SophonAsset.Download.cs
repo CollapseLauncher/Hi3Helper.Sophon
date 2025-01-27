@@ -13,14 +13,16 @@ using System.Threading.Tasks;
 #if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
 #endif
-using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
-using ZstdStream = ZstdNet.DecompressionStream;
-// ReSharper disable AccessToModifiedClosure
 
+// ReSharper disable AccessToModifiedClosure
 // ReSharper disable ConvertIfStatementToNullCoalescingAssignment
 // ReSharper disable UseAwaitUsing
 // ReSharper disable InvalidXmlDocComment
 // ReSharper disable IdentifierTypo
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
+using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon
 {

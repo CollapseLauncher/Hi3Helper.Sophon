@@ -13,13 +13,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using ZstdStream = ZstdNet.DecompressionStream;
 // ReSharper disable UseCollectionExpression
 // ReSharper disable IdentifierTypo
 // ReSharper disable CommentTypo
 // ReSharper disable ConvertToUsingDeclaration
+// ReSharper disable IdentifierTypo
+// ReSharper disable EntityNameCapturedOnly.Global
 
-// ReSharper disable once IdentifierTypo
+using ZstdStream = ZstdNet.DecompressionStream;
+
 namespace Hi3Helper.Sophon.Helper
 {
     internal static class Extension
