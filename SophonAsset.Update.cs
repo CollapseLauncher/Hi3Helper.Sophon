@@ -253,22 +253,32 @@ namespace Hi3Helper.Sophon
 
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName && outputNewTempFileInfo.Exists)
             {
-                string newPathDir = Path.GetDirectoryName(outputNewFileInfo.FullName);
-
-                if (!string.IsNullOrEmpty(newPathDir) && !Directory.Exists(newPathDir))
+                if (outputNewFileInfo.Directory is { Exists: false })
                 {
-                    Directory.CreateDirectory(newPathDir);
+                    // Always create directory, no matter when the directory actually exist or not
+                    outputNewFileInfo.Directory.Create();
                 }
 
-            #if NET6_0_OR_GREATER
-                outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
-            #else
-                outputNewFileInfo.Delete();
-                outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName);
-            #endif
+                // Refresh temp and current file info
+                outputNewTempFileInfo.Refresh();
+                outputNewFileInfo.Refresh();
+
+                // Trust issue: Double check using .NET's File.Exists() to ensure the file is actually exist due to
+                // possible multiple file access
+                if (File.Exists(outputNewTempFileInfo.FullName))
+                {
+                #if NET6_0_OR_GREATER
+                    outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
+                #else
+                    if (outputNewFileInfo.Exists)
+                        outputNewFileInfo.Delete();
+
+                    outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName);
+                #endif
+                }
             }
 
-        #if DEBUG
+#if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
         #endif
             downloadCompleteDelegate?.Invoke(this);
