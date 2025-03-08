@@ -16,7 +16,7 @@
 		<Description>Hi3Helper.Sophon is a tool used by Collapse Launcher project to deserialize and download files using a new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</Description>
 		<PackageProjectUrl>https://github.com/CollapseLauncher/Hi3Helper.Sophon</PackageProjectUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<Copyright>Copyright (c) 2024 Collapse Project Team, Kemal Setya Adhi (neon-nyan)</Copyright>
+		<Copyright>Copyright (c) 2024-2025 Collapse Project Team, Kemal Setya Adhi (neon-nyan)</Copyright>
 		<Authors>neon-nyan</Authors>
 		<PackageIcon>icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
