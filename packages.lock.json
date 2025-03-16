@@ -5,8 +5,8 @@
       "Google.Protobuf": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "3.30.0",
-        "contentHash": "ZnEI4oZWnHvd+Yz5Gcnx5Q5RQIuzptIzd0fmxAN8f81FYHI0USZqMOrPTkrsd/QEzo9vl2b217v9FqFgHfufQw=="
+        "resolved": "3.30.1",
+        "contentHash": "HeWXDQBabQn/sCGicbeLJ0HMunknfC4FdLrOQOsaMJHcpqx3HVIpyyJqTrqJlWnza870twhOb+rBcaTiC/TlNA=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
@@ -22,7 +22,7 @@
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[9.0.3, )",
+        "requested": "[*, )",
         "resolved": "9.0.3",
         "contentHash": "BrMGzDRLz410PE4qC8UeKeAc0hFRjBkiCUOLTwuod65NAjqg5tDNqYU7gP0A09taEXtecB+HJc1NNnnTjsKFAQ=="
       }
