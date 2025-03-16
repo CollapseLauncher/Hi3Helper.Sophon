@@ -22,7 +22,7 @@
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[*, )",
+        "requested": "[9.0.3, )",
         "resolved": "9.0.3",
         "contentHash": "BrMGzDRLz410PE4qC8UeKeAc0hFRjBkiCUOLTwuod65NAjqg5tDNqYU7gP0A09taEXtecB+HJc1NNnnTjsKFAQ=="
       }
