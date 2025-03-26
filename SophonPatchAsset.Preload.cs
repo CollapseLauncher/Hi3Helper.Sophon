@@ -88,11 +88,15 @@ namespace Hi3Helper.Sophon
             bool isPatchUnmatched = fileStream.Length != PatchSize;
             if (forceVerification)
             {
-                isPatchUnmatched = !await patchAsChunk.CheckChunkXxh64HashAsync(PatchNameSource,
-                                                                              fileStream,
-                                                                              patchHash,
-                                                                              true,
-                                                                              token);
+                isPatchUnmatched = patchHash.Length > 8 ?
+                    !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
+                                                               true,
+                                                               token) :
+                    !await patchAsChunk.CheckChunkXxh64HashAsync(PatchNameSource,
+                                                                 fileStream,
+                                                                 patchHash,
+                                                                 true,
+                                                                 token);
 
                 if (isPatchUnmatched)
                 {
