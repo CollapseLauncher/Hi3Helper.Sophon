@@ -44,12 +44,12 @@ namespace Hi3Helper.Sophon
         public long              TargetFileSize   { get; set; }
 
 #nullable enable
-        public async Task DownloadPreloadPatch(HttpClient client,
-                                               string patchOutputDir,
-                                               bool forceVerification = false,
-                                               Action<long>? downloadReadDelegate = null,
-                                               SophonDownloadSpeedLimiter? downloadSpeedLimiter = null,
-                                               CancellationToken token = default)
+        public async Task DownloadPatch(HttpClient client,
+                                        string patchOutputDir,
+                                        bool forceVerification = false,
+                                        Action<long>? downloadReadDelegate = null,
+                                        SophonDownloadSpeedLimiter? downloadSpeedLimiter = null,
+                                        CancellationToken token = default)
         {
             // Ignore SophonPatchMethod.Remove and SophonPatchMethod.DownloadOver assets
             if (PatchMethod is SophonPatchMethod.Remove or SophonPatchMethod.DownloadOver)

@@ -295,18 +295,18 @@ namespace SophonUpdatePreload
 
                                 if (isPreloadMode)
                                 {
-                                    await asset.DownloadPreloadPatch(client,
-                                                                     patchesDir,
-                                                                     true,
-                                                                     (downloadRead) =>
-                                                                     {
-                                                                         Interlocked.Add(ref currentRead, downloadRead);
-                                                                         string sizeUnit = SummarizeSizeSimple(currentRead);
-                                                                         string speedUnit = SummarizeSizeSimple(currentRead / stopwatch.Elapsed.TotalSeconds);
-                                                                         Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} ({speedUnit}/s)    \r");
-                                                                     },
-                                                                     null,
-                                                                     tokenSource.Token);
+                                    await asset.DownloadPatch(client,
+                                                              patchesDir,
+                                                              true,
+                                                              (downloadRead) =>
+                                                              {
+                                                                  Interlocked.Add(ref currentRead, downloadRead);
+                                                                  string sizeUnit = SummarizeSizeSimple(currentRead);
+                                                                  string speedUnit = SummarizeSizeSimple(currentRead / stopwatch.Elapsed.TotalSeconds);
+                                                                  Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} ({speedUnit}/s)    \r");
+                                                              },
+                                                              null,
+                                                              tokenSource.Token);
                                 }
                                 else
                                 {
