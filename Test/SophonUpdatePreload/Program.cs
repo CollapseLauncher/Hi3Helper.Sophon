@@ -4,14 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-#if NET6_0_OR_GREATER
 using System.Net;
-#endif
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using Hi3Helper.Sophon;
+using System.Linq;
 
 // ReSharper disable IdentifierTypo
 
@@ -27,6 +26,7 @@ namespace SophonUpdatePreload
         {
             string executableName = Process.GetCurrentProcess().ProcessName + ".exe";
             Console.WriteLine($"{executableName} [Preload/Update] [Sophon Build URL From] [Sophon Build URL To] [Matching field name (usually, you can set \"game\" as the value)] [Old Directory Path] [New Directory Path] [OPTIONAL: Amount of threads to be used (Default: {Environment.ProcessorCount})] [OPTIONAL: Amount of max. connection used for Http Client (Default: 128)]");
+            Console.WriteLine($"{executableName} [PreloadPatch/UpdatePatch] [Sophon Patch URL] [ScatteredFiles URL] [Matching field name (usually, you can set \"game\" as the value)] [Version to update from (For example: \"5.4.0\"] [Old Directory Path] [New Directory Path] [OPTIONAL: Amount of threads to be used (Default: {Environment.ProcessorCount})] [OPTIONAL: Amount of max. connection used for Http Client (Default: 128)]");
             return 1;
         }
 
@@ -36,11 +36,18 @@ namespace SophonUpdatePreload
             int maxHttpHandle = 128;
 
             bool isPreloadMode;
+            _cancelMessage = "[\"C\"] Stop or [\"R\"] Restart";
+
+            if (args.Length != 0 && args[0].EndsWith("Patch", StringComparison.OrdinalIgnoreCase))
+                return await RunPatchMode(args);
 
             if (args.Length < 6)
                 return UsageHelp();
 
-            if (!((isPreloadMode = args[0].Equals("Preload", StringComparison.OrdinalIgnoreCase)) || args[0].Equals("Update", StringComparison.OrdinalIgnoreCase)))
+            if (!((isPreloadMode = args[0].Equals("Preload", StringComparison.OrdinalIgnoreCase)) ||
+                args[0].Equals("Update", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("PreloadPatch", StringComparison.OrdinalIgnoreCase) ||
+                args[0].Equals("UpdatePatch", StringComparison.OrdinalIgnoreCase)))
                 return UsageHelp();
 
             if (args.Length > 6 && int.TryParse(args[6], out threads))
@@ -56,7 +63,6 @@ namespace SophonUpdatePreload
         StartDownload:
             using (CancellationTokenSource tokenSource = new CancellationTokenSource())
             {
-                _cancelMessage = "[\"C\"] Stop or [\"R\"] Restart";
                 using (HttpClientHandler httpHandler = new HttpClientHandler
                 {
                     MaxConnectionsPerServer = maxHttpHandle
@@ -179,6 +185,145 @@ namespace SophonUpdatePreload
                         foreach (SophonAsset asset in sophonAssets)
                         {
                             await downloadTaskQueues.SendAsync(new Tuple<SophonAsset, HttpClient>(asset, httpClient), tokenSource.Token);
+                        }
+
+                        downloadTaskQueues.Complete();
+                        await downloadTaskQueues.Completion;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Console.WriteLine("Download has been cancelled!");
+                    }
+                    finally
+                    {
+                        stopwatch.Stop();
+                    }
+                }
+            }
+
+            if (_isRetry)
+                goto StartDownload;
+
+            return 0;
+        }
+
+        private static async Task<int> RunPatchMode(string[] args)
+        {
+            int threads = Environment.ProcessorCount;
+            int maxHttpHandle = 128;
+
+            if (args.Length > 7 && int.TryParse(args[7], out threads))
+                Console.WriteLine($"Thread count has been set to: {threads} for downloading!");
+
+            if (args.Length > 8 && int.TryParse(args[8], out maxHttpHandle))
+                Console.WriteLine($"HTTP Client maximum connection has been set to: {maxHttpHandle} handles!");
+
+            if (args.Length < 7)
+                return UsageHelp();
+
+            string oldDir = args[5];
+            string newDir = args[6];
+            string patchesDir = Path.Combine(oldDir, "chunk_collapse");
+
+            string sophonPatchUrl = args[1];
+            string scatteredFilesUrl = args[2];
+            string sophonMatchingField = args[3];
+            string sophonVersionUpdateFrom = args[4];
+
+            Logger.LogHandler += Logger_LogHandler;
+
+
+            StartDownload:
+            using (CancellationTokenSource tokenSource = new CancellationTokenSource())
+            using (HttpClientHandler httpHandler = new HttpClientHandler())
+            {
+                httpHandler.MaxConnectionsPerServer = maxHttpHandle;
+                using (HttpClient httpClient = new HttpClient(httpHandler))
+                {
+                    SophonChunkManifestInfoPair patchInfoPair = await SophonPatch.CreateSophonChunkManifestInfoPair(httpClient, sophonPatchUrl, sophonVersionUpdateFrom, sophonMatchingField, tokenSource.Token);
+
+                    if (!patchInfoPair.IsFound)
+                    {
+                        Console.Error.WriteLine($"An error has occurred! -> ({patchInfoPair.ReturnCode}) {patchInfoPair.ReturnMessage}");
+                        return patchInfoPair.ReturnCode;
+                    }
+
+                    long currentRead = 0;
+                    _ = Task.Run(() => AppExitKeyTrigger(tokenSource));
+
+                    List<SophonPatchAsset> patchAssetList = new();
+                    await foreach (SophonPatchAsset patchAsset in SophonPatch.EnumerateUpdateAsync(httpClient,
+                                       patchInfoPair,
+                                       sophonVersionUpdateFrom,
+                                       scatteredFilesUrl,
+                                       null,
+                                       tokenSource.Token))
+                    {
+                        patchAssetList.Add(patchAsset);
+                    }
+
+                    long totalAssetSize = patchAssetList
+                        .Where(x => x.PatchMethod != SophonPatchMethod.Remove)
+                        .Sum(x => x.TargetFileSize);
+
+                    long totalAssetPatchSize = patchAssetList
+                        .Where(x => x.PatchMethod != SophonPatchMethod.Remove && x.PatchMethod != SophonPatchMethod.DownloadOver)
+                        .Sum(x => x.PatchChunkLength);
+
+                    string totalAssetPatchSizeUnit = SummarizeSizeSimple(totalAssetPatchSize);
+
+                    Debug.Assert(totalAssetPatchSize == patchInfoPair.ChunksInfo.TotalCompressedSize);
+
+                    bool isPreloadMode = args[0].Equals("PreloadPatch", StringComparison.OrdinalIgnoreCase);
+                    Stopwatch stopwatch = Stopwatch.StartNew();
+
+                    _isRetry = false;
+
+                    try
+                    {
+                        ActionBlock<Tuple<SophonPatchAsset, HttpClient>> downloadTaskQueues = new(
+                            async ctx =>
+                            {
+                                SophonPatchAsset asset = ctx.Item1;
+                                HttpClient client = ctx.Item2;
+
+                                string outputAssetPath = Path.Combine(newDir, asset.TargetFilePath);
+                                string outputAssetDir = Path.GetDirectoryName(outputAssetPath);
+
+                                if (!string.IsNullOrEmpty(outputAssetDir))
+                                    Directory.CreateDirectory(outputAssetDir);
+
+                                if (isPreloadMode)
+                                {
+                                    await asset.DownloadPreloadPatch(client,
+                                                                     patchesDir,
+                                                                     true,
+                                                                     (downloadRead) =>
+                                                                     {
+                                                                         Interlocked.Add(ref currentRead, downloadRead);
+                                                                         string sizeUnit = SummarizeSizeSimple(currentRead);
+                                                                         string speedUnit = SummarizeSizeSimple(currentRead / stopwatch.Elapsed.TotalSeconds);
+                                                                         Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} ({speedUnit}/s)    \r");
+                                                                     },
+                                                                     null,
+                                                                     tokenSource.Token);
+                                }
+                                else
+                                {
+                                    // TODO: Implement patching
+                                }
+                            },
+                            new ExecutionDataflowBlockOptions
+                            {
+                                CancellationToken = tokenSource.Token,
+                                MaxDegreeOfParallelism = threads,
+                                MaxMessagesPerTask = threads
+                            });
+
+                        foreach (SophonPatchAsset asset in patchAssetList
+                            .EnsureOnlyGetDedupPatchAssets())
+                        {
+                            await downloadTaskQueues.SendAsync(new Tuple<SophonPatchAsset, HttpClient>(asset, httpClient), tokenSource.Token);
                         }
 
                         downloadTaskQueues.Complete();

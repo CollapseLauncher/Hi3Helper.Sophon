@@ -1,8 +1,11 @@
-﻿using Hi3Helper.Sophon.Infos;
-using Hi3Helper.Sophon.Protos;
+﻿using Google.Protobuf;
+using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
+#if NETSTANDARD2_0_OR_GREATER
+using System.Collections.Generic;
+#endif
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
@@ -29,7 +32,7 @@ namespace Hi3Helper.Sophon.Helper
         private static readonly object This = new();
 
 #if !NET5_0_OR_GREATER
-        private static readonly byte[] _lookupFromHexTable = new byte[] {
+        private static readonly byte[] LookupFromHexTable = new byte[] {
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -43,7 +46,7 @@ namespace Hi3Helper.Sophon.Helper
             13,  14,  15
         };
 
-        private static readonly byte[] _lookupFromHexTable16 = new byte[] {
+        private static readonly byte[] LookupFromHexTable16 = new byte[] {
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -59,7 +62,7 @@ namespace Hi3Helper.Sophon.Helper
 
         internal static unsafe byte[] HexToBytes(ReadOnlySpan<char> source)
         {
-            if (source.IsEmpty) return new byte[0];
+            if (source.IsEmpty) return Array.Empty<byte>();
             if (source.Length % 2 == 1) throw new ArgumentException();
 
             int index = 0;
@@ -78,11 +81,10 @@ namespace Hi3Helper.Sophon.Helper
                     len -= 1;
                 }
 
-                byte add = 0;
                 byte[] result = new byte[len];
 
-                fixed (byte* hiRef = _lookupFromHexTable16)
-                fixed (byte* lowRef = _lookupFromHexTable)
+                fixed (byte* hiRef = LookupFromHexTable16)
+                fixed (byte* lowRef = LookupFromHexTable)
                 fixed (byte* resultRef = result)
                 {
                     char* s = &sourceRef[index];
@@ -90,6 +92,7 @@ namespace Hi3Helper.Sophon.Helper
 
                     while (*s != 0)
                     {
+                        byte add;
                         if (*s > 102 || (*r = hiRef[*s++]) == 255 || *s > 102 || (add = lowRef[*s++]) == 255)
                         {
                             throw new ArgumentException();
@@ -188,7 +191,7 @@ namespace Hi3Helper.Sophon.Helper
 #else
             Task<bool>
 #endif
-            CheckChunkXxh64HashAsync(this SophonChunk chunk, SophonAsset asset, Stream outStream, byte[] chunkXxh64Hash,
+            CheckChunkXxh64HashAsync(this SophonChunk chunk, string assetName, Stream outStream, byte[] chunkXxh64Hash,
                                      bool isSingularStream, CancellationToken token)
         {
             try
@@ -207,9 +210,9 @@ namespace Hi3Helper.Sophon.Helper
 
                 return isHashMatch;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!token.IsCancellationRequested)
             {
-                This.PushLogWarning($"An error occurred while checking XXH64 hash for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {asset.AssetName}\r\n{ex}");
+                This.PushLogWarning($"An error occurred while checking XXH64 hash for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {assetName}\r\n{ex}");
                 return false;
             }
         }
@@ -291,17 +294,17 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static bool TryGetChunkXxh64Hash(this SophonChunk chunk, out byte[] outHash)
+        internal static bool TryGetChunkXxh64Hash(this string fileName, out byte[] outHash)
         {
 #if NET8_0_OR_GREATER
             outHash = null;
             Span<Range> ranges = stackalloc Range[2];
-            if (chunk.ChunkName.AsSpan().Split(ranges, '_') != 2)
+            if (fileName.AsSpan().Split(ranges, '_') != 2)
             {
                 return false;
             }
 
-            ReadOnlySpan<char> nameSpan = chunk.ChunkName.AsSpan();
+            ReadOnlySpan<char> nameSpan = fileName.AsSpan();
             ReadOnlySpan<char> chunkXxh64Hash = nameSpan[ranges[0]];
 
             if (chunkXxh64Hash.Length != 16)
@@ -313,7 +316,7 @@ namespace Hi3Helper.Sophon.Helper
             return true;
 #else
             outHash = null;
-            string[] splits = chunk.ChunkName.Split('_');
+            string[] splits = fileName.Split('_');
             if (splits.Length != 2)
                 return false;
 
@@ -426,7 +429,15 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static async Task<SophonManifestProto> ReadProtoFromManifestInfo(this HttpClient httpClient, SophonManifestInfo manifestInfo, CancellationToken innerToken)
+#if NETSTANDARD2_0_OR_GREATER
+        internal static HashSet<T> ToHashSet<T>(this IEnumerable<T> enumerable) => new HashSet<T>(enumerable);
+#endif
+
+        internal static async Task<T> ReadProtoFromManifestInfo<T>(this HttpClient httpClient,
+                                                                   SophonManifestInfo manifestInfo,
+                                                                   MessageParser<T> messageParser,
+                                                                   CancellationToken innerToken)
+            where T : IMessage<T>
         {
             using (HttpResponseMessage httpResponseMessage = await httpClient.GetAsync(
                 manifestInfo.ManifestFileUrl,
@@ -452,8 +463,8 @@ namespace Hi3Helper.Sophon.Helper
                                  ? new ZstdStream(manifestProtoStream)
                                  : manifestProtoStream)
                 {
-                    return await Task<SophonManifestProto>.Factory.StartNew(
-                        () => SophonManifestProto.Parser.ParseFrom(decompressedProtoStream),
+                    return await Task<T>.Factory.StartNew(
+                        () => messageParser.ParseFrom(decompressedProtoStream),
                         innerToken,
                         TaskCreationOptions.DenyChildAttach,
                         TaskScheduler.Default);

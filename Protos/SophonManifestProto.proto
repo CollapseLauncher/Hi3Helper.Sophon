@@ -4,23 +4,23 @@ package Hi3Helper.Sophon.Protos;
 
 message SophonManifestProto
 {
-    repeated    AssetProperty   Assets                      = 1;
+    repeated SophonManifestAssetProperty Assets = 1;
 }
 
-message AssetProperty
+message SophonManifestAssetProperty
 {
-                string          AssetName                   = 1;
-    repeated    AssetChunk      AssetChunks                 = 2;
-                int32           AssetType                   = 3;
-                int64           AssetSize                   = 4;
-                string          AssetHashMd5                = 5;
+             string                   AssetName    = 1;
+    repeated SophonManifestAssetChunk AssetChunks  = 2;
+             int32                    AssetType    = 3;
+             int64                    AssetSize    = 4;
+             string                   AssetHashMd5 = 5;
 }
 
-message AssetChunk
+message SophonManifestAssetChunk
 {
-                string          ChunkName                   = 1;
-                string          ChunkDecompressedHashMd5    = 2;
-                int64           ChunkOnFileOffset           = 3;
-                int64           ChunkSize                   = 4;
-                int64           ChunkSizeDecompressed       = 5;
+    string ChunkName                = 1;
+    string ChunkDecompressedHashMd5 = 2;
+    int64  ChunkOnFileOffset        = 3;
+    int64  ChunkSize                = 4;
+    int64  ChunkSizeDecompressed    = 5;
 }

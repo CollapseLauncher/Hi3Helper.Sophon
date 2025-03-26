@@ -178,42 +178,41 @@ namespace Hi3Helper.Sophon
             {
                 Interlocked.Increment(ref _currentChunksDownloadPos);
                 Interlocked.Increment(ref _currentChunksDownloadQueue);
-                using (FileStream fileStream = chunkFilePathHashedFileInfo
-                          .Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite))
+                using FileStream fileStream = chunkFilePathHashedFileInfo
+                    .Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+                bool isChunkUnmatch  = fileStream.Length != chunk.ChunkSize;
+                bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
+                if (forceVerification || !isChunkVerified)
                 {
-                    bool isChunkUnmatch  = fileStream.Length != chunk.ChunkSize;
-                    bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
-                    if (forceVerification || !isChunkVerified)
+                    isChunkUnmatch = !(chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] hash)
+                                       && await chunk.CheckChunkXxh64HashAsync(AssetName, fileStream, hash, true,
+                                           token));
+                    if (File.Exists(chunkFileCheckedPath))
                     {
-                        isChunkUnmatch = !(chunk.TryGetChunkXxh64Hash(out byte[] hash)
-                                           && await chunk.CheckChunkXxh64HashAsync(this, fileStream, hash, true,
-                                                    token));
-                        if (File.Exists(chunkFileCheckedPath))
-                        {
-                            File.Delete(chunkFileCheckedPath);
-                        }
+                        File.Delete(chunkFileCheckedPath);
                     }
-
-                    if (!isChunkUnmatch)
-                    {
-#if DEBUG
-                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-#endif
-                        writeInfoDelegate?.Invoke(chunk.ChunkSize);
-                        downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
-                        if (!File.Exists(chunkFileCheckedPath))
-                        {
-                            File.Create(chunkFileCheckedPath).Dispose();
-                        }
-
-                        return;
-                    }
-
-                    fileStream.Position = 0;
-                    await InnerWriteChunkCopyAsync(client,               fileStream, chunk, token, writeInfoDelegate,
-                                                   downloadInfoDelegate, downloadSpeedLimiter);
-                    File.Create(chunkFileCheckedPath).Dispose();
                 }
+
+                if (!isChunkUnmatch)
+                {
+#if DEBUG
+                    this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+#endif
+                    writeInfoDelegate?.Invoke(chunk.ChunkSize);
+                    downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
+                    if (!File.Exists(chunkFileCheckedPath))
+                    {
+                        File.Create(chunkFileCheckedPath).Dispose();
+                    }
+
+                    return;
+                }
+
+                fileStream.Position = 0;
+                await InnerWriteChunkCopyAsync(client, fileStream, chunk, token, writeInfoDelegate,
+                    downloadInfoDelegate, downloadSpeedLimiter);
+                File.Create(chunkFileCheckedPath).Dispose();
             }
             finally
             {
@@ -351,10 +350,10 @@ namespace Hi3Helper.Sophon
                         Stream checkHashStream = outStream;
 
                         bool isHashVerified;
-                        if (chunk.TryGetChunkXxh64Hash(out byte[] outHash))
+                        if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
-                                await chunk.CheckChunkXxh64HashAsync(this, checkHashStream, outHash, true,
+                                await chunk.CheckChunkXxh64HashAsync(AssetName, checkHashStream, outHash, true,
                                                                      cooperatedToken.Token);
                         }
                         else

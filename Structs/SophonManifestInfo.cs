@@ -7,12 +7,12 @@ namespace Hi3Helper.Sophon.Infos
 {
     public class SophonManifestInfo
     {
-        public string ManifestBaseUrl;
-        public string ManifestId;
-        public string ManifestChecksumMd5;
-        public bool   IsUseCompression;
-        public long   ManifestSize;
-        public long   ManifestCompressedSize;
+        public string ManifestBaseUrl        { get; internal set; }
+        public string ManifestId             { get; internal set; }
+        public string ManifestChecksumMd5    { get; internal set; }
+        public bool   IsUseCompression       { get; internal set; }
+        public long   ManifestSize           { get; internal set; }
+        public long   ManifestCompressedSize { get; internal set; }
 
         public string ManifestFileUrl => ManifestBaseUrl.TrimEnd('/') + '/' + ManifestId;
     }
@@ -23,7 +23,7 @@ namespace Hi3Helper.Sophon
     public static partial class SophonManifest
     {
         /// <summary>
-        ///     Create Sophon manifest information. Please refer the API response to set the argument value.
+        ///     Create Sophon Build Manifest Information. Please refer the API response to set the argument value.
         /// </summary>
         /// <param name="manifestBaseUrl">
         ///     The base URL for the manifest. To find the value, See the API section called: <c>manifest_download</c> ->
@@ -47,15 +47,15 @@ namespace Hi3Helper.Sophon
         ///     The compressed size of the manifest file. To find the value, See the API section called: <c>stats</c> ->
         ///     <c>compressed_size</c>
         /// </param>
-        /// <returns>Sophon Manifest Information struct</returns>
+        /// <returns>Sophon Manifest Build Information instance</returns>
         public static SophonManifestInfo CreateManifestInfo(string manifestBaseUrl,
                                                             string manifestChecksumMd5,
                                                             string manifestId,
                                                             bool   isUseCompression,
                                                             long   manifestSize,
                                                             long   manifestCompressedSize = 0)
-        {
-            return new SophonManifestInfo
+            =>
+            new()
             {
                 ManifestBaseUrl        = manifestBaseUrl,
                 ManifestChecksumMd5    = manifestChecksumMd5,
@@ -64,6 +64,5 @@ namespace Hi3Helper.Sophon
                 ManifestSize           = manifestSize,
                 ManifestCompressedSize = manifestCompressedSize
             };
-        }
     }
 }

@@ -1,9 +1,13 @@
 ﻿using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
+using System.Text.Json;
+#if NET6_0_OR_GREATER
+using System.Text.Json.Serialization.Metadata;
+#endif
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,37 +19,60 @@ namespace Hi3Helper.Sophon
     public static partial class SophonManifest
     {
         public static async
-            Task<SophonBranch>
-            GetSophonBranchInfo(HttpClient        client,
-                                string            url,
-                                CancellationToken token)
+            Task<T>
+            GetSophonBranchInfo<T>(
+                HttpClient client,
+                string url,
+#if NET6_0_OR_GREATER
+                JsonTypeInfo<T> jsonTypeInfo,
+#endif
+                HttpMethod httpMethod,
+                CancellationToken token = default)
         {
-        #if NET6_0_OR_GREATER
-            return await client.GetFromJsonAsync(url, SophonContext.Default.SophonBranch, token);
-        #elif NET45
-            JsonSerializer jsonSerializer = new JsonSerializer();
-            using (HttpRequestMessage requestMessage = new HttpRequestMessage(HttpMethod.Get, url))
-            using (HttpResponseMessage responseMessage =
-                await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, token))
-            using (Stream responseStream = await responseMessage.Content.ReadAsStreamAsync())
-            using (StreamReader streamReader = new StreamReader(responseStream))
-            using (JsonTextReader jsonTextReader = new JsonTextReader(streamReader))
-            {
-                return jsonSerializer.Deserialize<SophonBranch>(jsonTextReader);
-            }
-        #else
-            return await client.GetFromJsonAsync<SophonBranch>(url, token);
-        #endif
+            using HttpRequestMessage requestMessage = new HttpRequestMessage(httpMethod, url);
+            using HttpResponseMessage responseMessage = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, token);
+            responseMessage.EnsureSuccessStatusCode();
+
+#if NET6_0_OR_GREATER
+            await
+#endif
+            using Stream responseStream = await responseMessage.Content.ReadAsStreamAsync(
+#if NET6_0_OR_GREATER
+                token
+#endif
+                );
+
+#if NET6_0_OR_GREATER
+            return await JsonSerializer.DeserializeAsync(responseStream, jsonTypeInfo, token);
+#else
+            return (T)await JsonSerializer.DeserializeAsync(
+                utf8Json: responseStream,
+                returnType: typeof(T),
+                options: null,
+                cancellationToken: token
+                );
+#endif
         }
 
         public static async
             Task<SophonChunkManifestInfoPair>
             CreateSophonChunkManifestInfoPair(HttpClient        client,
                                               string            url,
-                                              string            matchingField,
-                                              CancellationToken token)
+                                              string            matchingField = null,
+                                              CancellationToken token         = default)
         {
-            var sophonBranch = await GetSophonBranchInfo(client, url, token);
+            var sophonBranch = await GetSophonBranchInfo
+#if !NET6_0_OR_GREATER
+                <SophonManifestBuildBranch>
+#endif
+                (client,
+                 url,
+#if NET6_0_OR_GREATER
+                 SophonContext.Default.SophonManifestBuildBranch,
+#endif
+                 HttpMethod.Get,
+                 token);
+
             if (sophonBranch.Data == null)
             {
                 return new SophonChunkManifestInfoPair
@@ -71,25 +98,19 @@ namespace Hi3Helper.Sophon
 
             return new SophonChunkManifestInfoPair
             {
-                ChunksInfo = new SophonChunksInfo
-                {
-                    ChunksBaseUrl       = sophonManifestIdentity.ChunksUrlInfo.UrlPrefix,
-                    ChunksCount         = sophonManifestIdentity.ChunkInfo.ChunkCount,
-                    FilesCount          = sophonManifestIdentity.ChunkInfo.FileCount,
-                    IsUseCompression    = sophonManifestIdentity.ChunksUrlInfo.IsCompressed,
-                    TotalSize           = sophonManifestIdentity.ChunkInfo.UncompressedSize,
-                    TotalCompressedSize = sophonManifestIdentity.ChunkInfo.CompressedSize
-                },
-                ManifestInfo = new SophonManifestInfo
-                {
-                    ManifestBaseUrl        = sophonManifestIdentity.ManifestUrlInfo.UrlPrefix,
-                    ManifestChecksumMd5    = sophonManifestIdentity.ManifestFileInfo.Checksum,
-                    ManifestId             = sophonManifestIdentity.ManifestFileInfo.FileName,
-                    ManifestSize           = sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
-                    ManifestCompressedSize = sophonManifestIdentity.ManifestFileInfo.CompressedSize,
-                    IsUseCompression       = sophonManifestIdentity.ManifestUrlInfo.IsCompressed
-                },
-                OtherSophonData = sophonBranch.Data
+                ChunksInfo = CreateChunksInfo(sophonManifestIdentity.ChunksUrlInfo.UrlPrefix,
+                                              sophonManifestIdentity.ChunkInfo.ChunkCount,
+                                              sophonManifestIdentity.ChunkInfo.FileCount,
+                                              sophonManifestIdentity.ChunksUrlInfo.IsCompressed,
+                                              sophonManifestIdentity.ChunkInfo.UncompressedSize,
+                                              sophonManifestIdentity.ChunkInfo.CompressedSize),
+                ManifestInfo = CreateManifestInfo(sophonManifestIdentity.ManifestUrlInfo.UrlPrefix,
+                                                  sophonManifestIdentity.ManifestFileInfo.Checksum,
+                                                  sophonManifestIdentity.ManifestFileInfo.FileName,
+                                                  sophonManifestIdentity.ManifestUrlInfo.IsCompressed,
+                                                  sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
+                                                  sophonManifestIdentity.ManifestFileInfo.CompressedSize),
+                OtherSophonBuildData = sophonBranch.Data
             };
         }
     }
