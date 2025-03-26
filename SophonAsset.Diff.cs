@@ -81,7 +81,7 @@ namespace Hi3Helper.Sophon
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
                 parallelOptions = new ParallelOptions
                 {
-                    CancellationToken      = default,
+                    CancellationToken      = CancellationToken.None,
                     MaxDegreeOfParallelism = maxChunksTask
                 };
             }
@@ -92,15 +92,8 @@ namespace Hi3Helper.Sophon
                 using CancellationTokenSource actionToken = new CancellationTokenSource();
                 using CancellationTokenSource linkedToken = CancellationTokenSource
                     .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken);
-                ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
-                    async chunk =>
-                    {
-                        await PerformWriteDiffChunksThreadAsync(client,
-                                chunkDirOutput, chunk, linkedToken.Token,
-                                writeInfoDelegate, downloadInfoDelegate, DownloadSpeedLimiter,
-                                forceVerification)
-                            .ConfigureAwait(false);
-                    },
+                ActionBlock<ValueTuple<SophonChunk, CancellationToken>> actionBlock = new(
+                    Impl,
                     new ExecutionDataflowBlockOptions
                     {
                         MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
@@ -116,29 +109,16 @@ namespace Hi3Helper.Sophon
                         return;
                     }
 
-                    await actionBlock.SendAsync(chunk, linkedToken.Token).ConfigureAwait(false);
+                    await actionBlock
+                        .SendAsync(new ValueTuple<SophonChunk, CancellationToken>(chunk, linkedToken.Token), linkedToken.Token)
+                        .ConfigureAwait(false);
                 }
 
                 actionBlock.Complete();
                 await actionBlock.Completion.ConfigureAwait(false);
 
 #else
-                await Parallel.ForEachAsync(Chunks, parallelOptions, async (chunk, threadToken) =>
-                                                                     {
-                                                                         if (chunk.ChunkOldOffset > -1)
-                                                                         {
-                                                                             return;
-                                                                         }
-
-                                                                         await PerformWriteDiffChunksThreadAsync(client,
-                                                                                      chunkDirOutput, chunk,
-                                                                                      threadToken,
-                                                                                      writeInfoDelegate,
-                                                                                      downloadInfoDelegate,
-                                                                                      DownloadSpeedLimiter,
-                                                                                      forceVerification)
-                                                                            .ConfigureAwait(false);
-                                                                     })
+                await Parallel.ForEachAsync(Chunks, parallelOptions, Impl)
                               .ConfigureAwait(false);
 #endif
             }
@@ -152,6 +132,34 @@ namespace Hi3Helper.Sophon
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
 #endif
             downloadCompleteDelegate?.Invoke(this);
+            return;
+
+#if NET6_0_OR_GREATER
+            async ValueTask Impl(SophonChunk chunk, CancellationToken threadToken)
+            {
+#else
+            async Task Impl(ValueTuple<SophonChunk, CancellationToken> ctx)
+            {
+                SophonChunk chunk = ctx.Item1;
+                CancellationToken threadToken = ctx.Item2;
+#endif
+
+                if (chunk.ChunkOldOffset > -1)
+                {
+                    return;
+                }
+
+
+                await PerformWriteDiffChunksThreadAsync(client,
+                        chunkDirOutput,
+                        chunk,
+                        writeInfoDelegate,
+                        downloadInfoDelegate,
+                        DownloadSpeedLimiter,
+                        forceVerification,
+                        threadToken)
+                    .ConfigureAwait(false);
+            }
         }
 
         private async
@@ -163,11 +171,11 @@ namespace Hi3Helper.Sophon
             PerformWriteDiffChunksThreadAsync(HttpClient                 client,
                                               string                     chunkDirOutput,
                                               SophonChunk                chunk,
-                                              CancellationToken          token,
                                               DelegateWriteStreamInfo    writeInfoDelegate,
                                               DelegateWriteDownloadInfo  downloadInfoDelegate,
                                               SophonDownloadSpeedLimiter downloadSpeedLimiter,
-                                              bool                       forceVerification)
+                                              bool                       forceVerification,
+                                              CancellationToken          token)
         {
             string   chunkNameHashed             = chunk.GetChunkStagingFilenameHash(this);
             string   chunkFilePathHashed         = Path.Combine(chunkDirOutput, chunkNameHashed);

@@ -119,13 +119,13 @@ namespace Hi3Helper.Sophon
             await InnerWriteChunkCopyAsync(client,
                                            fileStream,
                                            patchAsChunk,
-                                           token,
                                            writeInfoDelegate: null,
                                            downloadInfoDelegate: (_, y) =>
                                            {
                                                downloadReadDelegate?.Invoke(y);
                                            },
-                                           downloadSpeedLimiter: downloadSpeedLimiter);
+                                           downloadSpeedLimiter: downloadSpeedLimiter,
+                                           token: token);
         }
 
         private async
@@ -137,10 +137,10 @@ namespace Hi3Helper.Sophon
             InnerWriteChunkCopyAsync(HttpClient client,
                                      Stream outStream,
                                      SophonChunk chunk,
-                                     CancellationToken token,
                                      DelegateWriteStreamInfo? writeInfoDelegate,
                                      DelegateWriteDownloadInfo? downloadInfoDelegate,
-                                     SophonDownloadSpeedLimiter? downloadSpeedLimiter)
+                                     SophonDownloadSpeedLimiter? downloadSpeedLimiter,
+                                     CancellationToken token)
         {
             const int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
