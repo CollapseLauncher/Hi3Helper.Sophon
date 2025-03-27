@@ -51,7 +51,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
 		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
-		<PackageReference Include="SharpHDiffPatch.Core" Version="2.3.2" />
+		<PackageReference Include="SharpHDiffPatch.Core" Version="*" />
 		<PackageReference Include="System.Buffers" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 		<PackageReference Include="System.IO.Hashing" Version="*" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
