@@ -1,18 +1,19 @@
 ﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Hi3Helper.Sophon.Structs;
+// ReSharper disable IdentifierTypo
+// ReSharper disable CommentTypo
+// ReSharper disable AccessToModifiedClosure
+
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
-// ReSharper disable IdentifierTypo
 
 namespace Hi3Helper.Sophon
 {
@@ -27,29 +28,29 @@ namespace Hi3Helper.Sophon
     public partial class SophonPatchAsset
     {
         internal const int BufferSize = 256 << 10;
-        private const int ZstdBufferSize = 0; // Default
         
-        public SophonChunksInfo  PatchInfo        { get; set; }
-        public SophonPatchMethod PatchMethod      { get; set; }
-        public string            PatchNameSource  { get; set; }
-        public string            PatchHash        { get; set; }
-        public long              PatchOffset      { get; set; }
-        public long              PatchSize        { get; set; }
-        public long              PatchChunkLength { get; set; }
-        public string            OriginalFilePath { get; set; }
-        public string            OriginalFileHash { get; set; }
-        public long              OriginalFileSize { get; set; }
-        public string            TargetFilePath   { get; set; }
-        public string            TargetFileHash   { get; set; }
-        public long              TargetFileSize   { get; set; }
+        public SophonChunksInfo  PatchInfo                     { get; set; }
+        public SophonPatchMethod PatchMethod                   { get; set; }
+        public string            PatchNameSource               { get; set; }
+        public string            PatchHash                     { get; set; }
+        public long              PatchOffset                   { get; set; }
+        public long              PatchSize                     { get; set; }
+        public long              PatchChunkLength              { get; set; }
+        public string            OriginalFilePath              { get; set; }
+        public string            OriginalFileHash              { get; set; }
+        public long              OriginalFileSize              { get; set; }
+        public string            TargetFilePath                { get; set; }
+        public string            TargetFileDownloadOverBaseUrl { get; set; }
+        public string            TargetFileHash                { get; set; }
+        public long              TargetFileSize                { get; set; }
 
 #nullable enable
-        public async Task DownloadPatch(HttpClient client,
-                                        string patchOutputDir,
-                                        bool forceVerification = false,
-                                        Action<long>? downloadReadDelegate = null,
-                                        SophonDownloadSpeedLimiter? downloadSpeedLimiter = null,
-                                        CancellationToken token = default)
+        public async Task DownloadPatchAsync(HttpClient                  client,
+                                             string                      patchOutputDir,
+                                             bool                        forceVerification     = false,
+                                             Action<long>?               downloadReadDelegate  = null,
+                                             SophonDownloadSpeedLimiter? downloadSpeedLimiter  = null,
+                                             CancellationToken           token                 = default)
         {
             // Ignore SophonPatchMethod.Remove and SophonPatchMethod.DownloadOver assets
             if (PatchMethod is SophonPatchMethod.Remove or SophonPatchMethod.DownloadOver)
@@ -119,6 +120,8 @@ namespace Hi3Helper.Sophon
             await InnerWriteChunkCopyAsync(client,
                                            fileStream,
                                            patchAsChunk,
+                                           PatchInfo,
+                                           PatchInfo,
                                            writeInfoDelegate: null,
                                            downloadInfoDelegate: (_, y) =>
                                            {
@@ -129,18 +132,16 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-#if NET6_0_OR_GREATER
-            ValueTask
-#else
             Task
-#endif
-            InnerWriteChunkCopyAsync(HttpClient client,
-                                     Stream outStream,
-                                     SophonChunk chunk,
-                                     DelegateWriteStreamInfo? writeInfoDelegate,
-                                     DelegateWriteDownloadInfo? downloadInfoDelegate,
+            InnerWriteChunkCopyAsync(HttpClient                  client,
+                                     Stream                      outStream,
+                                     SophonChunk                 chunk,
+                                     SophonChunksInfo            currentSophonChunkInfo,
+                                     SophonChunksInfo            altSophonChunkInfo,
+                                     DelegateWriteStreamInfo?    writeInfoDelegate,
+                                     DelegateWriteDownloadInfo?  downloadInfoDelegate,
                                      SophonDownloadSpeedLimiter? downloadSpeedLimiter,
-                                     CancellationToken token)
+                                     CancellationToken           token)
         {
             const int retryCount = TaskExtensions.DefaultRetryAttempt;
             int currentRetry = 0;
@@ -198,8 +199,8 @@ namespace Hi3Helper.Sophon
                         outStream.Position = 0;
                         httpResponseMessage = await client.GetChunkAndIfAltAsync(
                              chunk.ChunkName,
-                             PatchInfo,
-                             PatchInfo,
+                             currentSophonChunkInfo,
+                             altSophonChunkInfo,
                              cooperatedToken.Token);
                         httpResponseStream = await httpResponseMessage
                                                   .EnsureSuccessStatusCode()

@@ -184,6 +184,23 @@ namespace Hi3Helper.Sophon.Helper
             => Convert.ToHexStringLower(bytes);
 #endif
 
+        internal static SophonChunk SophonPatchAssetAsChunk(this SophonPatchAsset asset, bool fromOriginalFile, bool fromTargetFile, bool isCompressed = false)
+        {
+            byte[] hash = HexToBytes((fromOriginalFile ? asset.OriginalFileHash : fromTargetFile ? asset.TargetFileHash : asset.PatchHash).AsSpan());
+            string fileName = fromOriginalFile ? asset.OriginalFilePath : fromTargetFile ? asset.TargetFilePath : asset.PatchNameSource;
+            long   fileSize = fromOriginalFile ? asset.OriginalFileSize : fromTargetFile ? asset.TargetFileSize : asset.PatchSize;
+
+            return new SophonChunk
+            {
+                ChunkHashDecompressed = hash,
+                ChunkName = fileName,
+                ChunkOffset = 0,
+                ChunkOldOffset = 0,
+                ChunkSize = fileSize,
+                ChunkSizeDecompressed = fileSize
+            };
+        }
+
 
         internal static async
 #if NET6_0_OR_GREATER
@@ -413,8 +430,7 @@ namespace Hi3Helper.Sophon.Helper
                 isDispose = true;
 
                 // Return another one from alt
-                return await httpClient.GetChunkAndIfAltAsync(
-                                                              chunkName,
+                return await httpClient.GetChunkAndIfAltAsync(chunkName,
                                                               altSophonChunkInfo,
                                                               null,
                                                               token);

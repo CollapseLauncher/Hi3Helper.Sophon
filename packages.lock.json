@@ -47,9 +47,9 @@
       },
       "SharpHDiffPatch.Core": {
         "type": "Direct",
-        "requested": "[2.3.1, )",
-        "resolved": "2.3.1",
-        "contentHash": "4mspGo3V2Xha7vs4dTNoI6KwyGC9o+TSh42IZdDgXCY/v5BUw0Py9/M6MTPX7Wbr8WqgqIsQPGu9hTK+81aDhw==",
+        "requested": "[2.3.2, )",
+        "resolved": "2.3.2",
+        "contentHash": "eHhgCafM9gD5UlFj/xkF8Hnm6BBm6loV8HE22BET8wE8VXKEQAqSux3nux7sm3xRbh+M+Y4OrNi6P3mOv4y7ow==",
         "dependencies": {
           "System.Buffers": "4.6.1",
           "System.Memory": "4.6.2",
@@ -215,9 +215,9 @@
       },
       "SharpHDiffPatch.Core": {
         "type": "Direct",
-        "requested": "[2.3.1, )",
-        "resolved": "2.3.1",
-        "contentHash": "4mspGo3V2Xha7vs4dTNoI6KwyGC9o+TSh42IZdDgXCY/v5BUw0Py9/M6MTPX7Wbr8WqgqIsQPGu9hTK+81aDhw==",
+        "requested": "[2.3.2, )",
+        "resolved": "2.3.2",
+        "contentHash": "eHhgCafM9gD5UlFj/xkF8Hnm6BBm6loV8HE22BET8wE8VXKEQAqSux3nux7sm3xRbh+M+Y4OrNi6P3mOv4y7ow==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.4",
           "ZstdSharp.Port": "0.8.5"
@@ -276,9 +276,9 @@
       },
       "SharpHDiffPatch.Core": {
         "type": "Direct",
-        "requested": "[2.3.1, )",
-        "resolved": "2.3.1",
-        "contentHash": "4mspGo3V2Xha7vs4dTNoI6KwyGC9o+TSh42IZdDgXCY/v5BUw0Py9/M6MTPX7Wbr8WqgqIsQPGu9hTK+81aDhw==",
+        "requested": "[2.3.2, )",
+        "resolved": "2.3.2",
+        "contentHash": "eHhgCafM9gD5UlFj/xkF8Hnm6BBm6loV8HE22BET8wE8VXKEQAqSux3nux7sm3xRbh+M+Y4OrNi6P3mOv4y7ow==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.4",
           "ZstdSharp.Port": "0.8.5"
@@ -323,9 +323,9 @@
       },
       "SharpHDiffPatch.Core": {
         "type": "Direct",
-        "requested": "[2.3.1, )",
-        "resolved": "2.3.1",
-        "contentHash": "4mspGo3V2Xha7vs4dTNoI6KwyGC9o+TSh42IZdDgXCY/v5BUw0Py9/M6MTPX7Wbr8WqgqIsQPGu9hTK+81aDhw==",
+        "requested": "[2.3.2, )",
+        "resolved": "2.3.2",
+        "contentHash": "eHhgCafM9gD5UlFj/xkF8Hnm6BBm6loV8HE22BET8wE8VXKEQAqSux3nux7sm3xRbh+M+Y4OrNi6P3mOv4y7ow==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.4",
           "ZstdSharp.Port": "0.8.5"

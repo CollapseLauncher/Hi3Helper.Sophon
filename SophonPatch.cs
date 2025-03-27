@@ -1,13 +1,15 @@
 ﻿using Hi3Helper.Sophon.Helper;
+using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Protos;
+using Hi3Helper.Sophon.Structs;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Hi3Helper.Sophon.Infos;
-using Hi3Helper.Sophon.Protos;
-using Hi3Helper.Sophon.Structs;
+
 #if NET6_0_OR_GREATER
 using ZstdNet;
 #endif
@@ -20,8 +22,10 @@ namespace Hi3Helper.Sophon
 {
     public static partial class SophonPatch
     {
+        private static object This = new object();
+
         /// <summary>
-        ///     Enumerate/Get the list of Sophon assets for update.
+        ///     Enumerate/Get the list of Sophon patches for update.
         /// </summary>
         /// <param name="httpClient">
         ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
@@ -79,7 +83,7 @@ namespace Hi3Helper.Sophon
 
 
         /// <summary>
-        ///     Enumerate/Get the list of Sophon assets for update.
+        ///     Enumerate/Get the list of Sophon patches for update.
         /// </summary>
         /// <param name="httpClient">
         ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
@@ -166,11 +170,12 @@ namespace Hi3Helper.Sophon
                 {
                     yield return new SophonPatchAsset
                     {
-                        PatchInfo      = chunksInfoDownloadOver,
-                        TargetFileHash = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize = patchAssetProperty.AssetSize,
-                        TargetFilePath = patchAssetProperty.AssetName,
-                        PatchMethod    = SophonPatchMethod.DownloadOver,
+                        PatchInfo                     = chunksInfoDownloadOver,
+                        TargetFileHash                = patchAssetProperty.AssetHashMd5,
+                        TargetFileSize                = patchAssetProperty.AssetSize,
+                        TargetFilePath                = patchAssetProperty.AssetName,
+                        TargetFileDownloadOverBaseUrl = downloadOverUrl,
+                        PatchMethod                   = SophonPatchMethod.DownloadOver,
                     };
                     continue;
                 }
@@ -179,35 +184,37 @@ namespace Hi3Helper.Sophon
                 {
                     yield return new SophonPatchAsset
                     {
-                        PatchInfo        = chunksInfo,
-                        PatchNameSource  = patchAssetInfo.Chunk.PatchName,
-                        PatchHash        = patchAssetInfo.Chunk.PatchMd5,
-                        PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
-                        PatchSize        = patchAssetInfo.Chunk.PatchSize,
-                        PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
-                        TargetFilePath   = patchAssetProperty.AssetName,
-                        TargetFileHash   = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize   = patchAssetProperty.AssetSize,
-                        PatchMethod      = SophonPatchMethod.CopyOver,
+                        PatchInfo                     = chunksInfo,
+                        PatchNameSource               = patchAssetInfo.Chunk.PatchName,
+                        PatchHash                     = patchAssetInfo.Chunk.PatchMd5,
+                        PatchOffset                   = patchAssetInfo.Chunk.PatchOffset,
+                        PatchSize                     = patchAssetInfo.Chunk.PatchSize,
+                        PatchChunkLength              = patchAssetInfo.Chunk.PatchLength,
+                        TargetFilePath                = patchAssetProperty.AssetName,
+                        TargetFileHash                = patchAssetProperty.AssetHashMd5,
+                        TargetFileSize                = patchAssetProperty.AssetSize,
+                        TargetFileDownloadOverBaseUrl = downloadOverUrl,
+                        PatchMethod                   = SophonPatchMethod.CopyOver,
                     };
                     continue;
                 }
 
                 yield return new SophonPatchAsset
                 {
-                    PatchInfo        = chunksInfo,
-                    PatchNameSource  = patchAssetInfo.Chunk.PatchName,
-                    PatchHash        = patchAssetInfo.Chunk.PatchMd5,
-                    PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
-                    PatchSize        = patchAssetInfo.Chunk.PatchSize,
-                    PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
-                    TargetFilePath   = patchAssetProperty.AssetName,
-                    TargetFileHash   = patchAssetProperty.AssetHashMd5,
-                    TargetFileSize   = patchAssetProperty.AssetSize,
-                    OriginalFilePath = patchAssetInfo.Chunk.OriginalFileName,
-                    OriginalFileSize = patchAssetInfo.Chunk.OriginalFileLength,
-                    OriginalFileHash = patchAssetInfo.Chunk.OriginalFileMd5,
-                    PatchMethod      = SophonPatchMethod.Patch,
+                    PatchInfo                     = chunksInfo,
+                    PatchNameSource               = patchAssetInfo.Chunk.PatchName,
+                    PatchHash                     = patchAssetInfo.Chunk.PatchMd5,
+                    PatchOffset                   = patchAssetInfo.Chunk.PatchOffset,
+                    PatchSize                     = patchAssetInfo.Chunk.PatchSize,
+                    PatchChunkLength              = patchAssetInfo.Chunk.PatchLength,
+                    TargetFilePath                = patchAssetProperty.AssetName,
+                    TargetFileHash                = patchAssetProperty.AssetHashMd5,
+                    TargetFileSize                = patchAssetProperty.AssetSize,
+                    TargetFileDownloadOverBaseUrl = downloadOverUrl,
+                    OriginalFilePath              = patchAssetInfo.Chunk.OriginalFileName,
+                    OriginalFileSize              = patchAssetInfo.Chunk.OriginalFileLength,
+                    OriginalFileHash              = patchAssetInfo.Chunk.OriginalFileMd5,
+                    PatchMethod                   = SophonPatchMethod.Patch,
                 };
             }
 
@@ -228,11 +235,36 @@ namespace Hi3Helper.Sophon
 
         public static IEnumerable<SophonPatchAsset> EnsureOnlyGetDedupPatchAssets(this IEnumerable<SophonPatchAsset> patchAssetEnumerable)
         {
-            HashSet<string> processedAsset = new();
+            HashSet<string> processedAsset = [];
             foreach (SophonPatchAsset asset in patchAssetEnumerable
-                .Where(x => processedAsset.Add(x.PatchNameSource)))
+                .Where(x => !string.IsNullOrEmpty(x.PatchNameSource) && processedAsset.Add(x.PatchNameSource)))
             {
                 yield return asset;
+            }
+        }
+
+        public static void RemovePatches(this IEnumerable<SophonPatchAsset> patchAssetEnumerable, string patchOutputDir)
+        {
+            foreach (SophonPatchAsset asset in patchAssetEnumerable
+                .EnsureOnlyGetDedupPatchAssets())
+            {
+                string patchFilePath = Path.Combine(patchOutputDir, asset.PatchNameSource);
+
+                try
+                {
+                    FileInfo fileInfo = new FileInfo(patchFilePath);
+                    if (fileInfo.Exists)
+                    {
+                        fileInfo.IsReadOnly = false;
+                        fileInfo.Refresh();
+                        fileInfo.Delete();
+                        This.PushLogDebug($"Removed patch file: {patchFilePath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    This.PushLogError($"Failed while trying to remove patch file: {patchFilePath} | {ex}");
+                }
             }
         }
     }

@@ -207,6 +207,28 @@ namespace SophonUpdatePreload
             return 0;
         }
 
+        private static string[] ParseMultipleMatchingFields(string matchingFieldSource)
+        {
+            if (string.IsNullOrEmpty(matchingFieldSource))
+            {
+                throw new ArgumentNullException(nameof(matchingFieldSource), "Matching field cannot be left undefined!");
+            }
+
+            // ReSharper disable once UseIndexFromEndExpression
+            if (matchingFieldSource[0] == '[' && matchingFieldSource[matchingFieldSource.Length - 1] == ']')
+            {
+                return ParseMultipleMatchingFieldsInner(matchingFieldSource);
+            }
+
+            return new[] { matchingFieldSource };
+        }
+
+        private static string[] ParseMultipleMatchingFieldsInner(string matchingFieldSource)
+        {
+            matchingFieldSource = matchingFieldSource.TrimStart('[').TrimEnd(']');
+            return matchingFieldSource.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        }
+
         private static async Task<int> RunPatchMode(string[] args)
         {
             int threads = Environment.ProcessorCount;
@@ -231,35 +253,50 @@ namespace SophonUpdatePreload
             string sophonVersionUpdateFrom = args[4];
 
             Logger.LogHandler += Logger_LogHandler;
+            bool isPreloadMode = args[0].Equals("PreloadPatch", StringComparison.OrdinalIgnoreCase);
 
-
-            StartDownload:
+        StartDownload:
             using (CancellationTokenSource tokenSource = new CancellationTokenSource())
             using (HttpClientHandler httpHandler = new HttpClientHandler())
             {
                 httpHandler.MaxConnectionsPerServer = maxHttpHandle;
-                using (HttpClient httpClient = new HttpClient(httpHandler))
+                using (HttpClient httpClient = new HttpClient(httpHandler)
                 {
-                    SophonChunkManifestInfoPair patchInfoPair = await SophonPatch.CreateSophonChunkManifestInfoPair(httpClient, sophonPatchUrl, sophonVersionUpdateFrom, sophonMatchingField, tokenSource.Token);
-
-                    if (!patchInfoPair.IsFound)
-                    {
-                        Console.Error.WriteLine($"An error has occurred! -> ({patchInfoPair.ReturnCode}) {patchInfoPair.ReturnMessage}");
-                        return patchInfoPair.ReturnCode;
-                    }
+                    Timeout = TimeSpan.FromSeconds(5)
+                })
+                {
 
                     long currentRead = 0;
                     _ = Task.Run(() => AppExitKeyTrigger(tokenSource));
 
+                    string[] tags = ParseMultipleMatchingFields(sophonMatchingField);
+
+                    long totalRemoteCompressedSize = 0;
                     List<SophonPatchAsset> patchAssetList = new();
-                    await foreach (SophonPatchAsset patchAsset in SophonPatch.EnumerateUpdateAsync(httpClient,
-                                       patchInfoPair,
-                                       sophonVersionUpdateFrom,
-                                       scatteredFilesUrl,
-                                       null,
-                                       tokenSource.Token))
+                    foreach (string matchingField in tags)
                     {
-                        patchAssetList.Add(patchAsset);
+                        SophonChunkManifestInfoPair patchInfoPair = await SophonPatch.CreateSophonChunkManifestInfoPair(httpClient, sophonPatchUrl, sophonVersionUpdateFrom, matchingField, tokenSource.Token);
+
+                        if (!patchInfoPair.IsFound)
+                        {
+                            Console.Error.WriteLine($"An error has occurred! -> ({patchInfoPair.ReturnCode}) {patchInfoPair.ReturnMessage}");
+                            return patchInfoPair.ReturnCode;
+                        }
+
+                        string baseConsoleTitle = $"SophonUpdatePreload - {(isPreloadMode ? "Preloading" : "Updating")}: {sophonVersionUpdateFrom} -> {patchInfoPair.OtherSophonPatchData.TagName} for MatchingFields: [{string.Join(", ", tags)}]";
+                        Console.Title = baseConsoleTitle;
+
+                        totalRemoteCompressedSize += patchInfoPair.ChunksInfo.TotalCompressedSize;
+
+                        await foreach (SophonPatchAsset patchAsset in SophonPatch.EnumerateUpdateAsync(httpClient,
+                                           patchInfoPair,
+                                           sophonVersionUpdateFrom,
+                                           scatteredFilesUrl,
+                                           null,
+                                           tokenSource.Token))
+                        {
+                            patchAssetList.Add(patchAsset);
+                        }
                     }
 
                     long totalAssetSize = patchAssetList
@@ -270,22 +307,38 @@ namespace SophonUpdatePreload
                         .Where(x => x.PatchMethod != SophonPatchMethod.Remove && x.PatchMethod != SophonPatchMethod.DownloadOver)
                         .Sum(x => x.PatchChunkLength);
 
+                    string totalAssetSizeSizeUnit = SummarizeSizeSimple(totalAssetSize);
                     string totalAssetPatchSizeUnit = SummarizeSizeSimple(totalAssetPatchSize);
 
-                    Debug.Assert(totalAssetPatchSize == patchInfoPair.ChunksInfo.TotalCompressedSize);
+                    Debug.Assert(totalAssetPatchSize == totalRemoteCompressedSize);
 
-                    bool isPreloadMode = args[0].Equals("PreloadPatch", StringComparison.OrdinalIgnoreCase);
                     Stopwatch stopwatch = Stopwatch.StartNew();
 
                     _isRetry = false;
 
                     try
                     {
-                        ActionBlock<Tuple<SophonPatchAsset, HttpClient>> downloadTaskQueues = new(
+                        ExecutionDataflowBlockOptions dataflowBlockOpt = new ExecutionDataflowBlockOptions
+                        {
+                            CancellationToken = tokenSource.Token,
+                            MaxDegreeOfParallelism = threads,
+                            MaxMessagesPerTask = threads,
+                            BoundedCapacity = threads
+                        };
+
+                        long currentDownloaded = 0;
+                        long lastDownloaded = 0;
+
+                        long _scLastTick = Environment.TickCount;
+                        long _scLastReceivedBytes = 0;
+                        double _scLastSpeed = 0;
+
+                        ActionBlock<ValueTuple<SophonPatchAsset, HttpClient, CancellationToken>> downloadTaskQueues = new(
                             async ctx =>
                             {
                                 SophonPatchAsset asset = ctx.Item1;
                                 HttpClient client = ctx.Item2;
+                                CancellationToken token = ctx.Item3;
 
                                 string outputAssetPath = Path.Combine(newDir, asset.TargetFilePath);
                                 string outputAssetDir = Path.GetDirectoryName(outputAssetPath);
@@ -293,41 +346,81 @@ namespace SophonUpdatePreload
                                 if (!string.IsNullOrEmpty(outputAssetDir))
                                     Directory.CreateDirectory(outputAssetDir);
 
-                                if (isPreloadMode)
-                                {
-                                    await asset.DownloadPatch(client,
-                                                              patchesDir,
-                                                              true,
-                                                              (downloadRead) =>
-                                                              {
-                                                                  Interlocked.Add(ref currentRead, downloadRead);
-                                                                  string sizeUnit = SummarizeSizeSimple(currentRead);
-                                                                  string speedUnit = SummarizeSizeSimple(currentRead / stopwatch.Elapsed.TotalSeconds);
-                                                                  Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} ({speedUnit}/s)    \r");
-                                                              },
-                                                              null,
-                                                              tokenSource.Token);
-                                }
-                                else
-                                {
-                                    // TODO: Implement patching
-                                }
-                            },
-                            new ExecutionDataflowBlockOptions
-                            {
-                                CancellationToken = tokenSource.Token,
-                                MaxDegreeOfParallelism = threads,
-                                MaxMessagesPerTask = threads
-                            });
+                                await asset.DownloadPatchAsync(client,
+                                    patchesDir,
+                                    true,
+                                    downloadRead =>
+                                    {
+                                        Interlocked.Add(ref currentRead, downloadRead);
+                                        string sizeUnit = SummarizeSizeSimple(currentRead);
+                                        string speedUnit = SummarizeSizeSimple(CalculateSpeed(downloadRead));
+                                        Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} (Download: {speedUnit}/s)    \r");
+                                    },
+                                    null,
+                                    token);
+                            }, dataflowBlockOpt);
 
-                        foreach (SophonPatchAsset asset in patchAssetList
-                            .EnsureOnlyGetDedupPatchAssets())
+                        object currentLock = new();
+
+                        ActionBlock<ValueTuple<SophonPatchAsset, HttpClient, CancellationToken>> patchTaskQueues = new(
+                            async ctx =>
+                            {
+                                SophonPatchAsset asset = ctx.Item1;
+                                HttpClient client = ctx.Item2;
+                                CancellationToken token = ctx.Item3;
+
+                                await asset.ApplyPatchUpdateAsync(client,
+                                                                  oldDir,
+                                                                  patchesDir,
+                                                                  true,
+                                                                  downloadRead =>
+                                                                  {
+                                                                      lock (currentLock)
+                                                                      {
+                                                                          Interlocked.Add(ref currentDownloaded, downloadRead);
+                                                                      }
+                                                                  },
+                                                                  diskWrite =>
+                                                                  {
+                                                                      Interlocked.Add(ref currentRead, diskWrite);
+                                                                      string sizeUnit = SummarizeSizeSimple(currentRead);
+                                                                      string speedUnit = SummarizeSizeSimple(CalculateSpeed(diskWrite));
+
+                                                                      lock (currentLock)
+                                                                      {
+                                                                          long downloadRead = currentDownloaded - lastDownloaded;
+                                                                          string speedUnitDownload = SummarizeSizeSimple(CalculateSpeed(downloadRead, ref _scLastSpeed, ref _scLastReceivedBytes, ref _scLastTick));
+                                                                          Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetSizeSizeUnit} -> {currentRead} (DiskWrite: {speedUnit}/s) (Download: {speedUnitDownload}/s)    \r");
+
+                                                                          lastDownloaded = currentDownloaded;
+                                                                      }
+                                                                  },
+                                                                  null,
+                                                                  token);
+                            }, dataflowBlockOpt);
+
+                        foreach (SophonPatchAsset asset in patchAssetList.EnsureOnlyGetDedupPatchAssets())
                         {
-                            await downloadTaskQueues.SendAsync(new Tuple<SophonPatchAsset, HttpClient>(asset, httpClient), tokenSource.Token);
+                            await downloadTaskQueues.SendAsync(new ValueTuple<SophonPatchAsset, HttpClient, CancellationToken>(asset, httpClient, tokenSource.Token), tokenSource.Token);
                         }
 
                         downloadTaskQueues.Complete();
                         await downloadTaskQueues.Completion;
+
+                        if (!isPreloadMode)
+                        {
+                            currentRead = 0;
+
+                            foreach (SophonPatchAsset asset in patchAssetList)
+                            {
+                                await patchTaskQueues.SendAsync(new ValueTuple<SophonPatchAsset, HttpClient, CancellationToken>(asset, httpClient, tokenSource.Token), tokenSource.Token);
+                            }
+
+                            patchTaskQueues.Complete();
+                            await patchTaskQueues.Completion;
+
+                            patchAssetList.RemovePatches(patchesDir);
+                        }
                     }
                     catch (OperationCanceledException)
                     {
@@ -344,6 +437,31 @@ namespace SophonUpdatePreload
                 goto StartDownload;
 
             return 0;
+        }
+
+        private const double ScOneSecond = 1000;
+        private static long _scLastTick = Environment.TickCount;
+        private static long _scLastReceivedBytes;
+        private static double _scLastSpeed;
+
+        protected static double CalculateSpeed(long receivedBytes) => CalculateSpeed(receivedBytes, ref _scLastSpeed, ref _scLastReceivedBytes, ref _scLastTick);
+
+        protected static double CalculateSpeed(long receivedBytes, ref double lastSpeedToUse, ref long lastReceivedBytesToUse, ref long lastTickToUse)
+        {
+            long currentTick = Environment.TickCount - lastTickToUse + 1;
+            long totalReceivedInSecond = Interlocked.Add(ref lastReceivedBytesToUse, receivedBytes);
+            double speed = totalReceivedInSecond * ScOneSecond / currentTick;
+
+            if (!(currentTick > ScOneSecond))
+            {
+                return lastSpeedToUse;
+            }
+
+            lastSpeedToUse = speed;
+            _ = Interlocked.Exchange(ref lastSpeedToUse, speed);
+            _ = Interlocked.Exchange(ref lastReceivedBytesToUse, 0);
+            _ = Interlocked.Exchange(ref lastTickToUse, Environment.TickCount);
+            return lastSpeedToUse;
         }
 
         private static string SummarizeSizeSimple(double value, int decimalPlaces = 2)
