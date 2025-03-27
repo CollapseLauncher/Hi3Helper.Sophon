@@ -4,7 +4,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+#if NET6_0_OR_GREATER
 using System.Net;
+#endif
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -329,9 +331,9 @@ namespace SophonUpdatePreload
                         long currentDownloaded = 0;
                         long lastDownloaded = 0;
 
-                        long _scLastTick = Environment.TickCount;
-                        long _scLastReceivedBytes = 0;
-                        double _scLastSpeed = 0;
+                        long scLastTick = Environment.TickCount;
+                        long scLastReceivedBytes = 0;
+                        double scLastSpeed = 0;
 
                         ActionBlock<ValueTuple<SophonPatchAsset, HttpClient, CancellationToken>> downloadTaskQueues = new(
                             async ctx =>
@@ -389,7 +391,7 @@ namespace SophonUpdatePreload
                                                                       lock (currentLock)
                                                                       {
                                                                           long downloadRead = currentDownloaded - lastDownloaded;
-                                                                          string speedUnitDownload = SummarizeSizeSimple(CalculateSpeed(downloadRead, ref _scLastSpeed, ref _scLastReceivedBytes, ref _scLastTick));
+                                                                          string speedUnitDownload = SummarizeSizeSimple(CalculateSpeed(downloadRead, ref scLastSpeed, ref scLastReceivedBytes, ref scLastTick));
                                                                           Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetSizeSizeUnit} -> {currentRead} (DiskWrite: {speedUnit}/s) (Download: {speedUnitDownload}/s)    \r");
 
                                                                           lastDownloaded = currentDownloaded;
