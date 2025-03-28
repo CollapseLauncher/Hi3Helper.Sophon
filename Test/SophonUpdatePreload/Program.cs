@@ -342,12 +342,6 @@ namespace SophonUpdatePreload
                                 HttpClient client = ctx.Item2;
                                 CancellationToken token = ctx.Item3;
 
-                                string outputAssetPath = Path.Combine(newDir, asset.TargetFilePath);
-                                string outputAssetDir = Path.GetDirectoryName(outputAssetPath);
-
-                                if (!string.IsNullOrEmpty(outputAssetDir))
-                                    Directory.CreateDirectory(outputAssetDir);
-
                                 await asset.DownloadPatchAsync(client,
                                     patchesDir,
                                     true,
