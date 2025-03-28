@@ -29,7 +29,7 @@ namespace Hi3Helper.Sophon.Helper
 {
     internal static class Extension
     {
-        private static readonly object This = new();
+        private static readonly object DummyInstance = new();
 
 #if !NET5_0_OR_GREATER
         private static readonly byte[] LookupFromHexTable = new byte[] {
@@ -229,7 +229,7 @@ namespace Hi3Helper.Sophon.Helper
             }
             catch (Exception ex) when (!token.IsCancellationRequested)
             {
-                This.PushLogWarning($"An error occurred while checking XXH64 hash for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {assetName}\r\n{ex}");
+                DummyInstance.PushLogWarning($"An error occurred while checking XXH64 hash for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {assetName}\r\n{ex}");
                 return false;
             }
         }

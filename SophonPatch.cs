@@ -22,7 +22,7 @@ namespace Hi3Helper.Sophon
 {
     public static partial class SophonPatch
     {
-        private static object This = new object();
+        private static readonly object DummyInstance = new();
 
         /// <summary>
         ///     Enumerate/Get the list of Sophon patches for update.
@@ -258,12 +258,12 @@ namespace Hi3Helper.Sophon
                         fileInfo.IsReadOnly = false;
                         fileInfo.Refresh();
                         fileInfo.Delete();
-                        This.PushLogDebug($"Removed patch file: {patchFilePath}");
+                        DummyInstance.PushLogDebug($"Removed patch file: {patchFilePath}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    This.PushLogError($"Failed while trying to remove patch file: {patchFilePath} | {ex}");
+                    DummyInstance.PushLogError($"Failed while trying to remove patch file: {patchFilePath} | {ex}");
                 }
             }
         }

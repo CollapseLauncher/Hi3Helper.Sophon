@@ -29,7 +29,7 @@ namespace Hi3Helper.Sophon
 {
     public static class SophonUpdate
     {
-        private static readonly object This = new();
+        private static readonly object DummyInstance = new();
 
         /// <summary>
         ///     Enumerate/Get the list of Sophon assets for update.
@@ -348,12 +348,12 @@ namespace Hi3Helper.Sophon
             #if NET6_0_OR_GREATER
                 if (!oldChunkNameIdx.TryAdd(oldProtoChunks[i].ChunkDecompressedHashMd5, i))
                 {
-                    This.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
+                    DummyInstance.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
                 }
             #else
                 if (oldChunkNameIdx.ContainsKey(oldProtoChunks[i].ChunkDecompressedHashMd5))
                 {
-                    This.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
+                    DummyInstance.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
                     continue;
                 }
 
