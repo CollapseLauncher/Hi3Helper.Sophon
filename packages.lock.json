@@ -299,9 +299,9 @@
     "net9.0": {
       "Google.Protobuf": {
         "type": "Direct",
-        "requested": "[3.30.0, )",
-        "resolved": "3.30.0",
-        "contentHash": "ZnEI4oZWnHvd+Yz5Gcnx5Q5RQIuzptIzd0fmxAN8f81FYHI0USZqMOrPTkrsd/QEzo9vl2b217v9FqFgHfufQw=="
+        "requested": "[3.30.1, )",
+        "resolved": "3.30.1",
+        "contentHash": "HeWXDQBabQn/sCGicbeLJ0HMunknfC4FdLrOQOsaMJHcpqx3HVIpyyJqTrqJlWnza870twhOb+rBcaTiC/TlNA=="
       },
       "Google.Protobuf.Tools": {
         "type": "Direct",
