@@ -59,7 +59,18 @@ namespace SophonUpdatePreload
             using HttpClient httpClient = new HttpClient(httpClientHandler);
 
             // Get the branch information and initialize output list
-            SophonBranch sophonBranch = await SophonManifest.GetSophonBranchInfo(httpClient, branchInfoUrl, default);
+            SophonManifestBuildBranch sophonBranch =
+                await SophonManifest.GetSophonBranchInfo
+#if !NET6_0_OR_GREATER
+                                                        <SophonManifestBuildBranch>
+#endif
+                                                        (httpClient,
+                                                         branchInfoUrl,
+#if NET6_0_OR_GREATER
+                                                         SophonContext.Default.SophonManifestBuildBranch,
+#endif
+                                                         HttpMethod.Get
+                                                         );
             List<SophonInformation> sophonInformations = new();
 
             // If the return code is not OK, then return as error
@@ -70,10 +81,10 @@ namespace SophonUpdatePreload
             }
 
             // Enumerate the manifest identity
-            foreach (SophonManifestIdentity manifestIdentity in sophonBranch.Data.ManifestIdentityList)
+            foreach (SophonManifestBuildIdentity manifestIdentity in sophonBranch.Data.ManifestIdentityList)
             {
                 // Get Chunk Manifest information pair from the manifest identity's Matching Field
-                SophonChunkManifestInfoPair sophonInfoPair = await SophonManifest.CreateSophonChunkManifestInfoPair(httpClient, branchInfoUrl, manifestIdentity.MatchingField, default);
+                SophonChunkManifestInfoPair sophonInfoPair = await SophonManifest.CreateSophonChunkManifestInfoPair(httpClient, branchInfoUrl, manifestIdentity.MatchingField);
 
                 // Initialize Sophon Info class
                 SophonInformation sophonInformation = new SophonInformation

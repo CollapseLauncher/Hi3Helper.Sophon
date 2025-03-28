@@ -29,7 +29,7 @@ namespace Hi3Helper.Sophon
 {
     public static class SophonUpdate
     {
-        private static readonly object This = new();
+        private static readonly object DummyInstance = new();
 
         /// <summary>
         ///     Enumerate/Get the list of Sophon assets for update.
@@ -137,10 +137,10 @@ namespace Hi3Helper.Sophon
         #endif
 
             ActionTimeoutTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback =
-                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoFrom, innerToken);
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoFrom, SophonManifestProto.Parser, innerToken);
 
             ActionTimeoutTaskCallback<SophonManifestProto> manifestToProtoTaskCallback =
-                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoTo, innerToken);
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfoTo, SophonManifestProto.Parser, innerToken);
 
             SophonManifestProto manifestFromProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
@@ -160,10 +160,10 @@ namespace Hi3Helper.Sophon
 
             Dictionary<string, int> oldAssetNameIdx = GetProtoAssetHashKvpSet(manifestFromProto, x => x.AssetName);
 
-            HashSet<string> oldAssetNameHashSet = [..manifestFromProto.Assets.Select(x => x.AssetName)];
-            HashSet<string> newAssetNameHashSet = [..manifestToProto.Assets.Select(x => x.AssetName)];
+            HashSet<string> oldAssetNameHashSet = manifestFromProto.Assets.Select(x => x.AssetName).ToHashSet();
+            HashSet<string> newAssetNameHashSet = manifestToProto.Assets.Select(x => x.AssetName).ToHashSet();
 
-            foreach (AssetProperty newAssetProperty in manifestToProto.Assets.Where(x => {
+            foreach (SophonManifestAssetProperty newAssetProperty in manifestToProto.Assets.Where(x => {
                 // Try check both availabilities
                 bool isOldExist = oldAssetNameHashSet.Contains(x.AssetName);
                 bool isNewExist = newAssetNameHashSet.Contains(x.AssetName);
@@ -193,8 +193,8 @@ namespace Hi3Helper.Sophon
         /// </param>
         /// <param name="sophonAssetsEnumerable">
         ///     The enumeration of the asset. Use this as an extension of these methods:<br/>
-        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonChunkManifestInfoPair, SophonChunkManifestInfoPair, bool, CancellationToken)"/><br/>
-        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonManifestInfo, SophonChunksInfo, SophonManifestInfo, SophonChunksInfo, bool, CancellationToken)"/>
+        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonChunkManifestInfoPair, SophonChunkManifestInfoPair, bool, SophonDownloadSpeedLimiter, CancellationToken)"/><br/>
+        ///         <seealso cref="EnumerateUpdateAsync(HttpClient, SophonManifestInfo, SophonChunksInfo, SophonManifestInfo, SophonChunksInfo, bool, SophonDownloadSpeedLimiter, CancellationToken)"/>
         /// </param>
         /// <param name="isGetDecompressSize">
         ///     Determine whether to get the decompressed or compressed size of the diff files.
@@ -281,12 +281,12 @@ namespace Hi3Helper.Sophon
             return sizeDiff;
         }
 
-        private static SophonAsset GetPatchedTargetAsset(Dictionary<string, int>    oldAssetNameIdx,
-                                                         SophonManifestProto        oldAssetProto,
-                                                         AssetProperty              newAssetProperty,
-                                                         SophonChunksInfo           oldChunksInfo,
-                                                         SophonChunksInfo           newChunksInfo,
-                                                         SophonDownloadSpeedLimiter downloadSpeedLimiter)
+        private static SophonAsset GetPatchedTargetAsset(Dictionary<string, int>     oldAssetNameIdx,
+                                                         SophonManifestProto         oldAssetProto,
+                                                         SophonManifestAssetProperty newAssetProperty,
+                                                         SophonChunksInfo            oldChunksInfo,
+                                                         SophonChunksInfo            newChunksInfo,
+                                                         SophonDownloadSpeedLimiter  downloadSpeedLimiter)
         {
             // If the targeted asset has asset type != 0 or has no MD5 hash (is directory)
             // Or if the targeted asset is not exist in the old Hash set, then act it as a new asset.
@@ -298,7 +298,7 @@ namespace Hi3Helper.Sophon
             }
 
             // Now check if the asset has a patch or not.
-            AssetProperty oldAssetProperty = oldAssetProto.Assets[oldAssetIdx];
+            SophonManifestAssetProperty oldAssetProperty = oldAssetProto.Assets[oldAssetIdx];
             if (oldAssetProperty == null) // SANITY CHECK
             {
                 throw new
@@ -306,8 +306,8 @@ namespace Hi3Helper.Sophon
             }
 
             // Iterate and get the chunks information
-            RepeatedField<AssetChunk> oldAssetProtoChunks = oldAssetProperty.AssetChunks;
-            RepeatedField<AssetChunk> newAssetProtoChunks = newAssetProperty.AssetChunks;
+            RepeatedField<SophonManifestAssetChunk> oldAssetProtoChunks = oldAssetProperty.AssetChunks;
+            RepeatedField<SophonManifestAssetChunk> newAssetProtoChunks = newAssetProperty.AssetChunks;
             SophonChunk[] newAssetPatchedChunks =
                 GetSophonChunkWithOldReference(oldAssetProtoChunks, newAssetProtoChunks, out bool isNewAssetHasPatch);
 
@@ -329,9 +329,9 @@ namespace Hi3Helper.Sophon
             };
         }
 
-        private static SophonChunk[] GetSophonChunkWithOldReference(RepeatedField<AssetChunk> oldProtoChunks,
-                                                                    RepeatedField<AssetChunk> newProtoChunks,
-                                                                    out bool                  isNewAssetHasPatch)
+        private static SophonChunk[] GetSophonChunkWithOldReference(RepeatedField<SophonManifestAssetChunk> oldProtoChunks,
+                                                                    RepeatedField<SophonManifestAssetChunk> newProtoChunks,
+                                                                    out bool isNewAssetHasPatch)
         {
             // Get the length of both old and new chunks from proto
             int           oldReturnChunksLen = oldProtoChunks.Count;
@@ -348,12 +348,12 @@ namespace Hi3Helper.Sophon
             #if NET6_0_OR_GREATER
                 if (!oldChunkNameIdx.TryAdd(oldProtoChunks[i].ChunkDecompressedHashMd5, i))
                 {
-                    This.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
+                    DummyInstance.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
                 }
             #else
                 if (oldChunkNameIdx.ContainsKey(oldProtoChunks[i].ChunkDecompressedHashMd5))
                 {
-                    This.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
+                    DummyInstance.PushLogWarning($"Chunk: {oldProtoChunks[i].ChunkName} is duplicated!");
                     continue;
                 }
 
@@ -365,7 +365,7 @@ namespace Hi3Helper.Sophon
             for (int i = 0; i < newReturnChunksLen; i++)
             {
                 // Assign new proto chunk as per index
-                AssetChunk newProtoChunk = newProtoChunks[i];
+                SophonManifestAssetChunk newProtoChunk = newProtoChunks[i];
 
                 // Init the new chunk
                 SophonChunk newChunk = new SophonChunk
@@ -387,7 +387,7 @@ namespace Hi3Helper.Sophon
                 if (oldChunkNameIdx.TryGetValue(newProtoChunk.ChunkDecompressedHashMd5, out int oldProtoChunkIdx))
                 {
                     isNewAssetHasPatch = true;
-                    AssetChunk oldProtoChunk = oldProtoChunks[oldProtoChunkIdx];
+                    SophonManifestAssetChunk oldProtoChunk = oldProtoChunks[oldProtoChunkIdx];
                     newChunk.ChunkOldOffset = oldProtoChunk.ChunkOnFileOffset;
                 }
 
@@ -399,8 +399,8 @@ namespace Hi3Helper.Sophon
             return newReturnChunks;
         }
 
-        private static Dictionary<string, int> GetProtoAssetHashKvpSet(SophonManifestProto         proto,
-                                                                       Func<AssetProperty, string> funcDelegate)
+        private static Dictionary<string, int> GetProtoAssetHashKvpSet(SophonManifestProto proto,
+                                                                       Func<SophonManifestAssetProperty, string> funcDelegate)
         {
             Dictionary<string, int> hashSet = new Dictionary<string, int>();
             for (int i = 0; i < proto.Assets.Count; i++)

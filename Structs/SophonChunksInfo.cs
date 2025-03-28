@@ -1,10 +1,11 @@
 ﻿using Hi3Helper.Sophon.Infos;
 using System;
-// ReSharper disable NonReadonlyMemberInGetHashCode
 
+// ReSharper disable NonReadonlyMemberInGetHashCode
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
+
 namespace Hi3Helper.Sophon.Infos
 {
     public class SophonChunksInfo : IEquatable<SophonChunksInfo>
@@ -16,27 +17,38 @@ namespace Hi3Helper.Sophon.Infos
         public long   TotalCompressedSize { get; set; }
         public bool   IsUseCompression    { get; set; }
 
-        public bool Equals(SophonChunksInfo other)
-        {
-            return ChunksBaseUrl == other?.ChunksBaseUrl && 
-                   ChunksCount == other?.ChunksCount &&
-                   FilesCount == other.FilesCount && 
-                   TotalSize == other.TotalSize &&
-                   TotalCompressedSize == other.TotalCompressedSize &&
-                   IsUseCompression == other.IsUseCompression;
-        }
+        public bool Equals(SophonChunksInfo other) =>
+            ChunksBaseUrl == other?.ChunksBaseUrl && 
+            ChunksCount == other?.ChunksCount &&
+            FilesCount == other.FilesCount && 
+            TotalSize == other.TotalSize &&
+            TotalCompressedSize == other.TotalCompressedSize &&
+            IsUseCompression == other.IsUseCompression;
 
-        public override bool Equals(object obj)
-        {
-            return obj is SophonChunksInfo other && Equals(other);
-        }
+        public override bool Equals(object obj) => obj is SophonChunksInfo other && Equals(other);
 
+        public override int GetHashCode() => 
 #if NET6_0_OR_GREATER
-        public override int GetHashCode()
-        {
-            return HashCode.Combine(ChunksBaseUrl, ChunksCount, FilesCount, TotalSize, TotalCompressedSize, IsUseCompression);
-        }
+            HashCode.Combine(ChunksBaseUrl, ChunksCount, FilesCount, TotalSize, TotalCompressedSize, IsUseCompression);
+#else
+            ChunksBaseUrl.GetHashCode() ^
+            ChunksCount.GetHashCode() ^
+            FilesCount.GetHashCode() ^
+            TotalSize.GetHashCode() ^
+            TotalCompressedSize.GetHashCode() ^
+            IsUseCompression.GetHashCode();
 #endif
+
+        public SophonChunksInfo CopyWithNewBaseUrl(string newBaseUrl) =>
+            new()
+            {
+                ChunksBaseUrl       = newBaseUrl,
+                ChunksCount         = ChunksCount,
+                FilesCount          = FilesCount,
+                TotalSize           = TotalSize,
+                TotalCompressedSize = TotalCompressedSize,
+                IsUseCompression    = IsUseCompression
+            };
     }
 }
 
