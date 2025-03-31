@@ -46,7 +46,7 @@ namespace Hi3Helper.Sophon.Structs
             };
         }
 
-        public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField)
+        public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField, string versionUpdateFrom)
         {
             SophonManifestPatchIdentity sophonPatchIdentity =
                 OtherSophonPatchData.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
@@ -58,7 +58,7 @@ namespace Hi3Helper.Sophon.Structs
 
             if (!sophonPatchIdentity
                 .DiffTaggedInfo
-                .TryGetValue(OtherSophonPatchData.TagName,
+                .TryGetValue(versionUpdateFrom,
                              out SophonManifestChunkInfo sophonChunkInfo))
             {
                 throw new KeyNotFoundException($"Sophon patch diff tagged info with tag: {OtherSophonPatchData.TagName} is not found!");
