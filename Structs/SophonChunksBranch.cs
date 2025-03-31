@@ -1,5 +1,4 @@
-﻿using Hi3Helper.Sophon.Infos;
-using Hi3Helper.Sophon.Structs;
+﻿using Hi3Helper.Sophon.Structs;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
