@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -61,7 +60,7 @@ namespace Hi3Helper.Sophon
             if (!sophonPatchIdentity
                     .DiffTaggedInfo
                     .TryGetValue(versionUpdateFrom,
-                        out SophonManifestChunkInfo sophonChunkInfo))
+                        out SophonManifestChunkInfo? sophonChunkInfo))
             {
                 return new SophonChunkManifestInfoPair
                 {
