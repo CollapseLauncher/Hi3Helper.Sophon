@@ -29,6 +29,7 @@ namespace Hi3Helper.Sophon
     {
         internal const int BufferSize = 256 << 10;
         
+        public SophonAsset       MainAssetInfo                 { get; set; }
         public SophonChunksInfo  PatchInfo                     { get; set; }
         public SophonPatchMethod PatchMethod                   { get; set; }
         public string            PatchNameSource               { get; set; }
@@ -40,7 +41,6 @@ namespace Hi3Helper.Sophon
         public string            OriginalFileHash              { get; set; }
         public long              OriginalFileSize              { get; set; }
         public string            TargetFilePath                { get; set; }
-        public string            TargetFileDownloadOverBaseUrl { get; set; }
         public string            TargetFileHash                { get; set; }
         public long              TargetFileSize                { get; set; }
 

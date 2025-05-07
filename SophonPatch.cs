@@ -30,14 +30,14 @@ namespace Hi3Helper.Sophon
         /// <param name="httpClient">
         ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
         /// </param>
-        /// <param name="infoPair">
+        /// <param name="patchInfoPair">
         ///     Pair of the Patch Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="mainInfoPair">
+        ///     Pair of the Main Manifest and Chunks information struct.
         /// </param>
         /// <param name="downloadSpeedLimiter">
         ///     If the download speed limiter is null, the download speed will be set to unlimited.
-        /// </param>
-        /// <param name="downloadOverUrl">
-        ///     The URL to download the file with DownloadOver method if it's not existence in the game directory.
         /// </param>
         /// <param name="versionTagUpdateFrom">
         ///     Define which version tag in which the data will be patched from.
@@ -61,19 +61,20 @@ namespace Hi3Helper.Sophon
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
         public static async IAsyncEnumerable<SophonPatchAsset> EnumerateUpdateAsync(HttpClient httpClient,
-                                                                                    SophonChunkManifestInfoPair infoPair,
+                                                                                    SophonChunkManifestInfoPair patchInfoPair,
+                                                                                    SophonChunkManifestInfoPair mainInfoPair,
                                                                                     string versionTagUpdateFrom,
-                                                                                    string downloadOverUrl,
                                                                                     SophonDownloadSpeedLimiter downloadSpeedLimiter = null,
                                                                                     [EnumeratorCancellation]
                                                                                     CancellationToken token = default)
 
         {
             await foreach (SophonPatchAsset asset in EnumerateUpdateAsync(httpClient,
-                                                                          infoPair.ManifestInfo,
-                                                                          infoPair.ChunksInfo,
+                                                                          patchInfoPair.ManifestInfo,
+                                                                          patchInfoPair.ChunksInfo,
+                                                                          mainInfoPair.ManifestInfo,
+                                                                          mainInfoPair.ChunksInfo,
                                                                           versionTagUpdateFrom,
-                                                                          downloadOverUrl,
                                                                           downloadSpeedLimiter,
                                                                           token))
             {
@@ -88,10 +89,16 @@ namespace Hi3Helper.Sophon
         /// <param name="httpClient">
         ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
         /// </param>
-        /// <param name="manifestInfo">
+        /// <param name="patchManifestInfo">
         ///     Patch Manifest information struct.
         /// </param>
-        /// <param name="chunksInfo">
+        /// <param name="patchChunksInfo">
+        ///     Patch Chunks information struct.
+        /// </param>
+        /// <param name="mainManifestInfo">
+        ///     Patch Manifest information struct.
+        /// </param>
+        /// <param name="mainChunksInfo">
         ///     Patch Chunks information struct.
         /// </param>
         /// <param name="downloadSpeedLimiter">
@@ -99,9 +106,6 @@ namespace Hi3Helper.Sophon
         /// </param>
         /// <param name="versionTagUpdateFrom">
         ///     Define which version tag in which the data will be patched from.
-        /// </param>
-        /// <param name="downloadOverUrl">
-        ///     The URL to download the file with DownloadOver method if it's not existence in the game directory.
         /// </param>
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
@@ -122,10 +126,11 @@ namespace Hi3Helper.Sophon
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
         public static async IAsyncEnumerable<SophonPatchAsset> EnumerateUpdateAsync(HttpClient httpClient,
-                                                                                    SophonManifestInfo manifestInfo,
-                                                                                    SophonChunksInfo chunksInfo,
+                                                                                    SophonManifestInfo patchManifestInfo,
+                                                                                    SophonChunksInfo patchChunksInfo,
+                                                                                    SophonManifestInfo mainManifestInfo,
+                                                                                    SophonChunksInfo mainChunksInfo,
                                                                                     string versionTagUpdateFrom,
-                                                                                    string downloadOverUrl,
                                                                                     SophonDownloadSpeedLimiter downloadSpeedLimiter = null,
                                                                                     [EnumeratorCancellation]
                                                                                     CancellationToken token = default)
@@ -137,18 +142,13 @@ namespace Hi3Helper.Sophon
             }
 #endif
 
-            if (string.IsNullOrEmpty(downloadOverUrl))
-            {
-                throw new ArgumentNullException(nameof(downloadOverUrl), "DownloadOver URL is not defined!");
-            }
-
             if (string.IsNullOrEmpty(versionTagUpdateFrom))
             {
                 throw new ArgumentNullException(nameof(versionTagUpdateFrom), "Version tag is not defined!");
             }
 
             ActionTimeoutTaskCallback<SophonPatchProto> manifestFromProtoTaskCallback =
-                async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfo, SophonPatchProto.Parser, innerToken);
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo, SophonPatchProto.Parser, innerToken);
 
             SophonPatchProto patchManifestProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
@@ -158,7 +158,21 @@ namespace Hi3Helper.Sophon
                                   null,
                                   token);
 
-            SophonChunksInfo chunksInfoDownloadOver = chunksInfo.CopyWithNewBaseUrl(downloadOverUrl);
+            Dictionary<string, SophonAsset> mainSophonAsset = new(StringComparer.OrdinalIgnoreCase);
+
+            await foreach (SophonAsset mainAsset in SophonManifest.EnumerateAsync(httpClient,
+                                                                                  mainManifestInfo,
+                                                                                  mainChunksInfo,
+                                                                                  downloadSpeedLimiter,
+                                                                                  token))
+            {
+                if (mainAsset.IsDirectory)
+                {
+                    continue;
+                }
+
+                mainSophonAsset.TryAdd(mainAsset.AssetName, mainAsset);
+            }
 
             foreach (SophonPatchAssetProperty patchAssetProperty in patchManifestProto.PatchAssets)
             {
@@ -166,16 +180,17 @@ namespace Hi3Helper.Sophon
                     .AssetInfos
                     .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
 
+                _ = mainSophonAsset.TryGetValue(patchAssetProperty.AssetName, out SophonAsset sophonMainAsset);
+
                 if (patchAssetInfo == null)
                 {
                     yield return new SophonPatchAsset
                     {
-                        PatchInfo                     = chunksInfoDownloadOver,
-                        TargetFileHash                = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize                = patchAssetProperty.AssetSize,
-                        TargetFilePath                = patchAssetProperty.AssetName,
-                        TargetFileDownloadOverBaseUrl = downloadOverUrl,
-                        PatchMethod                   = SophonPatchMethod.DownloadOver,
+                        MainAssetInfo  = sophonMainAsset,
+                        TargetFileHash = patchAssetProperty.AssetHashMd5,
+                        TargetFileSize = patchAssetProperty.AssetSize,
+                        TargetFilePath = patchAssetProperty.AssetName,
+                        PatchMethod    = SophonPatchMethod.DownloadOver,
                     };
                     continue;
                 }
@@ -184,37 +199,37 @@ namespace Hi3Helper.Sophon
                 {
                     yield return new SophonPatchAsset
                     {
-                        PatchInfo                     = chunksInfo,
-                        PatchNameSource               = patchAssetInfo.Chunk.PatchName,
-                        PatchHash                     = patchAssetInfo.Chunk.PatchMd5,
-                        PatchOffset                   = patchAssetInfo.Chunk.PatchOffset,
-                        PatchSize                     = patchAssetInfo.Chunk.PatchSize,
-                        PatchChunkLength              = patchAssetInfo.Chunk.PatchLength,
-                        TargetFilePath                = patchAssetProperty.AssetName,
-                        TargetFileHash                = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize                = patchAssetProperty.AssetSize,
-                        TargetFileDownloadOverBaseUrl = downloadOverUrl,
-                        PatchMethod                   = SophonPatchMethod.CopyOver,
+                        MainAssetInfo    = sophonMainAsset,
+                        PatchInfo        = patchChunksInfo,
+                        PatchNameSource  = patchAssetInfo.Chunk.PatchName,
+                        PatchHash        = patchAssetInfo.Chunk.PatchMd5,
+                        PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
+                        PatchSize        = patchAssetInfo.Chunk.PatchSize,
+                        PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
+                        TargetFilePath   = patchAssetProperty.AssetName,
+                        TargetFileHash   = patchAssetProperty.AssetHashMd5,
+                        TargetFileSize   = patchAssetProperty.AssetSize,
+                        PatchMethod      = SophonPatchMethod.CopyOver,
                     };
                     continue;
                 }
 
                 yield return new SophonPatchAsset
                 {
-                    PatchInfo                     = chunksInfo,
-                    PatchNameSource               = patchAssetInfo.Chunk.PatchName,
-                    PatchHash                     = patchAssetInfo.Chunk.PatchMd5,
-                    PatchOffset                   = patchAssetInfo.Chunk.PatchOffset,
-                    PatchSize                     = patchAssetInfo.Chunk.PatchSize,
-                    PatchChunkLength              = patchAssetInfo.Chunk.PatchLength,
-                    TargetFilePath                = patchAssetProperty.AssetName,
-                    TargetFileHash                = patchAssetProperty.AssetHashMd5,
-                    TargetFileSize                = patchAssetProperty.AssetSize,
-                    TargetFileDownloadOverBaseUrl = downloadOverUrl,
-                    OriginalFilePath              = patchAssetInfo.Chunk.OriginalFileName,
-                    OriginalFileSize              = patchAssetInfo.Chunk.OriginalFileLength,
-                    OriginalFileHash              = patchAssetInfo.Chunk.OriginalFileMd5,
-                    PatchMethod                   = SophonPatchMethod.Patch,
+                    MainAssetInfo    = sophonMainAsset,
+                    PatchInfo        = patchChunksInfo,
+                    PatchNameSource  = patchAssetInfo.Chunk.PatchName,
+                    PatchHash        = patchAssetInfo.Chunk.PatchMd5,
+                    PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
+                    PatchSize        = patchAssetInfo.Chunk.PatchSize,
+                    PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
+                    TargetFilePath   = patchAssetProperty.AssetName,
+                    TargetFileHash   = patchAssetProperty.AssetHashMd5,
+                    TargetFileSize   = patchAssetProperty.AssetSize,
+                    OriginalFilePath = patchAssetInfo.Chunk.OriginalFileName,
+                    OriginalFileSize = patchAssetInfo.Chunk.OriginalFileLength,
+                    OriginalFileHash = patchAssetInfo.Chunk.OriginalFileMd5,
+                    PatchMethod      = SophonPatchMethod.Patch,
                 };
             }
 
