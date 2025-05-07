@@ -404,6 +404,9 @@ namespace Hi3Helper.Sophon
                 ChunkOldOffset = 0,
             };
 
+#if NET6_0_OR_GREATER
+            await
+#endif
             using FileStream targetFileStream = targetFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
             bool isHashMatched = checkByHashChunk.ChunkHashDecompressed.Length == 8 ?
                 await checkByHashChunk.CheckChunkXxh64HashAsync(TargetFilePath,
@@ -463,13 +466,30 @@ namespace Hi3Helper.Sophon
         public static PatchTargetProperty Create(string patchOutputDir, string patchNameSource, string inputDir, string targetFilePath, long patchOffset, long patchLength, bool createTempStream)
             => new(patchOutputDir, patchNameSource, inputDir, targetFilePath, patchOffset, patchLength, createTempStream);
 
-        public void Dispose()
+        public void Flush()
         {
             PatchChunkStream?.Dispose();
             PatchFileStream?.Dispose();
             TargetFileTempStream?.Dispose();
-
             TargetFileTempInfo.Refresh();
+        }
+
+        public void DisposeAndDeleteTemp()
+        {
+            Flush();
+            TargetFileTempInfo.Refresh();
+            if (!TargetFileTempInfo.Exists)
+            {
+                return;
+            }
+
+            TargetFileInfo.IsReadOnly = false;
+            TargetFileInfo.Delete();
+        }
+
+        public void Dispose()
+        {
+            Flush();
             if (TargetFileInfo.Exists)
             {
                 TargetFileInfo.IsReadOnly = false;
