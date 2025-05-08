@@ -557,14 +557,13 @@ namespace Hi3Helper.Sophon
         public void DisposeAndDeleteTemp()
         {
             Flush();
-            TargetFileTempInfo.Refresh();
             if (!TargetFileTempInfo.Exists)
             {
                 return;
             }
 
-            TargetFileInfo.IsReadOnly = false;
-            TargetFileInfo.Delete();
+            TargetFileTempInfo.IsReadOnly = false;
+            TargetFileTempInfo.Delete();
         }
 
         public void Dispose()
