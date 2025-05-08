@@ -157,7 +157,6 @@ namespace Hi3Helper.Sophon
                                                                            inputDir,
                                                                            downloadReadDelegate,
                                                                            diskWriteDelegate,
-                                                                           downloadSpeedLimiter,
                                                                            token),
                 SophonPatchMethod.CopyOver => PerformPatchCopyOver(inputDir,
                                                                    patchOutputDir,                                   
@@ -196,7 +195,6 @@ namespace Hi3Helper.Sophon
                                                     string                      inputDir,
                                                     Action<long>?               downloadReadDelegate,
                                                     Action<long>?               diskWriteDelegate,
-                                                    SophonDownloadSpeedLimiter? downloadSpeedLimiter,
                                                     CancellationToken           token)
         {
             bool isSuccess      = false;
