@@ -186,6 +186,9 @@ namespace Hi3Helper.Sophon
             {
                 Interlocked.Increment(ref _currentChunksDownloadPos);
                 Interlocked.Increment(ref _currentChunksDownloadQueue);
+#if NET6_0_OR_GREATER
+                await
+#endif
                 using FileStream fileStream = chunkFilePathHashedFileInfo
                     .Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
 
@@ -211,7 +214,11 @@ namespace Hi3Helper.Sophon
                     downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
                     if (!File.Exists(chunkFileCheckedPath))
                     {
+#if NET6_0_OR_GREATER
+                        await File.Create(chunkFileCheckedPath).DisposeAsync();
+#else
                         File.Create(chunkFileCheckedPath).Dispose();
+#endif
                     }
 
                     return;
@@ -226,7 +233,11 @@ namespace Hi3Helper.Sophon
                                                downloadSpeedLimiter,
                                                token);
 
+#if NET6_0_OR_GREATER
+                await File.Create(chunkFileCheckedPath).DisposeAsync();
+#else
                 File.Create(chunkFileCheckedPath).Dispose();
+#endif
             }
             finally
             {
