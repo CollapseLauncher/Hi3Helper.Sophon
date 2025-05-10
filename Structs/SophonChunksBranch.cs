@@ -29,7 +29,9 @@ namespace Hi3Helper.Sophon
                 CancellationToken token = default)
         {
             using HttpRequestMessage requestMessage = new HttpRequestMessage(httpMethod, url);
-            using HttpResponseMessage responseMessage = await client.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, token);
+            using HttpResponseMessage responseMessage = await client.SendAsync(requestMessage,
+                                                                               HttpCompletionOption.ResponseHeadersRead,
+                                                                               token);
             responseMessage.EnsureSuccessStatusCode();
 
 #if NET6_0_OR_GREATER
@@ -88,7 +90,8 @@ namespace Hi3Helper.Sophon
             }
 
             var sophonManifestIdentity =
-                sophonBranch.Data.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
+                sophonBranch.Data.ManifestIdentityList?
+                   .FirstOrDefault(x => x.MatchingField == matchingField);
 
             if (sophonManifestIdentity == null)
             {

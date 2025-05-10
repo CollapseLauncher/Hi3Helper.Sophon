@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+// ReSharper disable UnusedMember.Global
 #if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
 #endif
@@ -87,15 +88,22 @@ namespace Hi3Helper.Sophon
             }
 
             // Assign path to FileInfo and try to unassign readonly attribute from existing new file info
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputOldFileInfo     = outputOldPath.CreateFileInfo();
+            FileInfo outputNewFileInfo     = outputNewPath.CreateFileInfo();
+            FileInfo outputNewTempFileInfo = outputNewTempPath.CreateFileInfo();
 
             foreach (SophonChunk chunk in Chunks)
             {
-                await InnerWriteUpdateAsync(client,                chunkDir, writeInfoDelegate, downloadInfoDelegate,
-                                            DownloadSpeedLimiter,  outputOldFileInfo,
-                                            outputNewTempFileInfo, chunk, removeChunkAfterApply, token);
+                await InnerWriteUpdateAsync(client,
+                                            chunkDir,
+                                            writeInfoDelegate,
+                                            downloadInfoDelegate,
+                                            DownloadSpeedLimiter,
+                                            outputOldFileInfo,
+                                            outputNewTempFileInfo,
+                                            chunk,
+                                            removeChunkAfterApply,
+                                            token);
             }
 
             if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)
@@ -109,7 +117,8 @@ namespace Hi3Helper.Sophon
             }
 
         #if DEBUG
-            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
+            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash}" +
+                $" -> {AssetSize} bytes) has been completely downloaded!");
         #endif
             downloadCompleteDelegate?.Invoke(this);
         }
@@ -192,37 +201,44 @@ namespace Hi3Helper.Sophon
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
                 parallelOptions = new ParallelOptions
                 {
-                    CancellationToken      = default,
+                    CancellationToken      = CancellationToken.None,
                     MaxDegreeOfParallelism = maxChunksTask
                 };
             }
 
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputOldFileInfo     = outputOldPath.CreateFileInfo();
+            FileInfo outputNewFileInfo     = outputNewPath.CreateFileInfo();
+            FileInfo outputNewTempFileInfo = outputNewTempPath.CreateFileInfo();
             if (outputNewFileInfo.Exists && outputNewFileInfo.Length == AssetSize)
             {
                 outputNewTempFileInfo = outputNewFileInfo;
             }
 
-        #if !NET6_0_OR_GREATER
+#if !NET6_0_OR_GREATER
             using (CancellationTokenSource actionToken = new CancellationTokenSource())
             {
                 using (CancellationTokenSource linkedToken = CancellationTokenSource
-                          .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken))
+                          .CreateLinkedTokenSource(actionToken.Token,
+                                                   parallelOptions.CancellationToken))
                 {
                     ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
                      async chunk =>
                      {
-                         await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate, downloadInfoDelegate,
-                                                     DownloadSpeedLimiter, outputOldFileInfo, outputNewTempFileInfo,
-                                                     chunk, removeChunkAfterApply,
+                         await InnerWriteUpdateAsync(client,
+                                                     chunkDir,
+                                                     writeInfoDelegate,
+                                                     downloadInfoDelegate,
+                                                     DownloadSpeedLimiter,
+                                                     outputOldFileInfo,
+                                                     outputNewTempFileInfo,
+                                                     chunk,
+                                                     removeChunkAfterApply,
                                                      linkedToken.Token);
                      },
                      new ExecutionDataflowBlockOptions
                      {
                          MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                         CancellationToken = linkedToken.Token
+                         CancellationToken      = linkedToken.Token
                      });
 
                     foreach (SophonChunk chunk in Chunks)
@@ -234,24 +250,29 @@ namespace Hi3Helper.Sophon
                     await actionBlock.Completion;
                 }
             }
-        #else
+#else
             await Parallel.ForEachAsync(Chunks, parallelOptions,
                                         async (chunk, threadToken) =>
                                         {
-                                            await InnerWriteUpdateAsync(client, chunkDir, writeInfoDelegate,
+                                            await InnerWriteUpdateAsync(client,
+                                                                        chunkDir,
+                                                                        writeInfoDelegate,
                                                                         downloadInfoDelegate,
-                                                                        DownloadSpeedLimiter, outputOldFileInfo,
+                                                                        DownloadSpeedLimiter,
+                                                                        outputOldFileInfo,
                                                                         outputNewTempFileInfo,
-                                                                        chunk, removeChunkAfterApply,
+                                                                        chunk,
+                                                                        removeChunkAfterApply,
                                                                         threadToken);
                                         });
-        #endif
+#endif
 
             // Refresh temp and current file info
             outputNewTempFileInfo.Refresh();
             outputNewFileInfo.Refresh();
 
-            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName && outputNewTempFileInfo.Exists)
+            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName &&
+                outputNewTempFileInfo.Exists)
             {
                 if (outputNewFileInfo.Directory is { Exists: false })
                 {
@@ -279,7 +300,8 @@ namespace Hi3Helper.Sophon
             }
 
 #if DEBUG
-            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
+            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} ->" +
+                $" {AssetSize} bytes) has been completely downloaded!");
         #endif
             downloadCompleteDelegate?.Invoke(this);
         }
@@ -307,10 +329,13 @@ namespace Hi3Helper.Sophon
 
                 if (isUseOldFile)
                 {
-                    inputStream = outputOldFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
                     streamType  = SourceStreamType.OldReference;
+                    inputStream = outputOldFileInfo.Open(FileMode.Open,
+                                                         FileAccess.ReadWrite,
+                                                         FileShare.ReadWrite);
                 #if DEBUG
-                    this.PushLogDebug($"Using old file as reference at offset: 0x{chunk.ChunkOldOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                    this.PushLogDebug($"Using old file as reference at offset: 0x{chunk.ChunkOldOffset:x8}" +
+                        $" -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                 #endif
                 }
                 else
@@ -318,21 +343,29 @@ namespace Hi3Helper.Sophon
                     string   cachedChunkName            = chunk.GetChunkStagingFilenameHash(this);
                     string   cachedChunkPath            = Path.Combine(chunkDir, cachedChunkName);
                     string   cachedChunkFileCheckedPath = cachedChunkPath + ".verified";
-                    FileInfo cachedChunkInfo            = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                    FileInfo cachedChunkInfo            = cachedChunkPath.CreateFileInfo();
                     if (cachedChunkInfo.Exists && cachedChunkInfo.Length != chunk.ChunkSize)
                     {
                         cachedChunkInfo.Delete();
                     #if DEBUG
-                        this.PushLogDebug($"Cached/preloaded chunk has invalid size for: {AssetName}. Expecting: 0x{chunk.ChunkSize:x8} but get: 0x{cachedChunkInfo.Length:x8} instead. Fallback to download it instead!");
+                        this.PushLogDebug($"Cached/preloaded chunk has invalid size for: {AssetName}." +
+                            $" Expecting: 0x{chunk.ChunkSize:x8} but get: 0x{cachedChunkInfo.Length:x8} instead." +
+                            $" Fallback to download it instead!");
                     #endif
                     }
                     else if (cachedChunkInfo.Exists)
                     {
-                        inputStream = new FileStream(cachedChunkInfo.FullName, FileMode.Open, FileAccess.Read,
-                                                     FileShare.Read, 4 << 10,
-                                                     removeChunkAfterApply
-                                                         ? FileOptions.DeleteOnClose
-                                                         : FileOptions.None);
+                        inputStream = cachedChunkInfo.Open(new FileStreamOptions
+                        {
+                            Mode       = FileMode.Open,
+                            Share      = FileShare.ReadWrite,
+                            Access     = FileAccess.Read,
+                            BufferSize = 4 << 10,
+                            Options    = removeChunkAfterApply
+                                ? FileOptions.DeleteOnClose
+                                : FileOptions.None
+                        });
+
                         streamType = SourceStreamType.CachedLocal;
                         if (File.Exists(cachedChunkFileCheckedPath))
                         {
@@ -340,14 +373,24 @@ namespace Hi3Helper.Sophon
                         }
 
                     #if DEBUG
-                        this.PushLogDebug($"Using cached/preloaded chunk as reference at offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                        this.PushLogDebug("Using cached/preloaded chunk as reference at" +
+                            $" offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                     #endif
                     }
                 }
 
-                outputStream = outputNewFileInfo.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
-                await PerformWriteStreamThreadAsync(client, inputStream, streamType, outputStream, chunk, token,
-                                                    writeInfoDelegate, downloadInfoDelegate, downloadSpeedLimiter);
+                outputStream = outputNewFileInfo.Open(FileMode.OpenOrCreate,
+                                                      FileAccess.ReadWrite,
+                                                      FileShare.ReadWrite);
+                await PerformWriteStreamThreadAsync(client,
+                                                    inputStream,
+                                                    streamType,
+                                                    outputStream,
+                                                    chunk,
+                                                    writeInfoDelegate,
+                                                    downloadInfoDelegate,
+                                                    downloadSpeedLimiter,
+                                                    token);
             }
             finally
             {
@@ -379,12 +422,14 @@ namespace Hi3Helper.Sophon
         /// </param>
         /// <param name="token">Cancellation token context</param>
         /// <returns>The size of downloaded chunks for preload</returns>
-        public async ValueTask<long> GetDownloadedPreloadSize(string chunkDir, string outputDir, bool useCompressedSize,
+        public async ValueTask<long> GetDownloadedPreloadSize(string            chunkDir,
+                                                              string            outputDir,
+                                                              bool              useCompressedSize,
                                                               CancellationToken token = default)
         {
             // Check if the asset path has been completely downloaded, then return 0
             string   assetFullPath       = Path.Combine(outputDir, AssetName);
-            FileInfo assetFileInfo       = new FileInfo(assetFullPath).UnassignReadOnlyFromFileInfo();
+            FileInfo assetFileInfo       = assetFullPath.CreateFileInfo();
             bool     isAssetExist        = assetFileInfo.Exists;
             long     assetDownloadedSize = isAssetExist ? assetFileInfo.Length : 0L;
 
@@ -393,8 +438,10 @@ namespace Hi3Helper.Sophon
             {
                 string   cachedChunkName   = chunk.GetChunkStagingFilenameHash(this);
                 string   cachedChunkPath   = Path.Combine(chunkDir, cachedChunkName);
-                FileInfo cachedChunkInfo   = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
-                long     chunkSizeToReturn = useCompressedSize ? chunk.ChunkSize : chunk.ChunkSizeDecompressed;
+                FileInfo cachedChunkInfo   = cachedChunkPath.CreateFileInfo();
+                long     chunkSizeToReturn = useCompressedSize ?
+                    chunk.ChunkSize :
+                    chunk.ChunkSizeDecompressed;
 
                 // If the asset is fully downloaded, return the chunkSize.
                 if (isAssetExist && assetDownloadedSize == AssetSize && !cachedChunkInfo.Exists)
@@ -402,7 +449,10 @@ namespace Hi3Helper.Sophon
                     return 0L;
                 }
 
-                return cachedChunkInfo.Exists && cachedChunkInfo.Length <= chunk.ChunkSize ? chunkSizeToReturn : 0L;
+                return cachedChunkInfo.Exists &&
+                       cachedChunkInfo.Length <= chunk.ChunkSize ?
+                                                 chunkSizeToReturn :
+                                                 0L;
             }
 
             // If the chunk array is null or empty, return 0
@@ -422,8 +472,9 @@ namespace Hi3Helper.Sophon
             try
             {
                 // Select length of the file using parallel
-                await Task.Run(
-                               () => Parallel.For(0, Chunks.Length, i => chunkBuffers[i] = GetLength(Chunks[i])),
+                await Task.Run(() => Parallel.For(0,
+                                                  Chunks.Length,
+                                                  i => chunkBuffers[i] = GetLength(Chunks[i])),
                                token);
 
                 // Return it using .NET's SIMD Sum() for Array iteration

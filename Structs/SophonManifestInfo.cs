@@ -54,8 +54,7 @@ namespace Hi3Helper.Sophon
                                                             bool   isUseCompression,
                                                             long   manifestSize,
                                                             long   manifestCompressedSize = 0)
-            =>
-            new()
+            => new()
             {
                 ManifestBaseUrl        = manifestBaseUrl,
                 ManifestChecksumMd5    = manifestChecksumMd5,

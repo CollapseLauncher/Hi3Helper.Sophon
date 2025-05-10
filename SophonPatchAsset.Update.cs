@@ -27,8 +27,8 @@ namespace Hi3Helper.Sophon
         {
             int retry = 5;
         StartOver:
-            bool isRemove = SophonPatchMethod.Remove == PatchMethod;
-            bool isCopyOver = SophonPatchMethod.CopyOver == PatchMethod;
+            bool isRemove     = SophonPatchMethod.Remove == PatchMethod;
+            bool isCopyOver   = SophonPatchMethod.CopyOver == PatchMethod;
             bool isPatchHDiff = SophonPatchMethod.Patch == PatchMethod;
             string sourceFileNameToCheck = PatchMethod switch
             {
@@ -82,10 +82,10 @@ namespace Hi3Helper.Sophon
                 SophonChunk sourceFileToCheckAsChunk = new SophonChunk
                 {
                     ChunkHashDecompressed = Extension.HexToBytes(sourceFileHashString.AsSpan()),
-                    ChunkName = sourceFileNameToCheck,
-                    ChunkOffset = 0,
-                    ChunkOldOffset = 0,
-                    ChunkSize = sourceFileSizeToCheck,
+                    ChunkName             = sourceFileNameToCheck,
+                    ChunkOffset           = 0,
+                    ChunkOldOffset        = 0,
+                    ChunkSize             = sourceFileSizeToCheck,
                     ChunkSizeDecompressed = sourceFileSizeToCheck
                 };
 
@@ -101,13 +101,16 @@ namespace Hi3Helper.Sophon
                     if (!isNeedCompleteDownload)
                     {
                         // Open the stream, read it and check for the original file hash
-                        sourceFileStreamToCheck = sourceFileInfoToCheck.Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+                        sourceFileStreamToCheck = sourceFileInfoToCheck
+                            .Open(FileMode.OpenOrCreate,
+                                  FileAccess.ReadWrite,
+                                  FileShare.ReadWrite);
+
                         isNeedCompleteDownload = !(sourceFileToCheckAsChunk.ChunkHashDecompressed.Length != 8 ?
                             await sourceFileToCheckAsChunk.CheckChunkMd5HashAsync(sourceFileStreamToCheck,
-                                                                             true,
-                                                                             token) :
-                            await sourceFileToCheckAsChunk.CheckChunkXxh64HashAsync(OriginalFilePath,
-                                                                               sourceFileStreamToCheck,
+                                true,
+                                token) :
+                            await sourceFileToCheckAsChunk.CheckChunkXxh64HashAsync(sourceFileStreamToCheck,
                                                                                sourceFileToCheckAsChunk.ChunkHashDecompressed,
                                                                                true,
                                                                                token));
@@ -173,6 +176,10 @@ namespace Hi3Helper.Sophon
             {
                 await writeDelegateTask;
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 if (retry < 0)
@@ -180,7 +187,8 @@ namespace Hi3Helper.Sophon
                     throw;
                 }
 
-                this.PushLogError($"An error has occurred while performing patch with method: {PatchMethod} for asset: {TargetFilePath}. Retry attempt left: {retry}\r\n" +
+                this.PushLogError("An error has occurred while performing patch with method:" +
+                    $" {PatchMethod} for asset: {TargetFilePath}. Retry attempt left: {retry}\r\n" +
                     $"Source file: {OriginalFilePath}\r\nPatch file: {PatchNameSource}\r\nException: {ex}");
 
                 // Set patch method to DownloadOver and start over
@@ -191,11 +199,11 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private async Task PerformPatchDownloadOver(HttpClient                  client,
-                                                    string                      inputDir,
-                                                    Action<long>?               downloadReadDelegate,
-                                                    Action<long>?               diskWriteDelegate,
-                                                    CancellationToken           token)
+        private async Task PerformPatchDownloadOver(HttpClient        client,
+                                                    string            inputDir,
+                                                    Action<long>?     downloadReadDelegate,
+                                                    Action<long>?     diskWriteDelegate,
+                                                    CancellationToken token)
         {
             bool isSuccess      = false;
             long writtenToDisk  = 0;
@@ -215,24 +223,27 @@ namespace Hi3Helper.Sophon
 
             // Create target temporary file stream.
             targetFileInfoTemp.Directory?.Create();
-            FileStream targetFileStreamTemp = targetFileInfoTemp.Open(FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+            FileStream targetFileStreamTemp = targetFileInfoTemp.Open(FileMode.Create,
+                                                                      FileAccess.ReadWrite,
+                                                                      FileShare.ReadWrite);
             targetFileInfoTemp.Refresh();
             try
             {
                 // Download the file using Main Downloader
-                await MainAssetInfo.WriteToStreamAsync(client,
-                                                       targetFileStreamTemp,
-                                                       writeInfoDelegate: x =>
-                                                       {
-                                                           diskWriteDelegate?.Invoke(x);
-                                                           Interlocked.Add(ref writtenToDisk, x);
-                                                       },
-                                                       downloadInfoDelegate: (read, write) =>
-                                                       {
-                                                           downloadReadDelegate?.Invoke(read);
-                                                           Interlocked.Add(ref downloadedRead, read);
-                                                       },
-                                                       token: token);
+                await MainAssetInfo
+                    .WriteToStreamAsync(client,
+                                        targetFileStreamTemp,
+                                        writeInfoDelegate: x =>
+                                                           {
+                                                               diskWriteDelegate?.Invoke(x);
+                                                               Interlocked.Add(ref writtenToDisk, x);
+                                                           },
+                                        downloadInfoDelegate: (read, _) =>
+                                                              {
+                                                                  downloadReadDelegate?.Invoke(read);
+                                                                  Interlocked.Add(ref downloadedRead, read);
+                                                              },
+                                        token: token);
                 isSuccess = true;
             }
             catch
@@ -287,11 +298,13 @@ namespace Hi3Helper.Sophon
                 originalFileInfo.Refresh();
                 originalFileInfo.Delete();
 
-                this.PushLogDebug($"[Method: Remove] Removing asset file: {OriginalFilePath} is completed!");
+                this.PushLogDebug("[Method: Remove] Removing asset file:" +
+                    $" {OriginalFilePath} is completed!");
             }
             catch (Exception ex)
             {
-                this.PushLogError($"An error has occurred while deleting old asset: {originalFileInfo.FullName} | {ex}");
+                this.PushLogError("An error has occurred while deleting old asset:" +
+                    $" {originalFileInfo.FullName} | {ex}");
             }
         }
 
@@ -303,7 +316,14 @@ namespace Hi3Helper.Sophon
             bool isSuccess     = false;
             long writtenToDisk = 0;
 
-            PatchTargetProperty patchTargetProperty = PatchTargetProperty.Create(patchOutputDir, PatchNameSource, inputDir, TargetFilePath, PatchOffset, PatchChunkLength, true);
+            PatchTargetProperty patchTargetProperty = PatchTargetProperty
+                .Create(patchOutputDir,
+                        PatchNameSource,
+                        inputDir,
+                        TargetFilePath,
+                        PatchOffset,
+                        PatchChunkLength,
+                        true);
 
             bool isUseCopyToStrategy =
 #if NET6_0_OR_GREATER
@@ -312,7 +332,9 @@ namespace Hi3Helper.Sophon
                     false
 #endif
                     ;
-            string logMessage = $"[Method: CopyOver][Strategy: {(isUseCopyToStrategy ? "DirectCopyTo" : "BufferedCopy")}] Writing target file: {TargetFilePath} with offset: {PatchOffset:x8} and length: {PatchChunkLength:x8} from {PatchNameSource} is completed!";
+            string logMessage = $"[Method: CopyOver][Strategy: {(isUseCopyToStrategy ? "DirectCopyTo" : "BufferedCopy")}]" +
+                $" Writing target file: {TargetFilePath} with offset: {PatchOffset:x8}" +
+                $" and length: {PatchChunkLength:x8} from {PatchNameSource} is completed!";
 
             try
             {
@@ -339,8 +361,11 @@ namespace Hi3Helper.Sophon
 #if NET6_0_OR_GREATER
                 if (isUseCopyToStrategy)
                 {
-                    await patchTargetProperty.PatchChunkStream.CopyToAsync(patchTargetProperty.TargetFileTempStream, token);
+                    await patchTargetProperty.PatchChunkStream
+                        .CopyToAsync(patchTargetProperty.TargetFileTempStream,
+                                     token);
                     diskWriteDelegate?.Invoke(PatchChunkLength);
+
                     Interlocked.Add(ref writtenToDisk, PatchChunkLength);
 
                     isSuccess = true;
@@ -355,19 +380,20 @@ namespace Hi3Helper.Sophon
                     int read;
                     while ((read = await patchTargetProperty.PatchChunkStream.ReadAsync(
 #if NET6_0_OR_GREATER
-                         buffer, token
+                                buffer, token
 #else
-                            buffer, 0, buffer.Length, token
+                                buffer, 0, buffer.Length, token
 #endif
-                        )) > 0)
+                               )) > 0)
                     {
                         await patchTargetProperty.TargetFileTempStream.WriteAsync(
 #if NET6_0_OR_GREATER
-                            buffer.AsMemory(0, read), token
+                             buffer.AsMemory(0, read), token
 #else
                               buffer, 0, read, token
 #endif
                             );
+
                         diskWriteDelegate?.Invoke(read);
                         Interlocked.Add(ref writtenToDisk, read);
                     }
@@ -387,6 +413,7 @@ namespace Hi3Helper.Sophon
             finally
             {
                 this.PushLogDebug(logMessage);
+
                 if (isSuccess)
                     patchTargetProperty.Dispose();
                 else
@@ -399,19 +426,34 @@ namespace Hi3Helper.Sophon
                                              Action<long>?     diskWriteDelegate,
                                              CancellationToken token)
         {
-            bool isSuccess = false;
+            bool isSuccess     = false;
             long writtenToDisk = 0;
 
-            PatchTargetProperty patchTargetProperty = PatchTargetProperty.Create(patchOutputDir, PatchNameSource, inputDir, TargetFilePath, PatchOffset, PatchChunkLength, false);
-            string logMessage = $"[Method: PatchHDiff] Writing target file: {TargetFilePath} with offset: {PatchOffset:x8} and length: {PatchChunkLength:x8} from {PatchNameSource} is completed!";
-            string patchPath = patchTargetProperty.PatchFilePath;
+            PatchTargetProperty patchTargetProperty = PatchTargetProperty
+                .Create(patchOutputDir,
+                        PatchNameSource,
+                        inputDir,
+                        TargetFilePath,
+                        PatchOffset,
+                        PatchChunkLength,
+                        false);
+            string logMessage = $"[Method: PatchHDiff] Writing target file: {TargetFilePath}" +
+                $" with offset: {PatchOffset:x8} and length: {PatchChunkLength:x8}" +
+                $" from {PatchNameSource} is completed!";
+
+            string patchPath      = patchTargetProperty.PatchFilePath;
             string targetTempPath = patchTargetProperty.TargetFileTempInfo.FullName;
 
             try
             {
                 await Task.Factory
-                    .StartNew(Impl, token, token, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default)
-                    .ConfigureAwait(false);
+                          .StartNew(Impl,
+                                    token,
+                                    token,
+                                    TaskCreationOptions.DenyChildAttach,
+                                    TaskScheduler.Default)
+                          .ConfigureAwait(false);
+
                 this.PushLogDebug(logMessage);
                 isSuccess = true;
             }
@@ -454,8 +496,14 @@ namespace Hi3Helper.Sophon
 
             ChunkStream CreateChunkStream()
             {
-                FileStream fileStream = File.Open(patchPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                ChunkStream chunkStream = new ChunkStream(fileStream, PatchOffset, PatchOffset + PatchChunkLength, true);
+                FileStream fileStream = File.Open(patchPath,
+                                                  FileMode.Open,
+                                                  FileAccess.Read,
+                                                  FileShare.Read);
+                ChunkStream chunkStream = new ChunkStream(fileStream,
+                                                          PatchOffset,
+                                                          PatchOffset + PatchChunkLength,
+                                                          true);
 
                 return chunkStream;
             }
@@ -463,11 +511,15 @@ namespace Hi3Helper.Sophon
 
         private async Task<bool> IsFilePatched(string inputPath, CancellationToken token)
         {
-            string targetFilePath = Path.Combine(inputPath, TargetFilePath);
-            FileInfo targetFileInfo = new FileInfo(targetFilePath);
+            string   targetFilePath = Path.Combine(inputPath, TargetFilePath);
+            FileInfo targetFileInfo = targetFilePath.CreateFileInfo();
 
-            bool isSizeMatched = targetFileInfo.Exists && TargetFileSize == targetFileInfo.Length;
-            if (!isSizeMatched)
+            if (!targetFileInfo.Exists)
+            {
+                return false;
+            }
+
+            if (TargetFileSize != targetFileInfo.Length)
             {
                 return false;
             }
@@ -475,26 +527,28 @@ namespace Hi3Helper.Sophon
             SophonChunk checkByHashChunk = new SophonChunk
             {
                 ChunkHashDecompressed = Extension.HexToBytes(TargetFileHash.AsSpan()),
-                ChunkName = TargetFilePath,
-                ChunkSize = TargetFileSize,
+                ChunkName             = TargetFilePath,
+                ChunkSize             = TargetFileSize,
                 ChunkSizeDecompressed = TargetFileSize,
-                ChunkOffset = 0,
-                ChunkOldOffset = 0,
+                ChunkOffset           = 0,
+                ChunkOldOffset        = 0,
             };
 
 #if NET6_0_OR_GREATER
             await
 #endif
-            using FileStream targetFileStream = targetFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+            using FileStream targetFileStream = targetFileInfo.Open(FileMode.Open,
+                                                                    FileAccess.ReadWrite,
+                                                                    FileShare.ReadWrite);
+
             bool isHashMatched = checkByHashChunk.ChunkHashDecompressed.Length == 8 ?
-                await checkByHashChunk.CheckChunkXxh64HashAsync(TargetFilePath,
-                    targetFileStream,
-                    checkByHashChunk.ChunkHashDecompressed,
-                    true,
-                    token) :
+                await checkByHashChunk.CheckChunkXxh64HashAsync(targetFileStream,
+                                                                checkByHashChunk.ChunkHashDecompressed,
+                                                                true,
+                                                                token) :
                 await checkByHashChunk.CheckChunkMd5HashAsync(targetFileStream,
-                    true,
-                    token);
+                                                              true,
+                                                              token);
 
             return isHashMatched;
         }
@@ -502,20 +556,26 @@ namespace Hi3Helper.Sophon
 
     internal class PatchTargetProperty : IDisposable
     {
-        private FileInfo TargetFileInfo { get; }
-        public FileInfo TargetFileTempInfo { get; }
-        public FileStream? TargetFileTempStream { get; }
-        public string PatchFilePath { get; }
-        private FileStream? PatchFileStream { get; }
-        public ChunkStream? PatchChunkStream { get; }
+        private FileInfo     TargetFileInfo       { get; }
+        public  FileInfo     TargetFileTempInfo   { get; }
+        public  FileStream?  TargetFileTempStream { get; }
+        public  string       PatchFilePath        { get; }
+        private FileStream?  PatchFileStream      { get; }
+        public  ChunkStream? PatchChunkStream     { get; }
 
-        private PatchTargetProperty(string patchOutputDir, string patchNameSource, string inputDir, string targetFilePath, long patchOffset, long patchLength, bool createStream)
+        private PatchTargetProperty(string patchOutputDir,
+                                    string patchNameSource,
+                                    string inputDir,
+                                    string targetFilePath,
+                                    long patchOffset,
+                                    long patchLength,
+                                    bool createStream)
         {
-            PatchFilePath = Path.Combine(patchOutputDir, patchNameSource);
-            targetFilePath = Path.Combine(inputDir, targetFilePath);
+            PatchFilePath  = Path.Combine(patchOutputDir, patchNameSource);
+            targetFilePath = Path.Combine(inputDir,       targetFilePath);
             string targetFileTempPath = targetFilePath + ".temp";
 
-            TargetFileInfo = new FileInfo(targetFilePath);
+            TargetFileInfo     = new FileInfo(targetFilePath);
             TargetFileTempInfo = new FileInfo(targetFileTempPath);
             TargetFileTempInfo.Directory?.Create();
 
@@ -536,13 +596,26 @@ namespace Hi3Helper.Sophon
             }
 
             long patchChunkEnd = patchOffset + patchLength;
+
             TargetFileTempStream = TargetFileTempInfo.Open(FileMode.Create, FileAccess.Write, FileShare.Write);
-            PatchFileStream = File.Open(PatchFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            PatchChunkStream = new ChunkStream(PatchFileStream, patchOffset, patchChunkEnd);
+            PatchFileStream      = File.Open(PatchFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            PatchChunkStream     = new ChunkStream(PatchFileStream, patchOffset, patchChunkEnd);
         }
 
-        public static PatchTargetProperty Create(string patchOutputDir, string patchNameSource, string inputDir, string targetFilePath, long patchOffset, long patchLength, bool createTempStream)
-            => new(patchOutputDir, patchNameSource, inputDir, targetFilePath, patchOffset, patchLength, createTempStream);
+        public static PatchTargetProperty Create(string patchOutputDir,
+                                                 string patchNameSource,
+                                                 string inputDir,
+                                                 string targetFilePath,
+                                                 long patchOffset,
+                                                 long patchLength,
+                                                 bool createTempStream)
+            => new(patchOutputDir,
+                   patchNameSource,
+                   inputDir,
+                   targetFilePath,
+                   patchOffset,
+                   patchLength,
+                   createTempStream);
 
         public void Flush()
         {
