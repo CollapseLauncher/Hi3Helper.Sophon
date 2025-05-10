@@ -47,7 +47,7 @@ namespace Hi3Helper.Sophon
                     return;
                 }
 
-                FileInfo removableAssetFileInfo = new FileInfo(sourceFilePathToCheck);
+                FileInfo removableAssetFileInfo = sourceFilePathToCheck.CreateFileInfo();
                 PerformPatchAssetRemove(removableAssetFileInfo);
                 return;
             }
@@ -89,7 +89,7 @@ namespace Hi3Helper.Sophon
                     ChunkSizeDecompressed = sourceFileSizeToCheck
                 };
 
-                FileInfo sourceFileInfoToCheck = new FileInfo(sourceFilePathToCheck);
+                FileInfo sourceFileInfoToCheck = sourceFilePathToCheck.CreateFileInfo();
 
                 // Check for the original file existence and length
                 bool isNeedCompleteDownload = !(sourceFileInfoToCheck is { Exists: true } &&
@@ -210,10 +210,10 @@ namespace Hi3Helper.Sophon
             long downloadedRead = 0;
 
             // Get the FileInfo and Path instance of the target file.
-            string targetFilePath       = Path.Combine(inputDir, TargetFilePath);
-            FileInfo targetFileInfo     = new FileInfo(targetFilePath);
-            string targetFilePathTemp   = targetFilePath + ".temp";
-            FileInfo targetFileInfoTemp = new FileInfo(targetFilePathTemp);
+            string   targetFilePath     = Path.Combine(inputDir, TargetFilePath);
+            FileInfo targetFileInfo     = targetFilePath.CreateFileInfo();
+            string   targetFilePathTemp = targetFilePath + ".temp";
+            FileInfo targetFileInfoTemp = targetFilePathTemp.CreateFileInfo();
 
             // If the target temporary file has already exists, try to unassign read-only before creating new stream.
             if (targetFileInfoTemp.Exists)
@@ -575,8 +575,8 @@ namespace Hi3Helper.Sophon
             targetFilePath = Path.Combine(inputDir,       targetFilePath);
             string targetFileTempPath = targetFilePath + ".temp";
 
-            TargetFileInfo     = new FileInfo(targetFilePath);
-            TargetFileTempInfo = new FileInfo(targetFileTempPath);
+            TargetFileInfo     = targetFilePath.CreateFileInfo();
+            TargetFileTempInfo = targetFileTempPath.CreateFileInfo();
             TargetFileTempInfo.Directory?.Create();
 
             if (TargetFileTempInfo.Exists)
