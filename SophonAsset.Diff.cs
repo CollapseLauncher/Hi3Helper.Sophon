@@ -11,12 +11,13 @@ using System.Threading.Tasks;
 #if !NET6_0_OR_GREATER
 using System.Threading.Tasks.Dataflow;
 #endif
-using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
-using ZstdStream = ZstdNet.DecompressionStream;
-// ReSharper disable AccessToModifiedClosure
 
+// ReSharper disable AccessToModifiedClosure
 // ReSharper disable InvalidXmlDocComment
 // ReSharper disable IdentifierTypo
+
+using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon
 {
@@ -97,9 +98,10 @@ namespace Hi3Helper.Sophon
                     new ExecutionDataflowBlockOptions
                     {
                         MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
-                        TaskScheduler = TaskScheduler.Default,
-                        CancellationToken = linkedToken.Token,
-                        MaxMessagesPerTask = parallelOptions.MaxDegreeOfParallelism * Math.Max(4, Environment.ProcessorCount)
+                        TaskScheduler          = TaskScheduler.Default,
+                        CancellationToken      = linkedToken.Token,
+                        MaxMessagesPerTask     = parallelOptions.MaxDegreeOfParallelism *
+                                                        Math.Max(4, Environment.ProcessorCount)
                     });
 
                 foreach (SophonChunk chunk in Chunks)
@@ -110,7 +112,9 @@ namespace Hi3Helper.Sophon
                     }
 
                     await actionBlock
-                        .SendAsync(new ValueTuple<SophonChunk, CancellationToken>(chunk, linkedToken.Token), linkedToken.Token)
+                        .SendAsync(new ValueTuple<SophonChunk, CancellationToken>(chunk,
+                                                                                  linkedToken.Token),
+                                   linkedToken.Token)
                         .ConfigureAwait(false);
                 }
 
@@ -129,7 +133,8 @@ namespace Hi3Helper.Sophon
             // Throw all other exceptions
 
 #if DEBUG
-            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes) has been completely downloaded!");
+            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
+                " has been completely downloaded!");
 #endif
             downloadCompleteDelegate?.Invoke(this);
             return;
@@ -196,9 +201,11 @@ namespace Hi3Helper.Sophon
                 bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
                 if (forceVerification || !isChunkVerified)
                 {
-                    isChunkUnmatch = !(chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] hash)
-                                       && await chunk.CheckChunkXxh64HashAsync(fileStream, hash, true,
-                                           token));
+                    isChunkUnmatch = !(chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] hash) &&
+                        await chunk.CheckChunkXxh64HashAsync(fileStream,
+                                                             hash,
+                                                             true,
+                                                             token));
                     if (File.Exists(chunkFileCheckedPath))
                     {
                         File.Delete(chunkFileCheckedPath);
@@ -208,7 +215,9 @@ namespace Hi3Helper.Sophon
                 if (!isChunkUnmatch)
                 {
 #if DEBUG
-                    this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                    this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue:" +
+                        $" {_currentChunksDownloadQueue}] Skipping chunk 0x{chunk.ChunkOffset:x8}" +
+                        $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
 #endif
                     writeInfoDelegate?.Invoke(chunk.ChunkSize);
                     downloadInfoDelegate?.Invoke(chunk.ChunkSize, 0);
@@ -268,7 +277,8 @@ namespace Hi3Helper.Sophon
             if (outStream is FileStream fs)
             {
                 fs.Lock(chunk.ChunkOffset, chunk.ChunkSizeDecompressed);
-                this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
+                this.PushLogDebug($"Locked data stream from pos: 0x{chunk.ChunkOffset:x8}" +
+                $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName} by asset: {AssetName}");
             }
 #endif
 
@@ -309,16 +319,18 @@ namespace Hi3Helper.Sophon
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
 #if DEBUG
-                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Init. by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
+                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue:" +
+                            $" {_currentChunksDownloadQueue}] Init. by offset: 0x{chunk.ChunkOffset:x8}" +
+                            $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
 
 #endif
                         outStream.SetLength(chunk.ChunkSize);
                         outStream.Position = 0;
-                        httpResponseMessage = await client.GetChunkAndIfAltAsync(
-                             chunk.ChunkName,
-                             SophonChunksInfo,
-                             SophonChunksInfoAlt,
-                             cooperatedToken.Token);
+                        httpResponseMessage = await client
+                            .GetChunkAndIfAltAsync(chunk.ChunkName,
+                                                   SophonChunksInfo,
+                                                   SophonChunksInfoAlt,
+                                                   cooperatedToken.Token);
                         httpResponseStream = await httpResponseMessage
                                                   .EnsureSuccessStatusCode()
                                                   .Content
@@ -330,7 +342,10 @@ namespace Hi3Helper.Sophon
 
                         sourceStream = httpResponseStream;
 #if DEBUG
-                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] [Complete init.] by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
+                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload}" +
+                            $" Queue: {_currentChunksDownloadQueue}] [Complete init.]" +
+                            $" by offset: 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8}" +
+                            $" for chunk: {chunk.ChunkName}");
 #endif
 
                         downloadSpeedLimiter?.IncrementChunkProcessedCount();
@@ -378,7 +393,9 @@ namespace Hi3Helper.Sophon
                         if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
-                                await chunk.CheckChunkXxh64HashAsync(checkHashStream, outHash, true,
+                                await chunk.CheckChunkXxh64HashAsync(checkHashStream,
+                                                                     outHash,
+                                                                     true,
                                                                      cooperatedToken.Token);
                         }
                         else
@@ -389,19 +406,25 @@ namespace Hi3Helper.Sophon
                             }
 
                             isHashVerified =
-                                await chunk.CheckChunkMd5HashAsync(checkHashStream, true, cooperatedToken.Token);
+                                await chunk.CheckChunkMd5HashAsync(checkHashStream,
+                                                                   true,
+                                                                   cooperatedToken.Token);
                         }
 
                         if (!isHashVerified)
                         {
                             writeInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed);
                             downloadInfoDelegate?.Invoke(-chunk.ChunkSizeDecompressed, 0);
-                            this.PushLogWarning($"Output data seems to be corrupted at transport.\r\nRestarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                            this.PushLogWarning("Output data seems to be corrupted at transport.\r\n" +
+                                $"Restarting download for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8}" +
+                                $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
                             continue;
                         }
 
 #if DEBUG
-                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload} Queue: {_currentChunksDownloadQueue}] Download completed! Chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
+                        this.PushLogDebug($"[{_currentChunksDownloadPos}/{_countChunksDownload}" +
+                            $" Queue: {_currentChunksDownloadQueue}] Download completed! Chunk: {chunk.ChunkName}" +
+                            $" | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
 #endif
                         return;
                     }
@@ -419,13 +442,15 @@ namespace Hi3Helper.Sophon
                             currentWriteOffset = 0;
                             currentRetry++;
 
-                            this.PushLogWarning($"An error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
+                            this.PushLogWarning($"An error has occurred while downloading chunk: {chunk.ChunkName}" +
+                                $" | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
                             await Task.Delay(TimeSpan.FromSeconds(1), token);
                             continue;
                         }
 
                         allowDispose = true;
-                        this.PushLogError($"An unhandled error has occurred while downloading chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
+                        this.PushLogError($"An unhandled error has occurred while downloading chunk: {chunk.ChunkName}" +
+                            $" | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}\r\n{ex}");
                         throw;
                     }
                     finally

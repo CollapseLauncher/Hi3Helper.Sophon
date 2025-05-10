@@ -60,23 +60,24 @@ namespace Hi3Helper.Sophon
         /// <exception cref="ArgumentNullException">
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
-        public static async IAsyncEnumerable<SophonPatchAsset> EnumerateUpdateAsync(HttpClient httpClient,
-                                                                                    SophonChunkManifestInfoPair patchInfoPair,
-                                                                                    SophonChunkManifestInfoPair mainInfoPair,
-                                                                                    string versionTagUpdateFrom,
-                                                                                    SophonDownloadSpeedLimiter downloadSpeedLimiter = null,
-                                                                                    [EnumeratorCancellation]
-                                                                                    CancellationToken token = default)
+        public static async IAsyncEnumerable<SophonPatchAsset>
+            EnumerateUpdateAsync(HttpClient                                 httpClient,
+                                 SophonChunkManifestInfoPair                patchInfoPair,
+                                 SophonChunkManifestInfoPair                mainInfoPair,
+                                 string                                     versionTagUpdateFrom,
+                                 SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
+                                 [EnumeratorCancellation] CancellationToken token                = default)
 
         {
-            await foreach (SophonPatchAsset asset in EnumerateUpdateAsync(httpClient,
-                                                                          patchInfoPair.ManifestInfo,
-                                                                          patchInfoPair.ChunksInfo,
-                                                                          mainInfoPair.ManifestInfo,
-                                                                          mainInfoPair.ChunksInfo,
-                                                                          versionTagUpdateFrom,
-                                                                          downloadSpeedLimiter,
-                                                                          token))
+            await foreach (SophonPatchAsset asset in
+                EnumerateUpdateAsync(httpClient,
+                                     patchInfoPair.ManifestInfo,
+                                     patchInfoPair.ChunksInfo,
+                                     mainInfoPair.ManifestInfo,
+                                     mainInfoPair.ChunksInfo,
+                                     versionTagUpdateFrom,
+                                     downloadSpeedLimiter,
+                                     token))
             {
                 yield return asset;
             }
@@ -125,15 +126,15 @@ namespace Hi3Helper.Sophon
         /// <exception cref="ArgumentNullException">
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
-        public static async IAsyncEnumerable<SophonPatchAsset> EnumerateUpdateAsync(HttpClient httpClient,
-                                                                                    SophonManifestInfo patchManifestInfo,
-                                                                                    SophonChunksInfo patchChunksInfo,
-                                                                                    SophonManifestInfo mainManifestInfo,
-                                                                                    SophonChunksInfo mainChunksInfo,
-                                                                                    string versionTagUpdateFrom,
-                                                                                    SophonDownloadSpeedLimiter downloadSpeedLimiter = null,
-                                                                                    [EnumeratorCancellation]
-                                                                                    CancellationToken token = default)
+        public static async IAsyncEnumerable<SophonPatchAsset>
+            EnumerateUpdateAsync(HttpClient                                 httpClient,
+                                 SophonManifestInfo                         patchManifestInfo,
+                                 SophonChunksInfo                           patchChunksInfo,
+                                 SophonManifestInfo                         mainManifestInfo,
+                                 SophonChunksInfo                           mainChunksInfo,
+                                 string                                     versionTagUpdateFrom,
+                                 SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
+                                 [EnumeratorCancellation] CancellationToken token                = default)
         {
 #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -148,7 +149,9 @@ namespace Hi3Helper.Sophon
             }
 
             ActionTimeoutTaskCallback<SophonPatchProto> manifestFromProtoTaskCallback =
-                async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo, SophonPatchProto.Parser, innerToken);
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo,
+                                                                               SophonPatchProto.Parser,
+                                                                               innerToken);
 
             SophonPatchProto patchManifestProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
@@ -160,11 +163,12 @@ namespace Hi3Helper.Sophon
 
             Dictionary<string, SophonAsset> mainSophonAsset = new(StringComparer.OrdinalIgnoreCase);
 
-            await foreach (SophonAsset mainAsset in SophonManifest.EnumerateAsync(httpClient,
-                                                                                  mainManifestInfo,
-                                                                                  mainChunksInfo,
-                                                                                  downloadSpeedLimiter,
-                                                                                  token))
+            await foreach (SophonAsset mainAsset in SophonManifest
+                .EnumerateAsync(httpClient,
+                                mainManifestInfo,
+                                mainChunksInfo,
+                                downloadSpeedLimiter,
+                                token))
             {
                 if (mainAsset.IsDirectory)
                 {
@@ -178,7 +182,9 @@ namespace Hi3Helper.Sophon
             {
                 SophonPatchAssetInfo patchAssetInfo = patchAssetProperty
                     .AssetInfos
-                    .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(x => x.VersionTag
+                    .Equals(versionTagUpdateFrom,
+                            StringComparison.OrdinalIgnoreCase));
 
                 _ = mainSophonAsset.TryGetValue(patchAssetProperty.AssetName, out SophonAsset sophonMainAsset);
 
@@ -252,16 +258,18 @@ namespace Hi3Helper.Sophon
         {
             HashSet<string> processedAsset = [];
             foreach (SophonPatchAsset asset in patchAssetEnumerable
-                .Where(x => !string.IsNullOrEmpty(x.PatchNameSource) && processedAsset.Add(x.PatchNameSource)))
+                        .Where(x => !string.IsNullOrEmpty(x.PatchNameSource) &&
+                                    processedAsset.Add(x.PatchNameSource)))
             {
                 yield return asset;
             }
         }
 
-        public static void RemovePatches(this IEnumerable<SophonPatchAsset> patchAssetEnumerable, string patchOutputDir)
+        public static void RemovePatches(this IEnumerable<SophonPatchAsset> patchAssetEnumerable,
+                                         string                             patchOutputDir)
         {
             foreach (SophonPatchAsset asset in patchAssetEnumerable
-                .EnsureOnlyGetDedupPatchAssets())
+                        .EnsureOnlyGetDedupPatchAssets())
             {
                 string patchFilePath = Path.Combine(patchOutputDir, asset.PatchNameSource);
 

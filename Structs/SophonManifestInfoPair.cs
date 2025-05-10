@@ -20,7 +20,8 @@ namespace Hi3Helper.Sophon.Structs
         public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string matchingField)
         {
             SophonManifestBuildIdentity sophonManifestIdentity =
-                OtherSophonBuildData.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
+                OtherSophonBuildData.ManifestIdentityList?
+                   .FirstOrDefault(x => x.MatchingField == matchingField);
 
             if (sophonManifestIdentity == null)
             {
@@ -46,10 +47,12 @@ namespace Hi3Helper.Sophon.Structs
             };
         }
 
-        public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField, string versionUpdateFrom)
+        public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField,
+                                                                 string versionUpdateFrom)
         {
             SophonManifestPatchIdentity sophonPatchIdentity =
-                OtherSophonPatchData.ManifestIdentityList?.FirstOrDefault(x => x.MatchingField == matchingField);
+                OtherSophonPatchData.ManifestIdentityList?
+                   .FirstOrDefault(x => x.MatchingField == matchingField);
 
             if (sophonPatchIdentity == null)
             {
@@ -67,17 +70,17 @@ namespace Hi3Helper.Sophon.Structs
             return new SophonChunkManifestInfoPair
             {
                 ChunksInfo = SophonManifest.CreateChunksInfo(sophonPatchIdentity.DiffUrlInfo.UrlPrefix,
-                    sophonChunkInfo.ChunkCount,
-                    sophonChunkInfo.FileCount,
-                    sophonPatchIdentity.DiffUrlInfo.IsCompressed,
-                    sophonChunkInfo.UncompressedSize,
-                    sophonChunkInfo.CompressedSize),
+                                                             sophonChunkInfo.ChunkCount,
+                                                             sophonChunkInfo.FileCount,
+                                                             sophonPatchIdentity.DiffUrlInfo.IsCompressed,
+                                                             sophonChunkInfo.UncompressedSize,
+                                                             sophonChunkInfo.CompressedSize),
                 ManifestInfo = SophonManifest.CreateManifestInfo(sophonPatchIdentity.ManifestUrlInfo.UrlPrefix,
-                    sophonPatchIdentity.ManifestFileInfo.Checksum,
-                    sophonPatchIdentity.ManifestFileInfo.FileName,
-                    sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
-                    sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
-                    sophonPatchIdentity.ManifestFileInfo.CompressedSize),
+                                                                 sophonPatchIdentity.ManifestFileInfo.Checksum,
+                                                                 sophonPatchIdentity.ManifestFileInfo.FileName,
+                                                                 sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
+                                                                 sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
+                                                                 sophonPatchIdentity.ManifestFileInfo.CompressedSize),
                 OtherSophonBuildData = OtherSophonBuildData,
                 OtherSophonPatchData = OtherSophonPatchData
             };
