@@ -179,7 +179,7 @@ namespace Hi3Helper.Sophon
         {
             string   chunkNameHashed             = chunk.GetChunkStagingFilenameHash(this);
             string   chunkFilePathHashed         = Path.Combine(chunkDirOutput, chunkNameHashed);
-            FileInfo chunkFilePathHashedFileInfo = new FileInfo(chunkFilePathHashed).UnassignReadOnlyFromFileInfo();
+            FileInfo chunkFilePathHashedFileInfo = chunkFilePathHashed.CreateFileInfo();
             string   chunkFileCheckedPath        = chunkFilePathHashed + ".verified";
 
             try

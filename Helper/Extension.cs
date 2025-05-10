@@ -381,9 +381,15 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static FileInfo UnassignReadOnlyFromFileInfo(this FileInfo fileInfo)
+        internal static FileInfo CreateFileInfo(this string filePath)
         {
-            if (fileInfo.Exists && fileInfo.IsReadOnly)
+            FileInfo fileInfo = new FileInfo(filePath);
+            if (fileInfo.Directory is { Exists: false } directoryInfo)
+            {
+                directoryInfo.Create();
+            }
+
+            if (fileInfo.Exists)
             {
                 fileInfo.IsReadOnly = false;
             }

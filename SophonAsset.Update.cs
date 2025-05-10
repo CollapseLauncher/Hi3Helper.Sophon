@@ -87,9 +87,9 @@ namespace Hi3Helper.Sophon
             }
 
             // Assign path to FileInfo and try to unassign readonly attribute from existing new file info
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputOldFileInfo     = outputOldPath.CreateFileInfo();
+            FileInfo outputNewFileInfo     = outputNewPath.CreateFileInfo();
+            FileInfo outputNewTempFileInfo = outputNewTempPath.CreateFileInfo();
 
             foreach (SophonChunk chunk in Chunks)
             {
@@ -197,9 +197,9 @@ namespace Hi3Helper.Sophon
                 };
             }
 
-            FileInfo outputOldFileInfo     = new FileInfo(outputOldPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewFileInfo     = new FileInfo(outputNewPath).UnassignReadOnlyFromFileInfo();
-            FileInfo outputNewTempFileInfo = new FileInfo(outputNewTempPath).UnassignReadOnlyFromFileInfo();
+            FileInfo outputOldFileInfo     = outputOldPath.CreateFileInfo();
+            FileInfo outputNewFileInfo     = outputNewPath.CreateFileInfo();
+            FileInfo outputNewTempFileInfo = outputNewTempPath.CreateFileInfo();
             if (outputNewFileInfo.Exists && outputNewFileInfo.Length == AssetSize)
             {
                 outputNewTempFileInfo = outputNewFileInfo;
@@ -318,7 +318,7 @@ namespace Hi3Helper.Sophon
                     string   cachedChunkName            = chunk.GetChunkStagingFilenameHash(this);
                     string   cachedChunkPath            = Path.Combine(chunkDir, cachedChunkName);
                     string   cachedChunkFileCheckedPath = cachedChunkPath + ".verified";
-                    FileInfo cachedChunkInfo            = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                    FileInfo cachedChunkInfo            = cachedChunkPath.CreateFileInfo();
                     if (cachedChunkInfo.Exists && cachedChunkInfo.Length != chunk.ChunkSize)
                     {
                         cachedChunkInfo.Delete();
@@ -384,7 +384,7 @@ namespace Hi3Helper.Sophon
         {
             // Check if the asset path has been completely downloaded, then return 0
             string   assetFullPath       = Path.Combine(outputDir, AssetName);
-            FileInfo assetFileInfo       = new FileInfo(assetFullPath).UnassignReadOnlyFromFileInfo();
+            FileInfo assetFileInfo       = assetFullPath.CreateFileInfo();
             bool     isAssetExist        = assetFileInfo.Exists;
             long     assetDownloadedSize = isAssetExist ? assetFileInfo.Length : 0L;
 
@@ -393,7 +393,7 @@ namespace Hi3Helper.Sophon
             {
                 string   cachedChunkName   = chunk.GetChunkStagingFilenameHash(this);
                 string   cachedChunkPath   = Path.Combine(chunkDir, cachedChunkName);
-                FileInfo cachedChunkInfo   = new FileInfo(cachedChunkPath).UnassignReadOnlyFromFileInfo();
+                FileInfo cachedChunkInfo   = cachedChunkPath.CreateFileInfo();
                 long     chunkSizeToReturn = useCompressedSize ? chunk.ChunkSize : chunk.ChunkSizeDecompressed;
 
                 // If the asset is fully downloaded, return the chunkSize.

@@ -58,12 +58,9 @@ namespace Hi3Helper.Sophon
                 return;
             }
 
-            string patchNameHashed = PatchNameSource;
-            string patchFilePathHashed = Path.Combine(patchOutputDir, patchNameHashed);
-            FileInfo patchFilePathHashedFileInfo = new FileInfo(patchFilePathHashed)
-                .UnassignReadOnlyFromFileInfo();
-
-            patchFilePathHashedFileInfo.Directory?.Create();
+            string   patchNameHashed             = PatchNameSource;
+            string   patchFilePathHashed         = Path.Combine(patchOutputDir, patchNameHashed);
+            FileInfo patchFilePathHashedFileInfo = patchFilePathHashed.CreateFileInfo();
 
             if (!PatchNameSource.TryGetChunkXxh64Hash(out byte[] patchHash))
             {

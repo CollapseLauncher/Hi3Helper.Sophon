@@ -462,11 +462,14 @@ namespace Hi3Helper.Sophon
 
         private async Task<bool> IsFilePatched(string inputPath, CancellationToken token)
         {
-            string targetFilePath = Path.Combine(inputPath, TargetFilePath);
-            FileInfo targetFileInfo = new FileInfo(targetFilePath);
+            string   targetFilePath = Path.Combine(inputPath, TargetFilePath);
+            FileInfo targetFileInfo = targetFilePath.CreateFileInfo();
+            if (!targetFileInfo.Exists)
+            {
+                return false;
+            }
 
-            bool isSizeMatched = targetFileInfo.Exists && TargetFileSize == targetFileInfo.Length;
-            if (!isSizeMatched)
+            if (TargetFileSize != targetFileInfo.Length)
             {
                 return false;
             }

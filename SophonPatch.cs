@@ -267,11 +267,9 @@ namespace Hi3Helper.Sophon
 
                 try
                 {
-                    FileInfo fileInfo = new FileInfo(patchFilePath);
+                    FileInfo fileInfo = patchFilePath.CreateFileInfo();
                     if (fileInfo.Exists)
                     {
-                        fileInfo.IsReadOnly = false;
-                        fileInfo.Refresh();
                         fileInfo.Delete();
                         DummyInstance.PushLogDebug($"Removed patch file: {patchFilePath}");
                     }
