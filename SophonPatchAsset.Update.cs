@@ -172,6 +172,10 @@ namespace Hi3Helper.Sophon
             {
                 await writeDelegateTask;
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 if (retry < 0)
