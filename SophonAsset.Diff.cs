@@ -194,7 +194,7 @@ namespace Hi3Helper.Sophon
                 if (forceVerification || !isChunkVerified)
                 {
                     isChunkUnmatch = !(chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] hash)
-                                       && await chunk.CheckChunkXxh64HashAsync(AssetName, fileStream, hash, true,
+                                       && await chunk.CheckChunkXxh64HashAsync(fileStream, hash, true,
                                            token));
                     if (File.Exists(chunkFileCheckedPath))
                     {
@@ -218,8 +218,14 @@ namespace Hi3Helper.Sophon
                 }
 
                 fileStream.Position = 0;
-                await InnerWriteChunkCopyAsync(client, fileStream, chunk, token, writeInfoDelegate,
-                    downloadInfoDelegate, downloadSpeedLimiter);
+                await InnerWriteChunkCopyAsync(client,
+                                               fileStream,
+                                               chunk,
+                                               writeInfoDelegate,
+                                               downloadInfoDelegate,
+                                               downloadSpeedLimiter,
+                                               token);
+
                 File.Create(chunkFileCheckedPath).Dispose();
             }
             finally
@@ -237,10 +243,10 @@ namespace Hi3Helper.Sophon
             InnerWriteChunkCopyAsync(HttpClient                 client,
                                      Stream                     outStream,
                                      SophonChunk                chunk,
-                                     CancellationToken          token,
                                      DelegateWriteStreamInfo    writeInfoDelegate,
                                      DelegateWriteDownloadInfo  downloadInfoDelegate,
-                                     SophonDownloadSpeedLimiter downloadSpeedLimiter)
+                                     SophonDownloadSpeedLimiter downloadSpeedLimiter,
+                                     CancellationToken          token)
         {
             const int retryCount   = TaskExtensions.DefaultRetryAttempt;
             int       currentRetry = 0;
@@ -361,7 +367,7 @@ namespace Hi3Helper.Sophon
                         if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
-                                await chunk.CheckChunkXxh64HashAsync(AssetName, checkHashStream, outHash, true,
+                                await chunk.CheckChunkXxh64HashAsync(checkHashStream, outHash, true,
                                                                      cooperatedToken.Token);
                         }
                         else

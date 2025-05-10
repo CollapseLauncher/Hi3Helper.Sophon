@@ -208,30 +208,22 @@ namespace Hi3Helper.Sophon.Helper
 #else
             Task<bool>
 #endif
-            CheckChunkXxh64HashAsync(this SophonChunk chunk, string assetName, Stream outStream, byte[] chunkXxh64Hash,
+            CheckChunkXxh64HashAsync(this SophonChunk chunk, Stream outStream, byte[] chunkXxh64Hash,
                                      bool isSingularStream, CancellationToken token)
         {
-            try
+            XxHash64 hash = new XxHash64();
+
+            if (!isSingularStream)
             {
-                XxHash64 hash = new XxHash64();
-
-                if (!isSingularStream)
-                {
-                    outStream.Position = chunk.ChunkOffset;
-                }
-
-                await hash.AppendAsync(outStream, token);
-                bool isHashMatch = hash.GetHashAndReset()
-                                       .AsSpan()
-                                       .SequenceEqual(chunkXxh64Hash);
-
-                return isHashMatch;
+                outStream.Position = chunk.ChunkOffset;
             }
-            catch (Exception ex) when (!token.IsCancellationRequested)
-            {
-                DummyInstance.PushLogWarning($"An error occurred while checking XXH64 hash for chunk: {chunk.ChunkName} | 0x{chunk.ChunkOffset:x8} -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {assetName}\r\n{ex}");
-                return false;
-            }
+
+            await hash.AppendAsync(outStream, token);
+            bool isHashMatch = hash.GetHashAndReset()
+                                   .AsSpan()
+                                   .SequenceEqual(chunkXxh64Hash);
+
+            return isHashMatch;
         }
 
         internal static async

@@ -106,8 +106,7 @@ namespace Hi3Helper.Sophon
                             await sourceFileToCheckAsChunk.CheckChunkMd5HashAsync(sourceFileStreamToCheck,
                                                                              true,
                                                                              token) :
-                            await sourceFileToCheckAsChunk.CheckChunkXxh64HashAsync(OriginalFilePath,
-                                                                               sourceFileStreamToCheck,
+                            await sourceFileToCheckAsChunk.CheckChunkXxh64HashAsync(sourceFileStreamToCheck,
                                                                                sourceFileToCheckAsChunk.ChunkHashDecompressed,
                                                                                true,
                                                                                token));
@@ -487,14 +486,13 @@ namespace Hi3Helper.Sophon
 #endif
             using FileStream targetFileStream = targetFileInfo.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
             bool isHashMatched = checkByHashChunk.ChunkHashDecompressed.Length == 8 ?
-                await checkByHashChunk.CheckChunkXxh64HashAsync(TargetFilePath,
-                    targetFileStream,
-                    checkByHashChunk.ChunkHashDecompressed,
-                    true,
-                    token) :
+                await checkByHashChunk.CheckChunkXxh64HashAsync(targetFileStream,
+                                                                checkByHashChunk.ChunkHashDecompressed,
+                                                                true,
+                                                                token) :
                 await checkByHashChunk.CheckChunkMd5HashAsync(targetFileStream,
-                    true,
-                    token);
+                                                              true,
+                                                              token);
 
             return isHashMatched;
         }

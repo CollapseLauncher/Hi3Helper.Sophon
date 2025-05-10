@@ -93,8 +93,7 @@ namespace Hi3Helper.Sophon
                     !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
                                                                true,
                                                                token) :
-                    !await patchAsChunk.CheckChunkXxh64HashAsync(PatchNameSource,
-                                                                 fileStream,
+                    !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
                                                                  patchHash,
                                                                  true,
                                                                  token);
@@ -261,7 +260,7 @@ namespace Hi3Helper.Sophon
                         if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
-                                await chunk.CheckChunkXxh64HashAsync(TargetFilePath, checkHashStream, outHash, true,
+                                await chunk.CheckChunkXxh64HashAsync(checkHashStream, outHash, true,
                                                                      cooperatedToken.Token);
                         }
                         else
