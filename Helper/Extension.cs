@@ -30,7 +30,7 @@ namespace Hi3Helper.Sophon.Helper
 {
     internal static class Extension
     {
-#if !NET_0_OR_GREATER
+#if !NET9_0_OR_GREATER
         private static readonly byte[] LookupFromHexTable = new byte[] {
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
             255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -61,13 +61,14 @@ namespace Hi3Helper.Sophon.Helper
 
         internal static unsafe byte[] HexToBytes(ReadOnlySpan<char> source)
         {
-            if (source.IsEmpty) return Array.Empty<byte>();
-            if (source.Length % 2 == 1) throw new ArgumentException("Source length must be even!", nameof(source));
+            if (source.IsEmpty) return [];
+            if (source.Length % 2 == 1)
+                throw new IndexOutOfRangeException($"The length of the {nameof(source)} must be even!");
 
             int index = 0;
             int len = source.Length >> 1;
 
-            fixed (char* sourceRef = source)
+            fixed (char* sourceRef = &source[0])
             {
                 if (*(int*)sourceRef == 7864368)
                 {
@@ -80,18 +81,21 @@ namespace Hi3Helper.Sophon.Helper
                     len -= 1;
                 }
 
+                // ReSharper disable once TooWideLocalVariableScope
+                byte add;
                 byte[] result = new byte[len];
 
-                fixed (byte* hiRef = LookupFromHexTable16)
-                    fixed (byte* lowRef = LookupFromHexTable)
-                        fixed (byte* resultRef = result)
+                fixed (byte* hiRef = &LookupFromHexTable16[0])
+                {
+                    fixed (byte* lowRef = &LookupFromHexTable[0])
+                    {
+                        fixed (byte* resultRef = &result[0])
                         {
                             char* s = &sourceRef[index];
-                            byte* r = resultRef;
+                            byte* r = &resultRef[0];
 
                             while (*s != 0)
                             {
-                                byte add;
                                 if (*s > 102 || (*r = hiRef[*s++]) == 255 || *s > 102 || (add = lowRef[*s++]) == 255)
                                 {
                                     throw new InvalidOperationException();
@@ -100,6 +104,8 @@ namespace Hi3Helper.Sophon.Helper
                             }
                             return result;
                         }
+                    }
+                }
             }
         }
 #else
