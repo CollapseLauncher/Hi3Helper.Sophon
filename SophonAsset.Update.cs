@@ -192,7 +192,7 @@ namespace Hi3Helper.Sophon
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
                 parallelOptions = new ParallelOptions
                 {
-                    CancellationToken      = default,
+                    CancellationToken      = CancellationToken.None,
                     MaxDegreeOfParallelism = maxChunksTask
                 };
             }
