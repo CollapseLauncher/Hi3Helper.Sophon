@@ -16,6 +16,10 @@ namespace Hi3Helper.Sophon
 {
     public partial class SophonPatchAsset
     {
+        private static ReadOnlySpan<byte> HDiffPatchMagic => "HDIFF"u8;
+        private const  string             BlankFileMd5Hash = "d41d8cd98f00b204e9800998ecf8427e";
+        private const  string             BlankFileDiffExt = ".diff_ref";
+
         public async Task ApplyPatchUpdateAsync(HttpClient                  client,
                                                 string                      inputDir,
                                                 string                      patchOutputDir,
@@ -154,7 +158,7 @@ namespace Hi3Helper.Sophon
                 }
             }
 
-            Task writeDelegateTask = PatchMethod switch
+            Task<bool> writeDelegateTask = PatchMethod switch
             {
                 SophonPatchMethod.DownloadOver => PerformPatchDownloadOver(client,
                                                                            inputDir,
@@ -174,7 +178,11 @@ namespace Hi3Helper.Sophon
 
             try
             {
-                await writeDelegateTask;
+                bool isRedirect = !await writeDelegateTask;
+                if (isRedirect)
+                {
+                    goto StartOver;
+                }
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -199,11 +207,11 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private async Task PerformPatchDownloadOver(HttpClient        client,
-                                                    string            inputDir,
-                                                    Action<long>?     downloadReadDelegate,
-                                                    Action<long>?     diskWriteDelegate,
-                                                    CancellationToken token)
+        private async Task<bool> PerformPatchDownloadOver(HttpClient        client,
+                                                          string            inputDir,
+                                                          Action<long>?     downloadReadDelegate,
+                                                          Action<long>?     diskWriteDelegate,
+                                                          CancellationToken token)
         {
             bool isSuccess      = false;
             long writtenToDisk  = 0;
@@ -245,6 +253,7 @@ namespace Hi3Helper.Sophon
                                                               },
                                         token: token);
                 isSuccess = true;
+                return true;
             }
             catch
             {
@@ -308,10 +317,10 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private async Task PerformPatchCopyOver(string            inputDir,
-                                                string            patchOutputDir,
-                                                Action<long>?     diskWriteDelegate,
-                                                CancellationToken token)
+        private async Task<bool> PerformPatchCopyOver(string            inputDir,
+                                                      string            patchOutputDir,
+                                                      Action<long>?     diskWriteDelegate,
+                                                      CancellationToken token)
         {
             bool isSuccess     = false;
             long writtenToDisk = 0;
@@ -358,6 +367,55 @@ namespace Hi3Helper.Sophon
                         nameof(patchTargetProperty.PatchChunkStream));
                 }
 
+                if (IsChunkActuallyHDiff(patchTargetProperty.PatchChunkStream))
+                {
+                    patchTargetProperty.PatchChunkStream.Position = 0;
+
+                    string   originalFilePath = Path.Combine(inputDir, TargetFilePath + BlankFileDiffExt);
+                    FileInfo fileInfo         = new FileInfo(originalFilePath);
+
+                    if (fileInfo.Exists)
+                    {
+                        fileInfo.IsReadOnly = false;
+                    }
+
+                    fileInfo.Directory?.Create();
+#if NET6_0_OR_GREATER
+                    await fileInfo.Open(FileMode.Create, FileAccess.Write, FileShare.Write).DisposeAsync();
+#else
+                    fileInfo.Open(FileMode.Create, FileAccess.Write, FileShare.Write).Dispose();
+#endif
+
+                    OriginalFilePath ??= originalFilePath;
+                    OriginalFileHash ??= BlankFileMd5Hash;
+                    OriginalFileSize =   0;
+                    PatchMethod      =   SophonPatchMethod.Patch;
+
+                    // Remove if there's a left-over patch file caused by post issue files
+                    FileInfo leftFile = new FileInfo(Path.Combine(inputDir, TargetFilePath));
+                    if (!leftFile.Exists)
+                    {
+                        return false;
+                    }
+
+                    bool isDeleteLeftFile;
+#if NET6_0_OR_GREATER
+                    await
+#endif
+                    using (FileStream leftFileStream = leftFile.OpenRead())
+                    {
+                        isDeleteLeftFile = IsChunkActuallyHDiff(leftFileStream);
+                    }
+
+                    if (isDeleteLeftFile)
+                    {
+                        leftFile.IsReadOnly = false;
+                        leftFile.Delete();
+                    }
+
+                    return false;
+                }
+
 #if NET6_0_OR_GREATER
                 if (isUseCopyToStrategy)
                 {
@@ -369,7 +427,7 @@ namespace Hi3Helper.Sophon
                     Interlocked.Add(ref writtenToDisk, PatchChunkLength);
 
                     isSuccess = true;
-                    return;
+                    return false;
                 }
 #endif
 
@@ -399,6 +457,7 @@ namespace Hi3Helper.Sophon
                     }
 
                     isSuccess = true;
+                    return true;
                 }
                 finally
                 {
@@ -421,10 +480,10 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private async Task PerformPatchHDiff(string            inputDir,
-                                             string            patchOutputDir,
-                                             Action<long>?     diskWriteDelegate,
-                                             CancellationToken token)
+        private async Task<bool> PerformPatchHDiff(string            inputDir,
+                                                   string            patchOutputDir,
+                                                   Action<long>?     diskWriteDelegate,
+                                                   CancellationToken token)
         {
             bool isSuccess     = false;
             long writtenToDisk = 0;
@@ -465,16 +524,16 @@ namespace Hi3Helper.Sophon
                     patchTargetProperty.DisposeAndDeleteTemp();
             }
 
-            return;
+            return true;
 
             void Impl(object? ctx)
             {
-                HDiffPatch patcher = new HDiffPatch();
+                HDiffPatch patcher   = new HDiffPatch();
+                string     inputPath = Path.Combine(inputDir, OriginalFilePath);
                 try
                 {
                     patcher.Initialize(CreateChunkStream);
 
-                    string inputPath = Path.Combine(inputDir, OriginalFilePath);
                     patcher.Patch(inputPath,
                                   targetTempPath,
                                   true,
@@ -491,6 +550,18 @@ namespace Hi3Helper.Sophon
                 {
                     diskWriteDelegate?.Invoke(-writtenToDisk);
                     throw;
+                }
+                finally
+                {
+                    if (inputPath.EndsWith(BlankFileDiffExt, StringComparison.OrdinalIgnoreCase))
+                    {
+                        FileInfo fileInfo = new FileInfo(inputPath);
+                        if (fileInfo.Exists)
+                        {
+                            fileInfo.IsReadOnly = false;
+                            fileInfo.Delete();
+                        }
+                    }
                 }
             }
 
@@ -551,6 +622,20 @@ namespace Hi3Helper.Sophon
                                                               token);
 
             return isHashMatched;
+        }
+
+        private static bool IsChunkActuallyHDiff(Stream chunkStream)
+        {
+#if NET7_0_OR_GREATER
+            Span<byte> magicBuffer = stackalloc byte[HDiffPatchMagic.Length];
+            _ = chunkStream.ReadAtLeast(magicBuffer, magicBuffer.Length, false);
+#else
+            byte[] magicBuffer = new byte[HDiffPatchMagic.Length];
+            _ = chunkStream.Read(magicBuffer, 0, magicBuffer.Length);
+#endif
+            chunkStream.Position = 0;
+
+            return HDiffPatchMagic.SequenceEqual(magicBuffer);
         }
     }
 
