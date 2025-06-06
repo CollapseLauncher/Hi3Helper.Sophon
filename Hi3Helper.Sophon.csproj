@@ -8,8 +8,8 @@
 		<IsAotCompatible>true</IsAotCompatible>
 		<IsTrimmable>true</IsTrimmable>
 
-        <Version>1.7.0</Version>
-        <AssemblyVersion>1.7.0</AssemblyVersion>
+        <Version>1.7.1</Version>
+        <AssemblyVersion>1.7.1</AssemblyVersion>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<AssemblyName>Hi3Helper.Sophon</AssemblyName>
 		<AssemblyTitle>Hi3Helper.Sophon - A deserializer and downloader for the new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</AssemblyTitle>

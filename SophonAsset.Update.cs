@@ -355,6 +355,7 @@ namespace Hi3Helper.Sophon
                     }
                     else if (cachedChunkInfo.Exists)
                     {
+#if NET6_0_OR_GREATER
                         inputStream = cachedChunkInfo.Open(new FileStreamOptions
                         {
                             Mode       = FileMode.Open,
@@ -365,6 +366,16 @@ namespace Hi3Helper.Sophon
                                 ? FileOptions.DeleteOnClose
                                 : FileOptions.None
                         });
+#else
+                        inputStream = new FileStream(cachedChunkInfo.FullName,
+                                                     FileMode.Open,
+                                                     FileAccess.Read,
+                                                     FileShare.ReadWrite,
+                                                     4 << 10,
+                                                     removeChunkAfterApply
+                                                         ? FileOptions.DeleteOnClose
+                                                         : FileOptions.None);
+#endif
 
                         streamType = SourceStreamType.CachedLocal;
                         if (File.Exists(cachedChunkFileCheckedPath))
@@ -372,10 +383,10 @@ namespace Hi3Helper.Sophon
                             File.Delete(cachedChunkFileCheckedPath);
                         }
 
-                    #if DEBUG
+#if DEBUG
                         this.PushLogDebug("Using cached/preloaded chunk as reference at" +
                             $" offset: 0x{chunk.ChunkOffset:x8} -> 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-                    #endif
+#endif
                     }
                 }
 
@@ -394,7 +405,7 @@ namespace Hi3Helper.Sophon
             }
             finally
             {
-            #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
                 if (inputStream != null)
                 {
                     await inputStream.DisposeAsync();
@@ -404,10 +415,10 @@ namespace Hi3Helper.Sophon
                 {
                     await outputStream.DisposeAsync();
                 }
-            #else
+#else
                 inputStream?.Dispose();
                 outputStream?.Dispose();
-            #endif
+#endif
             }
         }
 

@@ -175,7 +175,15 @@ namespace Hi3Helper.Sophon
                     continue;
                 }
 
+
+#if NET6_0_OR_GREATER
                 mainSophonAsset.TryAdd(mainAsset.AssetName, mainAsset);
+#else
+                if (mainSophonAsset.ContainsKey(mainAsset.AssetName))
+                {
+                    mainSophonAsset.Add(mainAsset.AssetName, mainAsset);
+                }
+#endif
             }
 
             foreach (SophonPatchAssetProperty patchAssetProperty in patchManifestProto.PatchAssets)

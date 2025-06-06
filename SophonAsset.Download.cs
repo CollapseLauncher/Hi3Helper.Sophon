@@ -196,17 +196,9 @@ namespace Hi3Helper.Sophon
                 using CancellationTokenSource linkedToken = CancellationTokenSource
                     .CreateLinkedTokenSource(actionToken.Token,
                                              parallelOptions.CancellationToken);
-                ActionBlock<SophonChunk> actionBlock = new ActionBlock<SophonChunk>(
-                    async chunk =>
-                    {
-                        using Stream outStream = outStreamFunc();
-                        await PerformWriteStreamThreadAsync(client,
-                            null, SourceStreamType.Internet,
-                            outStream, chunk, linkedToken.Token,
-                            writeInfoDelegate,
-                            downloadInfoDelegate,
-                            DownloadSpeedLimiter);
-                    },
+                ActionBlock<SophonChunk> actionBlock = new(
+                    // ReSharper disable once AccessToDisposedClosure
+                    async chunk => await Impl(chunk, linkedToken.Token),
                     new ExecutionDataflowBlockOptions
                     {
                         MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
@@ -242,7 +234,10 @@ namespace Hi3Helper.Sophon
 
             async ValueTask Impl(SophonChunk chunk, CancellationToken threadToken)
             {
-                await using Stream outStream = outStreamFunc();
+#if NET6_0_OR_GREATER
+                await
+#endif
+                using Stream outStream = outStreamFunc();
                 await PerformWriteStreamThreadAsync(client,
                                                     null,      SourceStreamType.Internet,
                                                     outStream, chunk,
@@ -253,11 +248,11 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             PerformWriteStreamThreadAsync(HttpClient                 client,
                                           Stream                     sourceStream,
                                           SourceStreamType           sourceStreamType,
@@ -281,10 +276,10 @@ namespace Hi3Helper.Sophon
 
             if (isSkipChunk)
             {
-            #if DEBUG
+#if DEBUG
                 this.PushLogDebug($"Skipping chunk 0x{chunk.ChunkOffset:x8}" +
                     $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for: {AssetName}");
-            #endif
+#endif
                 writeInfoDelegate?.Invoke(chunk.ChunkSizeDecompressed);
                 downloadInfoDelegate?.Invoke(chunk.ChunkOldOffset != -1 ?
                                                  0 :
@@ -305,11 +300,11 @@ namespace Hi3Helper.Sophon
         }
 
         private async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             InnerWriteStreamToAsync(HttpClient                 client,
                                     Stream                     sourceStream,
                                     SourceStreamType           sourceStreamType,
@@ -376,9 +371,9 @@ namespace Hi3Helper.Sophon
                     {
                         CancellationTokenSource innerTimeoutToken =
                             new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                                                    #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                                       , TimeProvider.System
-                                                    #endif
+#endif
                                                        );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
@@ -482,9 +477,9 @@ namespace Hi3Helper.Sophon
 
                             innerTimeoutToken =
                                 new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                                                        #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                                                           , TimeProvider.System
-                                                        #endif
+#endif
                                                            );
                             cooperatedToken =
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
