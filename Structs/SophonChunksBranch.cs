@@ -112,7 +112,10 @@ namespace Hi3Helper.Sophon
                                                   sophonManifestIdentity.ManifestUrlInfo.IsCompressed,
                                                   sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
                                                   sophonManifestIdentity.ManifestFileInfo.CompressedSize),
-                OtherSophonBuildData = sophonBranch.Data
+                OtherSophonBuildData = sophonBranch.Data,
+                MatchingField        = sophonManifestIdentity.MatchingField,
+                CategoryName         = sophonManifestIdentity.CategoryName,
+                CategoryId           = sophonManifestIdentity.CategoryId
             };
         }
     }

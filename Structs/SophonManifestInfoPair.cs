@@ -16,6 +16,9 @@ namespace Hi3Helper.Sophon.Structs
         public bool                    IsFound              { get; internal set; } = true;
         public int                     ReturnCode           { get; internal set; } = 0;
         public string                  ReturnMessage        { get; internal set; }
+        public string                  MatchingField        { get; internal set; }
+        public string                  CategoryName         { get; internal set; }
+        public int                     CategoryId           { get; internal set; }
 
         public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string matchingField)
         {
@@ -43,7 +46,10 @@ namespace Hi3Helper.Sophon.Structs
                                                                  sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
                                                                  sophonManifestIdentity.ManifestFileInfo.CompressedSize),
                 OtherSophonBuildData = OtherSophonBuildData,
-                OtherSophonPatchData = OtherSophonPatchData
+                OtherSophonPatchData = OtherSophonPatchData,
+                MatchingField        = sophonManifestIdentity.MatchingField,
+                CategoryName         = sophonManifestIdentity.CategoryName,
+                CategoryId           = sophonManifestIdentity.CategoryId
             };
         }
 
@@ -82,7 +88,10 @@ namespace Hi3Helper.Sophon.Structs
                                                                  sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
                                                                  sophonPatchIdentity.ManifestFileInfo.CompressedSize),
                 OtherSophonBuildData = OtherSophonBuildData,
-                OtherSophonPatchData = OtherSophonPatchData
+                OtherSophonPatchData = OtherSophonPatchData,
+                MatchingField        = sophonPatchIdentity.MatchingField,
+                CategoryName         = sophonPatchIdentity.CategoryName,
+                CategoryId           = sophonPatchIdentity.CategoryId
             };
         }
     }
