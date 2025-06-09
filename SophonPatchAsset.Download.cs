@@ -27,7 +27,7 @@ namespace Hi3Helper.Sophon
 
     public partial class SophonPatchAsset
     {
-        internal const int BufferSize = 256 << 10;
+        internal const int BufferSize = 4 << 10;
 
         public SophonAsset       MainAssetInfo    { get; set; }
         public SophonChunksInfo  PatchInfo        { get; set; }

@@ -35,7 +35,7 @@ namespace Hi3Helper.Sophon
             OldReference
         }
 
-        internal const int BufferSize     = 256 << 10;
+        internal const int BufferSize     = 4 << 10;
         private const  int ZstdBufferSize = 0; // Default
 
         public   string                     AssetName            { get; internal set; }
