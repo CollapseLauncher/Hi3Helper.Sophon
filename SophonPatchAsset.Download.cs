@@ -229,13 +229,13 @@ namespace Hi3Helper.Sophon
 #endif
                                                                   , cooperatedToken.Token)) > 0)
                         {
-                            await outStream.WriteAsync(
+
 #if NET6_0_OR_GREATER
-                                                       buffer.AsMemory(0, read)
+                            outStream.Write(buffer.AsSpan(0, read));
 #else
-                                                       buffer, 0, read
+                            outStream.Write(buffer, 0, read);
 #endif
-                                                       , cooperatedToken.Token);
+
                             currentWriteOffset += read;
                             writeInfoDelegate?.Invoke(read);
                             downloadInfoDelegate?.Invoke(read, read);

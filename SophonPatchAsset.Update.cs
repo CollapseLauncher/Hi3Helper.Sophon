@@ -431,7 +431,7 @@ namespace Hi3Helper.Sophon
                 }
 #endif
 
-                byte[] buffer = ArrayPool<byte>.Shared.Rent(16 << 10);
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
 
                 try
                 {
@@ -444,13 +444,11 @@ namespace Hi3Helper.Sophon
 #endif
                                )) > 0)
                     {
-                        await patchTargetProperty.TargetFileTempStream.WriteAsync(
 #if NET6_0_OR_GREATER
-                             buffer.AsMemory(0, read), token
+                        patchTargetProperty.TargetFileTempStream.Write(buffer.AsSpan(0, read));
 #else
-                              buffer, 0, read, token
+                        patchTargetProperty.TargetFileTempStream.Write(buffer, 0, read);
 #endif
-                            );
 
                         diskWriteDelegate?.Invoke(read);
                         Interlocked.Add(ref writtenToDisk, read);

@@ -447,13 +447,13 @@ namespace Hi3Helper.Sophon
                                                                     buffer, 0, toRead
 #endif
                                                                     , cooperatedToken.Token);
-                            await outStream.WriteAsync(
+
 #if NET6_0_OR_GREATER
-                                                       buffer.AsMemory(0, read)
+                            outStream.Write(buffer.AsSpan(0, read));
 #else
-                                                       buffer, 0, read
+                            outStream.Write(buffer, 0, read);
 #endif
-                                                       , cooperatedToken.Token);
+
                             currentWriteOffset += read;
                             remain             -= read;
                             hashInstance.TransformBlock(buffer, 0, read, buffer, 0);
