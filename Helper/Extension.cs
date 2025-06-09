@@ -9,6 +9,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
 #if !NET9_0_OR_GREATER
 using System.Runtime.InteropServices;
 #endif
@@ -25,6 +28,7 @@ using System.Threading.Tasks;
 
 using ZstdStream = ZstdNet.DecompressionStream;
 // ReSharper disable UnusedMember.Global
+// ReSharper disable StringLiteralTypo
 
 namespace Hi3Helper.Sophon.Helper
 {
@@ -315,27 +319,12 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static bool TryGetChunkXxh64Hash(this string fileName,
-                                                  out  byte[] outHash)
+        internal static bool TryGetChunkXxh64Hash(
+            this string fileName,
+            out  byte[] outHash)
         {
 #if NET8_0_OR_GREATER
-            outHash = null;
-            Span<Range> ranges = stackalloc Range[2];
-            if (fileName.AsSpan().Split(ranges, '_') != 2)
-            {
-                return false;
-            }
-
-            ReadOnlySpan<char> nameSpan = fileName.AsSpan();
-            ReadOnlySpan<char> chunkXxh64Hash = nameSpan[ranges[0]];
-
-            if (chunkXxh64Hash.Length != 16)
-            {
-                return false;
-            }
-
-            outHash = HexToBytes(chunkXxh64Hash);
-            return true;
+            return TryGetChunkXxh64Hash(fileName.AsSpan(), out outHash);
 #else
             outHash = null;
             string[] splits = fileName.Split('_');
@@ -348,6 +337,29 @@ namespace Hi3Helper.Sophon.Helper
             outHash = HexToBytes(splits[0].AsSpan());
             return true;
 #endif
+        }
+
+        internal static bool TryGetChunkXxh64Hash(
+            ReadOnlySpan<char> fileName,
+            out byte[]         outHash)
+        {
+            outHash = null;
+            Span<Range> ranges = stackalloc Range[2];
+            if (fileName.Split(ranges, '_') != 2)
+            {
+                return false;
+            }
+
+            ReadOnlySpan<char> nameSpan       = fileName;
+            ReadOnlySpan<char> chunkXxh64Hash = nameSpan[ranges[0]];
+
+            if (chunkXxh64Hash.Length != 16)
+            {
+                return false;
+            }
+
+            outHash = HexToBytes(chunkXxh64Hash);
+            return true;
         }
 
         internal static void EnsureOrThrowOutputDirectoryExistence(this SophonAsset asset,
@@ -458,6 +470,96 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
+        internal static (T Data, bool IsSuccess) TryReadFromCached<T>(
+            SophonManifestInfo manifestInfo,
+            out string         localMetadataPath,
+            MessageParser<T>   messageParser)
+            where T : IMessage<T>
+        {
+            const string metadataMarkName = "manifest_";
+            localMetadataPath = string.Empty;
+
+        #pragma warning disable CA1510
+            if (manifestInfo == null)
+        #pragma warning restore CA1510
+            {
+                throw new ArgumentNullException(nameof(manifestInfo));
+            }
+
+            string currentUserDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string localLowDir = Path.Combine(currentUserDir, RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ?
+                                                  @"AppData\LocalLow\CollapseLauncher\_sophonMetadataCache" :
+                                                  $"sophon{Path.PathSeparator}metadatacache");
+
+            Directory.CreateDirectory(localLowDir);
+
+            string metadataFilename = Path.GetFileName(manifestInfo.ManifestFileUrl ?? "");
+            string cachedFilepath   = Path.Combine(localLowDir, metadataFilename);
+            localMetadataPath = cachedFilepath;
+
+            if (!File.Exists(cachedFilepath) ||
+                !metadataFilename.StartsWith(metadataMarkName, StringComparison.OrdinalIgnoreCase))
+            {
+                return (default, false);
+            }
+
+            ReadOnlySpan<char> metadataOnlyHashName = metadataFilename.AsSpan(metadataMarkName.Length);
+            if (!TryGetChunkXxh64Hash(metadataOnlyHashName, out byte[] metadataXxh64Hash))
+            {
+                return (default, false);
+            }
+
+            using FileStream stream = File.Open(cachedFilepath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            if (stream.Length == 0)
+            {
+                return (default, false);
+            }
+
+            byte[]     readBytes  = ArrayPool<byte>.Shared.Rent((int)manifestInfo.ManifestSize);
+            Span<byte> bufferHash = stackalloc byte[8];
+            try
+            {
+                int offset = 0;
+                int read;
+                while ((read = stream.Read(readBytes.AsSpan(offset))) > 0)
+                {
+                    offset += read;
+                }
+
+                XxHash64.TryHash(readBytes.AsSpan(0, offset), bufferHash, out _);
+                // ReSharper disable once ConvertIfStatementToReturnStatement
+                if (!bufferHash.SequenceEqual(metadataXxh64Hash))
+                {
+                    return (default, false);
+                }
+
+                using Stream parserStream = manifestInfo.IsUseCompression ?
+                    GetDecompressorStream(stream) :
+                    stream;
+
+                return (messageParser.ParseFrom(parserStream), true);
+            }
+            // ReSharper disable once RedundantCatchClause
+            catch
+            {
+#if DEBUG
+                throw;
+#else
+                return (default, false);
+#endif
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(readBytes);
+            }
+
+            ZstdStream GetDecompressorStream(Stream sourceStream)
+            {
+                sourceStream.Position = 0;
+                return new ZstdStream(sourceStream);
+            }
+        }
+
 #if NETSTANDARD2_0_OR_GREATER
         internal static HashSet<T> ToHashSet<T>(this IEnumerable<T> enumerable) => new HashSet<T>(enumerable);
 #endif
@@ -468,6 +570,20 @@ namespace Hi3Helper.Sophon.Helper
                                                                    CancellationToken  innerToken)
             where T : IMessage<T>
         {
+            (T cachedData, bool isSuccess) = TryReadFromCached(manifestInfo,
+                                                               out string localMetadataPath,
+                                                               messageParser);
+            if (isSuccess)
+            {
+                return cachedData;
+            }
+
+            FileInfo localMetadataInfo = new FileInfo(localMetadataPath);
+            if (localMetadataInfo.Exists)
+            {
+                localMetadataInfo.IsReadOnly = false;
+            }
+
             using (HttpResponseMessage httpResponseMessage = await httpClient
                 .GetAsync(manifestInfo.ManifestFileUrl,
                           HttpCompletionOption.ResponseHeadersRead,
@@ -488,9 +604,17 @@ namespace Hi3Helper.Sophon.Helper
 #if NET6_0_OR_GREATER
                 await
 #endif
+                using FileStream manifestLocalStream = localMetadataInfo.Create();
+                await manifestProtoStream.CopyToAsync(manifestLocalStream, innerToken);
+
+                manifestLocalStream.Position = 0;
+
+#if NET6_0_OR_GREATER
+                await
+#endif
                 using (Stream decompressedProtoStream = manifestInfo.IsUseCompression ?
-                           new ZstdStream(manifestProtoStream) :
-                           manifestProtoStream)
+                           new ZstdStream(manifestLocalStream) :
+                           manifestLocalStream)
                 {
                     return await Task<T>.Factory.StartNew(() => messageParser.ParseFrom(decompressedProtoStream),
                                                           innerToken,
