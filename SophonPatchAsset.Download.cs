@@ -45,18 +45,65 @@ namespace Hi3Helper.Sophon
         public long              TargetFileSize   { get; set; }
 
 #nullable enable
-        public async Task DownloadPatchAsync(HttpClient                  client,
-                                             string                      patchOutputDir,
-                                             bool                        forceVerification    = false,
-                                             Action<long>?               downloadReadDelegate = null,
-                                             SophonDownloadSpeedLimiter? downloadSpeedLimiter = null,
-                                             CancellationToken           token                = default)
+        public async Task<bool> DownloadPatchAsync(HttpClient                  client,
+                                                   string                      inputDir,
+                                                   string                      patchOutputDir,
+                                                   bool                        forceVerification    = false,
+                                                   Action<long>?               downloadReadDelegate = null,
+                                                   SophonDownloadSpeedLimiter? downloadSpeedLimiter = null,
+                                                   CancellationToken           token                = default)
         {
             // Ignore SophonPatchMethod.Remove and SophonPatchMethod.DownloadOver assets
             if (PatchMethod is SophonPatchMethod.Remove or
                                SophonPatchMethod.DownloadOver)
             {
-                return;
+                return true;
+            }
+
+            string   targetFilePathOnCheck = Path.Combine(inputDir, TargetFilePath);
+            FileInfo targetFilePathInfo    = new FileInfo(targetFilePathOnCheck);
+            if (targetFilePathInfo.Exists)
+            {
+                bool isReadOnly = targetFilePathInfo.IsReadOnly;
+                try
+                {
+#if NET6_0_OR_GREATER
+                    await
+#endif
+                    using FileStream checkStream = targetFilePathInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+                    SophonChunk existingFileAsChunk = new SophonChunk
+                    {
+                        ChunkHashDecompressed = Extension.HexToBytes(TargetFileHash),
+                        ChunkName             = TargetFilePath,
+                        ChunkOffset           = 0,
+                        ChunkOldOffset        = 0,
+                        ChunkSize             = checkStream.Length,
+                        ChunkSizeDecompressed = checkStream.Length
+                    };
+
+                    bool isFileDownloaded = existingFileAsChunk.ChunkHashDecompressed.Length > 8 ?
+                        await existingFileAsChunk.CheckChunkMd5HashAsync(checkStream,
+                                                                         true,
+                                                                         token) :
+                        await existingFileAsChunk.CheckChunkXxh64HashAsync(checkStream,
+                                                                           existingFileAsChunk.ChunkHashDecompressed,
+                                                                           true,
+                                                                           token);
+
+                    if (isFileDownloaded)
+                    {
+#if DEBUG
+                        this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
+#endif
+                        downloadReadDelegate?.Invoke(PatchSize);
+                        return false;
+                    }
+                }
+                finally
+                {
+                    targetFilePathInfo.IsReadOnly = isReadOnly;
+                }
             }
 
             string   patchNameHashed             = PatchNameSource;
@@ -112,7 +159,7 @@ namespace Hi3Helper.Sophon
 #endif
                 downloadReadDelegate?.Invoke(PatchSize);
 
-                return;
+                return true;
             }
 
             fileStream.Position = 0;
@@ -128,6 +175,8 @@ namespace Hi3Helper.Sophon
                                            },
                                            downloadSpeedLimiter: downloadSpeedLimiter,
                                            token: token);
+
+            return true;
         }
 
         private async
