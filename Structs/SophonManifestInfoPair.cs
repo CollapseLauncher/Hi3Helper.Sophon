@@ -1,4 +1,5 @@
 using Hi3Helper.Sophon.Infos;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -65,10 +66,22 @@ namespace Hi3Helper.Sophon.Structs
                 throw new KeyNotFoundException($"Sophon patch with matching field: {matchingField} is not found!");
             }
 
+            // If the patch identity isn't found, try find the one that's near with current version.
             if (!sophonPatchIdentity
                 .DiffTaggedInfo
                 .TryGetValue(versionUpdateFrom,
                              out SophonManifestChunkInfo sophonChunkInfo))
+            {
+                var    versions      = sophonPatchIdentity.DiffTaggedInfo.Keys;
+                string latestVersion = versions.MaxBy(Version.Parse);
+
+                sophonPatchIdentity
+                   .DiffTaggedInfo
+                   .TryGetValue(latestVersion, out sophonChunkInfo);
+            }
+
+            // If it's still null, then throw.
+            if (sophonChunkInfo == null)
             {
                 throw new KeyNotFoundException($"Sophon patch diff tagged info with tag: {OtherSophonPatchData.TagName} is not found!");
             }
