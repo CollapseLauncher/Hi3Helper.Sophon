@@ -3,6 +3,7 @@ using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -29,20 +30,21 @@ namespace Hi3Helper.Sophon
     {
         internal const int BufferSize = 4 << 10;
 
-        public SophonAsset       MainAssetInfo    { get; set; }
-        public SophonChunksInfo  PatchInfo        { get; set; }
-        public SophonPatchMethod PatchMethod      { get; set; }
-        public string            PatchNameSource  { get; set; }
-        public string            PatchHash        { get; set; }
-        public long              PatchOffset      { get; set; }
-        public long              PatchSize        { get; set; }
-        public long              PatchChunkLength { get; set; }
-        public string            OriginalFilePath { get; set; }
-        public string            OriginalFileHash { get; set; }
-        public long              OriginalFileSize { get; set; }
-        public string            TargetFilePath   { get; set; }
-        public string            TargetFileHash   { get; set; }
-        public long              TargetFileSize   { get; set; }
+        public   SophonAsset       MainAssetInfo     { get; set; }
+        public   SophonChunksInfo  PatchInfo         { get; set; }
+        public   SophonPatchMethod PatchMethod       { get; set; }
+        public   string            PatchNameSource   { get; set; }
+        public   string            PatchHash         { get; set; }
+        public   long              PatchOffset       { get; set; }
+        public   long              PatchSize         { get; set; }
+        public   long              PatchChunkLength  { get; set; }
+        public   string            OriginalFilePath  { get; set; }
+        public   string            OriginalFileHash  { get; set; }
+        public   long              OriginalFileSize  { get; set; }
+        public   string            TargetFilePath    { get; set; }
+        public   string            TargetFileHash    { get; set; }
+        public   long              TargetFileSize    { get; set; }
+        internal HashSet<string>   AssetKeepPathList { get; set; } = [];
 
 #nullable enable
         public async Task<bool> DownloadPatchAsync(HttpClient                  client,

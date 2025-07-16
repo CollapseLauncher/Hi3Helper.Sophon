@@ -13,16 +13,17 @@ namespace Hi3Helper.Sophon.Structs
 {
     public class SophonChunkManifestInfoPair
     {
-        public SophonChunksInfo?        ChunksInfo           { get; internal set; }
-        public SophonManifestInfo?      ManifestInfo         { get; internal set; }
-        public SophonManifestBuildData? OtherSophonBuildData { get; internal set; }
-        public SophonManifestPatchData? OtherSophonPatchData { get; internal set; }
-        public bool                     IsFound              { get; internal set; } = true;
-        public int                      ReturnCode           { get; internal set; } = 0;
-        public string?                  ReturnMessage        { get; internal set; }
-        public string?                  MatchingField        { get; internal set; }
-        public string?                  CategoryName         { get; internal set; }
-        public int                      CategoryId           { get; internal set; }
+        public   SophonChunksInfo?        ChunksInfo           { get; internal set; }
+        public   SophonManifestInfo?      ManifestInfo         { get; internal set; }
+        public   SophonManifestBuildData? OtherSophonBuildData { get; internal set; }
+        public   SophonManifestPatchData? OtherSophonPatchData { get; internal set; }
+        public   bool                     IsFound              { get; internal set; } = true;
+        public   int                      ReturnCode           { get; internal set; } = 0;
+        public   string?                  ReturnMessage        { get; internal set; }
+        public   string?                  MatchingField        { get; internal set; }
+        public   string?                  CategoryName         { get; internal set; }
+        public   int                      CategoryId           { get; internal set; }
+        internal HashSet<string>          AssetKeepPathList    { get; set; } = [];
 
         public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string matchingField)
         {
@@ -35,7 +36,7 @@ namespace Hi3Helper.Sophon.Structs
                 throw new KeyNotFoundException($"Sophon manifest with matching field: {matchingField} is not found!");
             }
 
-            return new SophonChunkManifestInfoPair
+            SophonChunkManifestInfoPair otherManifestIdentity = new SophonChunkManifestInfoPair
             {
                 ChunksInfo = SophonManifest.CreateChunksInfo(sophonManifestIdentity.ChunksUrlInfo.UrlPrefix,
                                                              sophonManifestIdentity.ChunkInfo.ChunkCount,
@@ -53,8 +54,12 @@ namespace Hi3Helper.Sophon.Structs
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonManifestIdentity.MatchingField,
                 CategoryName         = sophonManifestIdentity.CategoryName,
-                CategoryId           = sophonManifestIdentity.CategoryId
+                CategoryId           = sophonManifestIdentity.CategoryId,
+                AssetKeepPathList  = AssetKeepPathList
             };
+            otherManifestIdentity.ManifestInfo.AssetKeepPathList = AssetKeepPathList;
+
+            return otherManifestIdentity;
         }
 
         public bool TryGetOtherPatchInfoPair(string matchingField,
@@ -121,8 +126,11 @@ namespace Hi3Helper.Sophon.Structs
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonPatchIdentity.MatchingField,
                 CategoryName         = sophonPatchIdentity.CategoryName,
-                CategoryId           = sophonPatchIdentity.CategoryId
+                CategoryId           = sophonPatchIdentity.CategoryId,
+                AssetKeepPathList  = AssetKeepPathList
             };
+            otherPatchIdentity.ManifestInfo.AssetKeepPathList = AssetKeepPathList;
+
             return true;
         }
 

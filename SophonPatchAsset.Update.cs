@@ -127,7 +127,7 @@ namespace Hi3Helper.Sophon
 #else
                             sourceFileStreamToCheck.Dispose();
 #endif
-                            PerformPatchAssetRemove(sourceFileInfoToCheck);
+                            PerformPatchAssetRemove(sourceFileInfoToCheck, true);
                         }
                         else
                         {
@@ -294,12 +294,21 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private void PerformPatchAssetRemove(FileInfo originalFileInfo)
+        private void PerformPatchAssetRemove(FileInfo originalFileInfo, bool isForceRemove = false)
         {
             try
             {
                 if (!originalFileInfo.Exists)
                 {
+                    return;
+                }
+
+                if (!isForceRemove &&
+                    ((!string.IsNullOrEmpty(OriginalFilePath) && AssetKeepPathList.Contains(OriginalFilePath)) ||
+                     (!string.IsNullOrEmpty(TargetFilePath) && AssetKeepPathList.Contains(TargetFilePath))))
+                {
+                    this.PushLogDebug("[Method: Remove] Skipping file from being removed as it's flagged for being kept:" +
+                                      $" {OriginalFilePath}!");
                     return;
                 }
 
