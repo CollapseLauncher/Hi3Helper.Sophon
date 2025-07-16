@@ -68,18 +68,14 @@ namespace Hi3Helper.Sophon.Structs
                                              [NotNullWhen(true)] out SophonChunkManifestInfoPair? otherPatchIdentity)
         {
             Unsafe.SkipInit(out otherPatchIdentity);
-            if (OtherSophonPatchData == null)
-            {
-                return false;
-            }
 
             SophonManifestPatchIdentity? sophonPatchIdentity =
-                OtherSophonPatchData.ManifestIdentityList?
+                OtherSophonPatchData?.ManifestIdentityList?
                    .FirstOrDefault(x => x.MatchingField == matchingField);
 
             if (sophonPatchIdentity == null)
             {
-                throw new KeyNotFoundException($"Sophon patch with matching field: {matchingField} is not found!");
+                return false;
             }
 
             // If the patch identity isn't found, try to find the one that's near with current version.
