@@ -1,5 +1,4 @@
 ﻿using Hi3Helper.Sophon.Infos;
-using System.Collections.Generic;
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
@@ -14,7 +13,6 @@ namespace Hi3Helper.Sophon.Infos
         public   bool            IsUseCompression       { get; internal set; }
         public   long            ManifestSize           { get; internal set; }
         public   long            ManifestCompressedSize { get; internal set; }
-        internal HashSet<string> AssetKeepPathList      { get; set; } = [];
 
         public string ManifestFileUrl => ManifestBaseUrl.TrimEnd('/') + '/' + ManifestId;
     }

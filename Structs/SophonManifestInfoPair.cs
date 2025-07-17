@@ -1,5 +1,4 @@
 using Hi3Helper.Sophon.Infos;
-using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -23,7 +22,6 @@ namespace Hi3Helper.Sophon.Structs
         public   string?                  MatchingField        { get; internal set; }
         public   string?                  CategoryName         { get; internal set; }
         public   int                      CategoryId           { get; internal set; }
-        internal HashSet<string>          AssetKeepPathList    { get; set; } = [];
 
         public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string matchingField)
         {
@@ -54,22 +52,14 @@ namespace Hi3Helper.Sophon.Structs
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonManifestIdentity.MatchingField,
                 CategoryName         = sophonManifestIdentity.CategoryName,
-                CategoryId           = sophonManifestIdentity.CategoryId,
-                AssetKeepPathList  = AssetKeepPathList
+                CategoryId           = sophonManifestIdentity.CategoryId
             };
-            otherManifestIdentity.ManifestInfo.AssetKeepPathList = AssetKeepPathList;
 
             return otherManifestIdentity;
         }
 
         public bool TryGetOtherPatchInfoPair(string matchingField,
                                              string versionUpdateFrom,
-                                             [NotNullWhen(true)] out SophonChunkManifestInfoPair? otherPatchIdentity)
-            => TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, false, out otherPatchIdentity);
-
-        public bool TryGetOtherPatchInfoPair(string matchingField,
-                                             string versionUpdateFrom,
-                                             bool findNearVersionIfNoAvail,
                                              [NotNullWhen(true)] out SophonChunkManifestInfoPair? otherPatchIdentity)
         {
             Unsafe.SkipInit(out otherPatchIdentity);
@@ -83,29 +73,28 @@ namespace Hi3Helper.Sophon.Structs
                 return false;
             }
 
-            // If the patch identity isn't found, try to find the one that's near with current version.
             if (!sophonPatchIdentity
                 .DiffTaggedInfo
                 .TryGetValue(versionUpdateFrom,
-                             out var sophonChunkInfo) && findNearVersionIfNoAvail)
+                             out var sophonChunkInfo))
             {
-                var versions = sophonPatchIdentity.DiffTaggedInfo.Keys;
-                string? latestVersion = versions.MaxBy(Version.Parse);
-
-                if (string.IsNullOrEmpty(latestVersion))
+                otherPatchIdentity = new SophonChunkManifestInfoPair
                 {
-                    return false;
-                }
+                    ChunksInfo   = null,
+                    ManifestInfo = SophonManifest.CreateManifestInfo(sophonPatchIdentity.ManifestUrlInfo.UrlPrefix,
+                                                                     sophonPatchIdentity.ManifestFileInfo.Checksum,
+                                                                     sophonPatchIdentity.ManifestFileInfo.FileName,
+                                                                     sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
+                                                                     sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
+                                                                     sophonPatchIdentity.ManifestFileInfo.CompressedSize),
+                    OtherSophonBuildData = OtherSophonBuildData,
+                    OtherSophonPatchData = OtherSophonPatchData,
+                    MatchingField        = sophonPatchIdentity.MatchingField,
+                    CategoryName         = sophonPatchIdentity.CategoryName,
+                    CategoryId           = sophonPatchIdentity.CategoryId
+                };
 
-                sophonPatchIdentity
-                   .DiffTaggedInfo
-                   .TryGetValue(latestVersion, out sophonChunkInfo);
-            }
-
-            // If it's still null, then return false.
-            if (sophonChunkInfo == null)
-            {
-                return false;
+                return true;
             }
 
             otherPatchIdentity = new SophonChunkManifestInfoPair
@@ -126,19 +115,16 @@ namespace Hi3Helper.Sophon.Structs
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonPatchIdentity.MatchingField,
                 CategoryName         = sophonPatchIdentity.CategoryName,
-                CategoryId           = sophonPatchIdentity.CategoryId,
-                AssetKeepPathList  = AssetKeepPathList
+                CategoryId           = sophonPatchIdentity.CategoryId
             };
-            otherPatchIdentity.ManifestInfo.AssetKeepPathList = AssetKeepPathList;
 
             return true;
         }
 
         public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField,
-                                                                 string versionUpdateFrom,
-                                                                 bool   findNearVersionIfNoAvail = false)
+                                                                 string versionUpdateFrom)
         {
-            if (TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, findNearVersionIfNoAvail, out var otherPatchIdentity))
+            if (TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, out var otherPatchIdentity))
             {
                 return otherPatchIdentity;
             }

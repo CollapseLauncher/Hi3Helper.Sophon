@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 #if !NET9_0_OR_GREATER

@@ -23,7 +23,6 @@ namespace Hi3Helper.Sophon
 {
     public partial class SophonAsset
     {
-        private int _countChunksDownload;
         private int _currentChunksDownloadPos;
         private int _currentChunksDownloadQueue;
 
