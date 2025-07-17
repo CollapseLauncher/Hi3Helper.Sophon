@@ -228,17 +228,19 @@ namespace Hi3Helper.Sophon.Helper
         {
             XxHash64 hash = new XxHash64();
 
-            if (!isSingularStream)
-            {
-                outStream.Position = chunk.ChunkOffset;
-            }
-
-            await hash.AppendAsync(outStream, token);
+            await hash.AppendAsync(isSingularStream ? outStream : GetChunkStream(), token);
             bool isHashMatch = hash.GetHashAndReset()
                                    .AsSpan()
                                    .SequenceEqual(chunkXxh64Hash);
 
             return isHashMatch;
+
+            Stream GetChunkStream()
+            {
+                long chunkPosStart = chunk.ChunkOffset;
+                long chunkPosEnd   = chunkPosStart + chunk.ChunkSizeDecompressed;
+                return new ChunkStream(outStream, chunkPosStart, chunkPosEnd);
+            }
         }
 
         internal static async
@@ -252,42 +254,20 @@ namespace Hi3Helper.Sophon.Helper
                                    bool              isSingularStream,
                                    CancellationToken token)
         {
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
-            int bufferSize = buffer.Length;
-            MD5 hash = MD5.Create();
+            using MD5 hash       = MD5.Create();
+            byte[]    resultHash = await hash.ComputeHashAsync(isSingularStream ? outStream : GetChunkStream(), token);
 
-            try
+            bool isHashMatch = resultHash
+                              .AsSpan()
+                              .SequenceEqual(chunk.ChunkHashDecompressed);
+
+            return isHashMatch;
+
+            Stream GetChunkStream()
             {
-                outStream.Position = chunk.ChunkOffset;
-                long remain = chunk.ChunkSizeDecompressed;
-
-                while (remain > 0)
-                {
-                    int toRead = (int)Math.Min(bufferSize, remain);
-                    int read = await outStream.ReadAsync(
-#if NET6_0_OR_GREATER
-                            buffer.AsMemory(0, toRead)
-#else
-                            buffer, 0, toRead
-#endif
-                            , token);
-
-                    hash.TransformBlock(buffer, 0, read, buffer, 0);
-
-                    remain -= read;
-                }
-
-                hash.TransformFinalBlock(buffer, 0, (int)remain);
-                bool isHashMatch = hash.Hash
-                                       .AsSpan()
-                                       .SequenceEqual(chunk.ChunkHashDecompressed);
-
-                return isHashMatch;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-                hash.Dispose();
+                long chunkPosStart = chunk.ChunkOffset;
+                long chunkPosEnd   = chunkPosStart + chunk.ChunkSizeDecompressed;
+                return new ChunkStream(outStream, chunkPosStart, chunkPosEnd);
             }
         }
 
