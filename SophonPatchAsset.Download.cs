@@ -76,58 +76,78 @@ namespace Hi3Helper.Sophon
                 ChunkSizeDecompressed = PatchSize
             };
 
-#if NET6_0_OR_GREATER
-            await
-#endif
-            using FileStream fileStream = patchFilePathHashedFileInfo
-                .Open(FileMode.OpenOrCreate,
-                      FileAccess.ReadWrite,
-                      FileShare.ReadWrite);
-
-            bool isPatchUnmatched = fileStream.Length != PatchSize;
-            if (forceVerification)
-            {
-                isPatchUnmatched = patchHash.Length > 8 ?
-                    !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
-                                                               true,
-                                                               token) :
-                    !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
-                                                                 patchHash,
-                                                                 true,
-                                                                 token);
-
-                if (isPatchUnmatched)
+            FileStream fileStream = patchFilePathHashedFileInfo
+                .Open(new FileStreamOptions
                 {
-                    fileStream.Position = 0;
-                    fileStream.SetLength(0);
-                }
-            }
+                    Mode    = FileMode.OpenOrCreate,
+                    Access  = FileAccess.ReadWrite,
+                    Share   = FileShare.ReadWrite,
+                    Options = FileOptions.SequentialScan
+                });
 
-            if (!isPatchUnmatched)
+            try
             {
+                bool isPatchUnmatched = fileStream.Length != PatchSize;
+                if (forceVerification)
+                {
+                    isPatchUnmatched = patchHash.Length > 8 ?
+                        !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
+                                                                   true,
+                                                                   token) :
+                        !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
+                                                                     patchHash,
+                                                                     true,
+                                                                     token);
+                }
+
+                if (!isPatchUnmatched)
+                {
 #if DEBUG
-                this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
+                    this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
 #endif
-                downloadReadDelegate?.Invoke(PatchSize);
+                    downloadReadDelegate?.Invoke(PatchSize);
+
+                    return true;
+                }
+
+                if (fileStream.Length != 0)
+                {
+#if NET6_0_OR_GREATER
+                    await fileStream.DisposeAsync();
+#else
+                    fileStream.Dispose();
+#endif
+                    fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
+                    {
+                        Mode    = FileMode.Create,
+                        Access  = FileAccess.ReadWrite,
+                        Share   = FileShare.ReadWrite
+                    });
+                }
+
+                await InnerWriteChunkCopyAsync(client,
+                                               fileStream,
+                                               patchAsChunk,
+                                               PatchInfo,
+                                               PatchInfo,
+                                               writeInfoDelegate: null,
+                                               downloadInfoDelegate: (_, y) =>
+                                               {
+                                                   downloadReadDelegate?.Invoke(y);
+                                               },
+                                               downloadSpeedLimiter: downloadSpeedLimiter,
+                                               token: token);
 
                 return true;
             }
-
-            fileStream.Position = 0;
-            await InnerWriteChunkCopyAsync(client,
-                                           fileStream,
-                                           patchAsChunk,
-                                           PatchInfo,
-                                           PatchInfo,
-                                           writeInfoDelegate: null,
-                                           downloadInfoDelegate: (_, y) =>
-                                           {
-                                               downloadReadDelegate?.Invoke(y);
-                                           },
-                                           downloadSpeedLimiter: downloadSpeedLimiter,
-                                           token: token);
-
-            return true;
+            finally
+            {
+#if NET6_0_OR_GREATER
+                await fileStream.DisposeAsync();
+#else
+                fileStream.Dispose();
+#endif
+            }
         }
 
         private async
