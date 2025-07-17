@@ -60,56 +60,7 @@ namespace Hi3Helper.Sophon
                 return true;
             }
 
-            string   targetFilePathOnCheck = Path.Combine(inputDir, TargetFilePath);
-            FileInfo targetFilePathInfo    = new FileInfo(targetFilePathOnCheck);
-            if (targetFilePathInfo.Exists)
-            {
-                bool isReadOnly = targetFilePathInfo.IsReadOnly;
-                try
-                {
-#if NET6_0_OR_GREATER
-                    await
-#endif
-                    using FileStream checkStream = targetFilePathInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-                    SophonChunk existingFileAsChunk = new SophonChunk
-                    {
-                        ChunkHashDecompressed = Extension.HexToBytes(TargetFileHash),
-                        ChunkName             = TargetFilePath,
-                        ChunkOffset           = 0,
-                        ChunkOldOffset        = 0,
-                        ChunkSize             = checkStream.Length,
-                        ChunkSizeDecompressed = checkStream.Length
-                    };
-
-                    bool isFileDownloaded = existingFileAsChunk.ChunkHashDecompressed.Length > 8 ?
-                        await existingFileAsChunk.CheckChunkMd5HashAsync(checkStream,
-                                                                         true,
-                                                                         token) :
-                        await existingFileAsChunk.CheckChunkXxh64HashAsync(checkStream,
-                                                                           existingFileAsChunk.ChunkHashDecompressed,
-                                                                           true,
-                                                                           token);
-
-                    if (isFileDownloaded)
-                    {
-#if DEBUG
-                        this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
-#endif
-                        downloadReadDelegate?.Invoke(PatchSize);
-                        return false;
-                    }
-                }
-                finally
-                {
-                    targetFilePathInfo.IsReadOnly = isReadOnly;
-                }
-            }
-
-            string   patchNameHashed             = PatchNameSource;
-            string   patchFilePathHashed         = Path.Combine(patchOutputDir, patchNameHashed);
-            FileInfo patchFilePathHashedFileInfo = patchFilePathHashed.CreateFileInfo();
-
+            FileInfo patchFilePathHashedFileInfo = this.GetLegacyOrHoyoPlayPatchChunkPath(patchOutputDir);
             if (!PatchNameSource.TryGetChunkXxh64Hash(out byte[] patchHash))
             {
                 patchHash = Extension.HexToBytes(PatchHash.AsSpan());

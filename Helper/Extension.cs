@@ -192,27 +192,6 @@ namespace Hi3Helper.Sophon.Helper
             => Convert.ToHexStringLower(bytes);
 #endif
 
-        internal static SophonChunk SophonPatchAssetAsChunk(this SophonPatchAsset asset,
-                                                            bool                  fromOriginalFile,
-                                                            bool                  fromTargetFile,
-                                                            bool                  isCompressed = false)
-        {
-            byte[] hash = HexToBytes((fromOriginalFile ? asset.OriginalFileHash : fromTargetFile ? asset.TargetFileHash : asset.PatchHash).AsSpan());
-            string fileName = fromOriginalFile ? asset.OriginalFilePath : fromTargetFile ? asset.TargetFilePath : asset.PatchNameSource;
-            long   fileSize = fromOriginalFile ? asset.OriginalFileSize : fromTargetFile ? asset.TargetFileSize : asset.PatchSize;
-
-            return new SophonChunk
-            {
-                ChunkHashDecompressed = hash,
-                ChunkName = fileName,
-                ChunkOffset = 0,
-                ChunkOldOffset = 0,
-                ChunkSize = fileSize,
-                ChunkSizeDecompressed = fileSize
-            };
-        }
-
-
         internal static async
 #if NET6_0_OR_GREATER
             ValueTask<bool>
@@ -601,6 +580,43 @@ namespace Hi3Helper.Sophon.Helper
                                                           TaskScheduler.Default);
                 }
             }
+        }
+
+        internal static FileInfo GetLegacyOrHoyoPlayPatchChunkPath(this SophonPatchAsset asset, string patchOutputDir)
+        {
+            ArgumentNullException.ThrowIfNull(asset, nameof(asset));
+
+            ArgumentException.ThrowIfNullOrEmpty(patchOutputDir,        nameof(patchOutputDir));
+            ArgumentException.ThrowIfNullOrEmpty(asset.PatchNameSource, nameof(asset.PatchNameSource));
+
+            string nativeChunkPath = Path.Combine(patchOutputDir, asset.PatchNameSource);
+
+            ReadOnlySpan<char> outputDirParent = Path.GetDirectoryName(patchOutputDir.AsSpan());
+            // ReSharper disable once StringLiteralTypo
+            string hoyoPlayChunkDir  = Path.Join(outputDirParent, "ldiff");
+            string hoyoPlayChunkPath = Path.Combine(hoyoPlayChunkDir, asset.PatchNameSource);
+
+            string legacyChunkDir  = Path.Join(outputDirParent, "chunk_collapse");
+            string legacyChunkPath = Path.Combine(legacyChunkDir, asset.PatchNameSource);
+
+            FileInfo hoyoPlayChunkInfo = hoyoPlayChunkPath.CreateFileInfo();
+            FileInfo legacyChunkInfo   = legacyChunkPath.CreateFileInfo();
+            FileInfo nativeChunkInfo   = nativeChunkPath.CreateFileInfo();
+
+            // Check for HoYoPlay LDiff path first
+            if (hoyoPlayChunkInfo.Exists && hoyoPlayChunkInfo.Length == asset.PatchSize)
+            {
+                return hoyoPlayChunkInfo;
+            }
+
+            // If none, check for legacy path
+            if (legacyChunkInfo.Exists && legacyChunkInfo.Length == asset.PatchSize)
+            {
+                return legacyChunkInfo;
+            }
+
+            // Otherwise, use native path info
+            return nativeChunkInfo;
         }
     }
 }
