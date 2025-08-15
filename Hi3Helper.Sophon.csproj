@@ -43,8 +43,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Google.Protobuf" Version="3.31.1" />
-		<PackageReference Include="Google.Protobuf.Tools" Version="3.31.1">
+		<PackageReference Include="Google.Protobuf" Version="$(GoogleProtobufVersion)" />
+		<PackageReference Include="Google.Protobuf.Tools" Version="$(GoogleProtobufVersion)">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
@@ -73,9 +73,12 @@
 		<Exec Command="&quot;$(ProtocPath)&quot; --proto_path=&quot;$(ProjectDir)Protos&quot; --csharp_out=&quot;$(ProjectDir)Protos&quot; &quot;$(ProjectDir)Protos/SophonManifestProto.proto&quot;" />
 	</Target>
 
-	<Target Name="GenerateProto-SophonPatchProto" Inputs="$(ProjectDir)Protos\SophonPatchProto.proto" Outputs="$(ProjectDir)Protos\SophonPatchProto.cs" BeforeTargets="BeforeBuild">
-		<Message Text="Generating Genshin gateway proto code..." Importance="high" />
-		<Exec Command="&quot;$(NugetPackageRoot)\google.protobuf.tools\3.31.1\tools\windows_x64\protoc.exe&quot; --proto_path=&quot;$(ProjectDir)Protos&quot; --csharp_out=&quot;$(ProjectDir)Protos&quot; &quot;$(ProjectDir)Protos\SophonPatchProto.proto&quot;" />
+	<Target Name="GenerateProto-SophonPatchProto"
+			Inputs="$(ProjectDir)Protos/SophonPatchProto.proto"
+			Outputs="$(ProjectDir)Protos/SophonPatchProto.cs"
+			BeforeTargets="BeforeBuild">
+		<Message Text="Generating SophonPatchProto C# code..." Importance="high" />
+		<Exec Command="&quot;$(ProtocPath)&quot; --proto_path=&quot;$(ProjectDir)Protos&quot; --csharp_out=&quot;$(ProjectDir)Protos&quot; &quot;$(ProjectDir)Protos/SophonPatchProto.proto&quot;" />
 	</Target>
 
 	<Target Name="PreCompile" BeforeTargets="Compile">
