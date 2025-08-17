@@ -63,6 +63,7 @@
 		<ProtoToolsRoot>$(NuGetPackageRoot)google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
+		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(ProtoToolsRoot)/macosx_x64/protoc</ProtocPath>
 	</PropertyGroup>
 
 	<Target Name="GenerateProto-SophonManifestProto"
