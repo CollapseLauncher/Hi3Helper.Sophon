@@ -43,12 +43,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Google.Protobuf" Version="$(GoogleProtobufVersion)" />
-		<PackageReference Include="Google.Protobuf.Tools" Version="$(GoogleProtobufVersion)">
+		<PackageReference Include="Google.Protobuf" Version="3.32.0" />
+		<PackageReference Include="Google.Protobuf.Tools" Version="3.32.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
+		<PackageReference Include="Hi3Helper.ZstdNet" Version="1.6.5" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
         <PackageReference Include="System.IO.Hashing" Version="*" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
@@ -59,7 +59,7 @@
 
 	<!-- Cross-platform protoc path -->
 	<PropertyGroup>
-		<GoogleProtobufVersion>3.31.1</GoogleProtobufVersion>
+		<GoogleProtobufVersion>3.32.0</GoogleProtobufVersion>
 		<ProtoToolsRoot>$(NuGetPackageRoot)google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
