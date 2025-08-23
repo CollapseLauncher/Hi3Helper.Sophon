@@ -91,6 +91,10 @@ namespace Hi3Helper.Sophon
             FileInfo outputOldFileInfo     = outputOldPath.CreateFileInfo();
             FileInfo outputNewFileInfo     = outputNewPath.CreateFileInfo();
             FileInfo outputNewTempFileInfo = outputNewTempPath.CreateFileInfo();
+            if (outputNewFileInfo.Exists && outputNewFileInfo.Length == AssetSize)
+            {
+                outputNewTempFileInfo = outputNewFileInfo;
+            }
 
             foreach (SophonChunk chunk in Chunks)
             {
@@ -106,14 +110,36 @@ namespace Hi3Helper.Sophon
                                             token);
             }
 
-            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName)
+            // Refresh temp and current file info
+            outputNewTempFileInfo.Refresh();
+            outputNewFileInfo.Refresh();
+
+            if (outputNewTempFileInfo.FullName != outputNewFileInfo.FullName &&
+                outputNewTempFileInfo.Exists)
             {
-            #if NET6_0_OR_GREATER
-                outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
-            #else
-                outputNewFileInfo.Delete();
-                outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName);
-            #endif
+                if (outputNewFileInfo.Directory is { Exists: false })
+                {
+                    // Always create directory, no matter when the directory actually exist or not
+                    outputNewFileInfo.Directory.Create();
+                }
+
+                // Refresh temp and current file info
+                outputNewTempFileInfo.Refresh();
+                outputNewFileInfo.Refresh();
+
+                // Trust issue: Double check using .NET's File.Exists() to ensure the file is actually exist due to
+                // possible multiple file access
+                if (File.Exists(outputNewTempFileInfo.FullName))
+                {
+                #if NET6_0_OR_GREATER
+                    outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName, true);
+                #else
+                    if (outputNewFileInfo.Exists)
+                        outputNewFileInfo.Delete();
+
+                    outputNewTempFileInfo.MoveTo(outputNewFileInfo.FullName);
+                #endif
+                }
             }
 
         #if DEBUG

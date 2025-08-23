@@ -4,10 +4,12 @@ using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 #if NET6_0_OR_GREATER
@@ -18,6 +20,7 @@ using ZstdNet;
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
 
+#nullable enable
 namespace Hi3Helper.Sophon
 {
     public static partial class SophonPatch
@@ -60,29 +63,21 @@ namespace Hi3Helper.Sophon
         /// <exception cref="ArgumentNullException">
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
-        public static async IAsyncEnumerable<SophonPatchAsset>
-            EnumerateUpdateAsync(HttpClient                                 httpClient,
-                                 SophonChunkManifestInfoPair                patchInfoPair,
-                                 SophonChunkManifestInfoPair                mainInfoPair,
-                                 string                                     versionTagUpdateFrom,
-                                 SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
-                                 [EnumeratorCancellation] CancellationToken token                = default)
-
-        {
-            await foreach (SophonPatchAsset asset in
-                EnumerateUpdateAsync(httpClient,
-                                     patchInfoPair.ManifestInfo,
-                                     patchInfoPair.ChunksInfo,
-                                     mainInfoPair.ManifestInfo,
-                                     mainInfoPair.ChunksInfo,
-                                     versionTagUpdateFrom,
-                                     downloadSpeedLimiter,
-                                     token))
-            {
-                yield return asset;
-            }
-        }
-
+        public static IAsyncEnumerable<SophonPatchAsset>
+            EnumerateUpdateAsync(HttpClient                   httpClient,
+                                 SophonChunkManifestInfoPair? patchInfoPair,
+                                 SophonChunkManifestInfoPair  mainInfoPair,
+                                 string                       versionTagUpdateFrom,
+                                 SophonDownloadSpeedLimiter?  downloadSpeedLimiter = null,
+                                 CancellationToken            token                = default)
+            => EnumerateUpdateAsync(httpClient,
+                                    patchInfoPair?.ManifestInfo,
+                                    patchInfoPair?.ChunksInfo,
+                                    mainInfoPair.ManifestInfo,
+                                    mainInfoPair.ChunksInfo,
+                                    versionTagUpdateFrom,
+                                    downloadSpeedLimiter,
+                                    token);
 
         /// <summary>
         ///     Enumerate/Get the list of Sophon patches for update.
@@ -128,14 +123,17 @@ namespace Hi3Helper.Sophon
         /// </exception>
         public static async IAsyncEnumerable<SophonPatchAsset>
             EnumerateUpdateAsync(HttpClient                                 httpClient,
-                                 SophonManifestInfo                         patchManifestInfo,
-                                 SophonChunksInfo                           patchChunksInfo,
-                                 SophonManifestInfo                         mainManifestInfo,
-                                 SophonChunksInfo                           mainChunksInfo,
+                                 SophonManifestInfo?                        patchManifestInfo,
+                                 SophonChunksInfo?                          patchChunksInfo,
+                                 [NotNull] SophonManifestInfo?              mainManifestInfo,
+                                 [NotNull] SophonChunksInfo?                mainChunksInfo,
                                  string                                     versionTagUpdateFrom,
-                                 SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
+                                 SophonDownloadSpeedLimiter?                downloadSpeedLimiter = null,
                                  [EnumeratorCancellation] CancellationToken token                = default)
         {
+            ArgumentNullException.ThrowIfNull(mainManifestInfo, nameof(mainManifestInfo));
+            ArgumentNullException.ThrowIfNull(mainChunksInfo, nameof(mainChunksInfo));
+
 #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
@@ -148,20 +146,33 @@ namespace Hi3Helper.Sophon
                 throw new ArgumentNullException(nameof(versionTagUpdateFrom), "Version tag is not defined!");
             }
 
-            ActionTimeoutTaskCallback<SophonPatchProto> manifestFromProtoTaskCallback =
-                async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo,
-                                                                               SophonPatchProto.Parser,
-                                                                               innerToken);
+            Dictionary<string, (SophonPatchAssetProperty, SophonPatchAssetInfo)> patchAssetPropertyDict = new(StringComparer.OrdinalIgnoreCase);
+            if (patchManifestInfo != null && patchChunksInfo != null)
+            {
+                ActionTimeoutTaskCallback<SophonPatchProto> manifestFromProtoTaskCallback =
+                    async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo,
+                        SophonPatchProto.Parser,
+                        innerToken);
 
-            SophonPatchProto patchManifestProto = await TaskExtensions
-               .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
-                                  TaskExtensions.DefaultTimeoutSec,
-                                  null,
-                                  null,
-                                  null,
-                                  token);
+                var patchManifestProto = await TaskExtensions
+                   .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
+                                      TaskExtensions.DefaultTimeoutSec,
+                                      null,
+                                      null,
+                                      null,
+                                      token);
 
-            Dictionary<string, SophonAsset> mainSophonAsset = new(StringComparer.OrdinalIgnoreCase);
+                foreach (SophonPatchAssetProperty patchAssetProperty in patchManifestProto.PatchAssets)
+                {
+                    var patchAssetInfo = patchAssetProperty.AssetInfos
+                                                           .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
+
+                    if (patchAssetInfo != null)
+                    {
+                        patchAssetPropertyDict.TryAdd(patchAssetProperty.AssetName, (patchAssetProperty, patchAssetInfo));
+                    }
+                }
+            }
 
             await foreach (SophonAsset mainAsset in SophonManifest
                 .EnumerateAsync(httpClient,
@@ -175,91 +186,333 @@ namespace Hi3Helper.Sophon
                     continue;
                 }
 
+                ref var patchProperty = ref CollectionsMarshal
+                    .GetValueRefOrNullRef(patchAssetPropertyDict,
+                                          mainAsset.AssetName);
+
+                if (Unsafe.IsNullRef(ref patchProperty))
+                {
+                    yield return new SophonPatchAsset
+                    {
+                        MainAssetInfo  = mainAsset,
+                        TargetFilePath = mainAsset.AssetName,
+                        TargetFileSize = mainAsset.AssetSize,
+                        TargetFileHash = mainAsset.AssetHash,
+                        PatchMethod    = SophonPatchMethod.DownloadOver
+                    };
+                    continue;
+                }
+
+                if (string.IsNullOrEmpty(patchProperty.Item2.Chunk.OriginalFileName))
+                {
+                    yield return new SophonPatchAsset
+                    {
+                        MainAssetInfo    = mainAsset,
+                        PatchInfo        = patchChunksInfo,
+                        PatchNameSource  = patchProperty.Item2.Chunk.PatchName,
+                        PatchHash        = patchProperty.Item2.Chunk.PatchMd5,
+                        PatchOffset      = patchProperty.Item2.Chunk.PatchOffset,
+                        PatchSize        = patchProperty.Item2.Chunk.PatchSize,
+                        PatchChunkLength = patchProperty.Item2.Chunk.PatchLength,
+                        TargetFilePath   = mainAsset.AssetName,
+                        TargetFileSize   = mainAsset.AssetSize,
+                        TargetFileHash   = mainAsset.AssetHash,
+                        PatchMethod      = SophonPatchMethod.CopyOver
+                    };
+                    continue;
+                }
+
+                yield return new SophonPatchAsset
+                {
+                    MainAssetInfo    = mainAsset,
+                    PatchInfo        = patchChunksInfo,
+                    PatchNameSource  = patchProperty.Item2.Chunk.PatchName,
+                    PatchHash        = patchProperty.Item2.Chunk.PatchMd5,
+                    PatchOffset      = patchProperty.Item2.Chunk.PatchOffset,
+                    PatchSize        = patchProperty.Item2.Chunk.PatchSize,
+                    PatchChunkLength = patchProperty.Item2.Chunk.PatchLength,
+                    TargetFilePath   = mainAsset.AssetName,
+                    TargetFileSize   = mainAsset.AssetSize,
+                    TargetFileHash   = mainAsset.AssetHash,
+                    OriginalFilePath = patchProperty.Item2.Chunk.OriginalFileName,
+                    OriginalFileSize = patchProperty.Item2.Chunk.OriginalFileLength,
+                    OriginalFileHash = patchProperty.Item2.Chunk.OriginalFileMd5,
+                    PatchMethod      = SophonPatchMethod.Patch
+                };
+            }
+        }
+
+        /// <summary>
+        ///     Enumerate/Get the list of Sophon patches for update.
+        /// </summary>
+        /// <param name="httpClient">
+        ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
+        /// </param>
+        /// <param name="patchInfoPair">
+        ///     Pair of the Patch Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="mainInfoPair">
+        ///     Pair of the Main Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="versionTagUpdateFrom">
+        ///     Define which version tag in which the data will be patched from.
+        /// </param>
+        /// <param name="compareWithList">
+        ///     The list of asset paths to compare with.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
+        /// <returns>
+        ///     An enumeration to enumerate the Sophon update asset from the manifest.
+        /// </returns>
+        /// <exception cref="DllNotFoundException">
+        ///     Indicates if a library required is missing.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        ///     Indicates if an error during Http request is happening.
+        /// </exception>
+        /// <exception cref="NullReferenceException">
+        ///     Indicates if an argument or Http response returns a <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Indicates if an argument is <c>null</c> or empty.
+        /// </exception>
+        public static IAsyncEnumerable<SophonPatchAsset>
+            EnumerateRemovableAsync(HttpClient                   httpClient,
+                                    SophonChunkManifestInfoPair? patchInfoPair,
+                                    SophonChunkManifestInfoPair  mainInfoPair,
+                                    string                       versionTagUpdateFrom,
+                                    HashSet<string>              compareWithList,
+                                    CancellationToken            token = default)
+            => EnumerateRemovableAsync(httpClient,
+                                       patchInfoPair?.ManifestInfo,
+                                       patchInfoPair?.ChunksInfo,
+                                       mainInfoPair.ManifestInfo,
+                                       mainInfoPair.ChunksInfo,
+                                       versionTagUpdateFrom,
+                                       compareWithList,
+                                       token);
+
+        /// <summary>
+        ///     Enumerate/Get the list of Sophon removable assets.
+        /// </summary>
+        /// <param name="httpClient">
+        ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
+        /// </param>
+        /// <param name="patchManifestInfo">
+        ///     Patch Manifest information struct.
+        /// </param>
+        /// <param name="patchChunksInfo">
+        ///     Patch Chunks information struct.
+        /// </param>
+        /// <param name="mainManifestInfo">
+        ///     Patch Manifest information struct.
+        /// </param>
+        /// <param name="mainChunksInfo">
+        ///     Patch Chunks information struct.
+        /// </param>
+        /// <param name="versionTagUpdateFrom">
+        ///     Define which version tag in which the data will be patched from.
+        /// </param>
+        /// <param name="compareWithList">
+        ///     The list of asset paths to compare with.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
+        /// <returns>
+        ///     An enumeration to enumerate the Sophon update asset from the manifest.
+        /// </returns>
+        /// <exception cref="DllNotFoundException">
+        ///     Indicates if a library required is missing.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        ///     Indicates if an error during Http request is happening.
+        /// </exception>
+        /// <exception cref="NullReferenceException">
+        ///     Indicates if an argument or Http response returns a <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Indicates if an argument is <c>null</c> or empty.
+        /// </exception>
+        public static async IAsyncEnumerable<SophonPatchAsset>
+            EnumerateRemovableAsync(HttpClient                                 httpClient,
+                                    SophonManifestInfo?                        patchManifestInfo,
+                                    SophonChunksInfo?                          patchChunksInfo,
+                                    [NotNull] SophonManifestInfo?              mainManifestInfo,
+                                    [NotNull] SophonChunksInfo?                mainChunksInfo,
+                                    string                                     versionTagUpdateFrom,
+                                    HashSet<string>                            compareWithList,
+                                    [EnumeratorCancellation] CancellationToken token = default)
+        {
+            ArgumentNullException.ThrowIfNull(mainManifestInfo, nameof(mainManifestInfo));
+            ArgumentNullException.ThrowIfNull(mainChunksInfo, nameof(mainChunksInfo));
 
 #if NET6_0_OR_GREATER
-                mainSophonAsset.TryAdd(mainAsset.AssetName, mainAsset);
-#else
-                if (mainSophonAsset.ContainsKey(mainAsset.AssetName))
-                {
-                    mainSophonAsset.Add(mainAsset.AssetName, mainAsset);
-                }
+            if (!DllUtils.IsLibraryExist(DllUtils.DllName))
+            {
+                throw new DllNotFoundException("libzstd is not found!");
+            }
 #endif
-            }
 
-            foreach (SophonPatchAssetProperty patchAssetProperty in patchManifestProto.PatchAssets)
+            if (string.IsNullOrEmpty(versionTagUpdateFrom))
             {
-                SophonPatchAssetInfo patchAssetInfo = patchAssetProperty
-                    .AssetInfos
-                    .FirstOrDefault(x => x.VersionTag
-                    .Equals(versionTagUpdateFrom,
-                            StringComparison.OrdinalIgnoreCase));
-
-                _ = mainSophonAsset.TryGetValue(patchAssetProperty.AssetName, out SophonAsset sophonMainAsset);
-
-                if (patchAssetInfo == null)
-                {
-                    yield return new SophonPatchAsset
-                    {
-                        MainAssetInfo  = sophonMainAsset,
-                        TargetFileHash = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize = patchAssetProperty.AssetSize,
-                        TargetFilePath = patchAssetProperty.AssetName,
-                        PatchMethod    = SophonPatchMethod.DownloadOver,
-                    };
-                    continue;
-                }
-
-                if (string.IsNullOrEmpty(patchAssetInfo.Chunk.OriginalFileName))
-                {
-                    yield return new SophonPatchAsset
-                    {
-                        MainAssetInfo    = sophonMainAsset,
-                        PatchInfo        = patchChunksInfo,
-                        PatchNameSource  = patchAssetInfo.Chunk.PatchName,
-                        PatchHash        = patchAssetInfo.Chunk.PatchMd5,
-                        PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
-                        PatchSize        = patchAssetInfo.Chunk.PatchSize,
-                        PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
-                        TargetFilePath   = patchAssetProperty.AssetName,
-                        TargetFileHash   = patchAssetProperty.AssetHashMd5,
-                        TargetFileSize   = patchAssetProperty.AssetSize,
-                        PatchMethod      = SophonPatchMethod.CopyOver,
-                    };
-                    continue;
-                }
-
-                yield return new SophonPatchAsset
-                {
-                    MainAssetInfo    = sophonMainAsset,
-                    PatchInfo        = patchChunksInfo,
-                    PatchNameSource  = patchAssetInfo.Chunk.PatchName,
-                    PatchHash        = patchAssetInfo.Chunk.PatchMd5,
-                    PatchOffset      = patchAssetInfo.Chunk.PatchOffset,
-                    PatchSize        = patchAssetInfo.Chunk.PatchSize,
-                    PatchChunkLength = patchAssetInfo.Chunk.PatchLength,
-                    TargetFilePath   = patchAssetProperty.AssetName,
-                    TargetFileHash   = patchAssetProperty.AssetHashMd5,
-                    TargetFileSize   = patchAssetProperty.AssetSize,
-                    OriginalFilePath = patchAssetInfo.Chunk.OriginalFileName,
-                    OriginalFileSize = patchAssetInfo.Chunk.OriginalFileLength,
-                    OriginalFileHash = patchAssetInfo.Chunk.OriginalFileMd5,
-                    PatchMethod      = SophonPatchMethod.Patch,
-                };
+                throw new ArgumentNullException(nameof(versionTagUpdateFrom), "Version tag is not defined!");
             }
 
-            foreach (SophonUnusedAssetFile unusedAssetFile in patchManifestProto
-                .UnusedAssets
-                .SelectMany(x => x.AssetInfos.FirstOrDefault()?.Assets)
-                .Where(x => x != null))
+            if (patchManifestInfo == null || patchChunksInfo == null)
             {
-                yield return new SophonPatchAsset
-                {
-                    OriginalFileHash = unusedAssetFile.FileMd5,
-                    OriginalFileSize = unusedAssetFile.FileSize,
-                    OriginalFilePath = unusedAssetFile.FileName,
-                    PatchMethod      = SophonPatchMethod.Remove
-                };
+                yield break;
             }
+
+            ActionTimeoutTaskCallback<SophonPatchProto> manifestFromProtoTaskCallback =
+                async innerToken => await httpClient.ReadProtoFromManifestInfo(patchManifestInfo,
+                                                                               SophonPatchProto.Parser,
+                                                                               innerToken);
+
+            var patchManifestProto = await TaskExtensions
+               .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
+                                  TaskExtensions.DefaultTimeoutSec,
+                                  null,
+                                  null,
+                                  null,
+                                  token);
+
+            foreach (SophonUnusedAssetProperty unusedAssetProperty in patchManifestProto.UnusedAssets)
+            {
+                foreach (SophonUnusedAssetInfo assetInfo in unusedAssetProperty.AssetInfos)
+                {
+                    foreach (SophonUnusedAssetFile unusedAssetFile in assetInfo.Assets)
+                    {
+                        if (compareWithList.Contains(unusedAssetFile.FileName))
+                        {
+                            continue;
+                        }
+
+                        yield return new SophonPatchAsset
+                        {
+                            OriginalFileHash = unusedAssetFile.FileMd5,
+                            OriginalFileSize = unusedAssetFile.FileSize,
+                            OriginalFilePath = unusedAssetFile.FileName,
+                            PatchMethod      = SophonPatchMethod.Remove
+                        };
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        ///     Enumerate/Get the list of Sophon patches for update.
+        /// </summary>
+        /// <param name="httpClient">
+        ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
+        /// </param>
+        /// <param name="patchInfoPair">
+        ///     Pair of the Patch Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="mainInfoPair">
+        ///     Pair of the Main Manifest and Chunks information struct.
+        /// </param>
+        /// <param name="versionTagUpdateFrom">
+        ///     Define which version tag in which the data will be patched from.
+        /// </param>
+        /// <param name="compareWithList">
+        ///     The list of assets to compare with.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
+        /// <returns>
+        ///     An enumeration to enumerate the Sophon update asset from the manifest.
+        /// </returns>
+        /// <exception cref="DllNotFoundException">
+        ///     Indicates if a library required is missing.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        ///     Indicates if an error during Http request is happening.
+        /// </exception>
+        /// <exception cref="NullReferenceException">
+        ///     Indicates if an argument or Http response returns a <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Indicates if an argument is <c>null</c> or empty.
+        /// </exception>
+        public static IAsyncEnumerable<SophonPatchAsset>
+            EnumerateRemovableAsync(HttpClient                   httpClient,
+                                    SophonChunkManifestInfoPair? patchInfoPair,
+                                    SophonChunkManifestInfoPair  mainInfoPair,
+                                    string                       versionTagUpdateFrom,
+                                    List<SophonPatchAsset>       compareWithList,
+                                    CancellationToken            token = default)
+            => EnumerateRemovableAsync(httpClient,
+                                       patchInfoPair?.ManifestInfo,
+                                       patchInfoPair?.ChunksInfo,
+                                       mainInfoPair.ManifestInfo,
+                                       mainInfoPair.ChunksInfo,
+                                       versionTagUpdateFrom,
+                                       compareWithList,
+                                       token);
+
+        /// <summary>
+        ///     Enumerate/Get the list of Sophon removable assets.
+        /// </summary>
+        /// <param name="httpClient">
+        ///     The <seealso cref="HttpClient" /> to be used to download the manifest data.
+        /// </param>
+        /// <param name="patchManifestInfo">
+        ///     Patch Manifest information struct.
+        /// </param>
+        /// <param name="patchChunksInfo">
+        ///     Patch Chunks information struct.
+        /// </param>
+        /// <param name="mainManifestInfo">
+        ///     Patch Manifest information struct.
+        /// </param>
+        /// <param name="mainChunksInfo">
+        ///     Patch Chunks information struct.
+        /// </param>
+        /// <param name="versionTagUpdateFrom">
+        ///     Define which version tag in which the data will be patched from.
+        /// </param>
+        /// <param name="compareWithList">
+        ///     The list of assets to compare with.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
+        /// <returns>
+        ///     An enumeration to enumerate the Sophon update asset from the manifest.
+        /// </returns>
+        /// <exception cref="DllNotFoundException">
+        ///     Indicates if a library required is missing.
+        /// </exception>
+        /// <exception cref="HttpRequestException">
+        ///     Indicates if an error during Http request is happening.
+        /// </exception>
+        /// <exception cref="NullReferenceException">
+        ///     Indicates if an argument or Http response returns a <c>null</c>.
+        /// </exception>
+        /// <exception cref="ArgumentNullException">
+        ///     Indicates if an argument is <c>null</c> or empty.
+        /// </exception>
+        public static IAsyncEnumerable<SophonPatchAsset>
+            EnumerateRemovableAsync(HttpClient                    httpClient,
+                                    SophonManifestInfo?           patchManifestInfo,
+                                    SophonChunksInfo?             patchChunksInfo,
+                                    [NotNull] SophonManifestInfo? mainManifestInfo,
+                                    [NotNull] SophonChunksInfo?   mainChunksInfo,
+                                    string                        versionTagUpdateFrom,
+                                    List<SophonPatchAsset>        compareWithList,
+                                    CancellationToken             token = default)
+        {
+            HashSet<string> hashSet = new(StringComparer.OrdinalIgnoreCase);
+            foreach (SophonPatchAsset asset in compareWithList)
+            {
+                hashSet.Add(asset.TargetFilePath);
+            }
+
+            return EnumerateRemovableAsync(httpClient, patchManifestInfo, patchChunksInfo, mainManifestInfo, mainChunksInfo, versionTagUpdateFrom, hashSet, token);
         }
 
         public static IEnumerable<SophonPatchAsset> EnsureOnlyGetDedupPatchAssets(this IEnumerable<SophonPatchAsset> patchAssetEnumerable)

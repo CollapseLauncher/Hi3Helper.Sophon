@@ -4,21 +4,21 @@
     "net10.0": {
       "Google.Protobuf": {
         "type": "Direct",
-        "requested": "[3.31.1, )",
-        "resolved": "3.31.1",
-        "contentHash": "gSnJbUmGiOTdWddPhqzrEscHq9Ls6sqRDPB9WptckyjTUyx70JOOAaDLkFff8gManZNN3hllQ4aQInnQyq/Z/A=="
+        "requested": "[3.32.0, )",
+        "resolved": "3.32.0",
+        "contentHash": "fsKxV5bhcvXmZi+cUo5+IxzRMBHwHeFO8G5utNa9f+Mu37kmfy8JcUVvWPt4cX7EuQWAjjHUjZqVl7nGSTRHRg=="
       },
       "Google.Protobuf.Tools": {
         "type": "Direct",
-        "requested": "[3.31.1, )",
-        "resolved": "3.31.1",
-        "contentHash": "M/xpx/DpdsqxK2NlckNsgHjc61OMq8Mjq9hLutJVpBLN8CB4opqSjoOwVRCHSpVxIvok7XeXBjtCutxVqjTsww=="
+        "requested": "[3.32.0, )",
+        "resolved": "3.32.0",
+        "contentHash": "CqgBAbK+AakIgGMRryGJrY5LCgfeFdoagGYSSCoaMXu07/gM3iiF0+RT96smSZOXxZhX6WArpEJidfRlN2k4IQ=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
-        "requested": "[*, )",
-        "resolved": "1.6.4",
-        "contentHash": "/0HO97NquyAeu67BznsPG3Bitb2RweDlRd39Dm0N70pIb6ETjsQI/ysnwGrygxrPwwE25oDNoueAaJfOZTrACg=="
+        "requested": "[1.6.5, )",
+        "resolved": "1.6.5",
+        "contentHash": "0Voe4Vi/kcUR+/33mOIKcJlP73oK9iauA2MuHXB0IHDvrbzT02L/2tfyTe621904LzN2zaML7JGKnOOLzuzmFQ=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",

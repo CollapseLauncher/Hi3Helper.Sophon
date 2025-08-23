@@ -23,7 +23,9 @@ namespace Hi3Helper.Sophon
 {
     public partial class SophonAsset
     {
+#if DEBUG
         private int _countChunksDownload;
+#endif
         private int _currentChunksDownloadPos;
         private int _currentChunksDownloadQueue;
 
@@ -75,7 +77,9 @@ namespace Hi3Helper.Sophon
             this.EnsureOrThrowOutputDirectoryExistence(chunkDirOutput);
 
             _currentChunksDownloadPos = 0;
+#if DEBUG
             _countChunksDownload      = Chunks.Length;
+#endif
 
             if (parallelOptions == null)
             {

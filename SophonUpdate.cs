@@ -167,8 +167,8 @@ namespace Hi3Helper.Sophon
 
             Dictionary<string, int> oldAssetNameIdx = GetProtoAssetHashKvpSet(manifestFromProto, x => x.AssetName);
 
-            HashSet<string> oldAssetNameHashSet = manifestFromProto.Assets.Select(x => x.AssetName).ToHashSet();
-            HashSet<string> newAssetNameHashSet = manifestToProto.Assets.Select(x => x.AssetName).ToHashSet();
+            HashSet<string> oldAssetNameHashSet = manifestFromProto.Assets.Select(x => x.AssetName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            HashSet<string> newAssetNameHashSet = manifestToProto.Assets.Select(x => x.AssetName).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (SophonManifestAssetProperty newAssetProperty in manifestToProto.Assets.Where(x => {
                 // Try check both availabilities

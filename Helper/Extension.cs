@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 #if !NET9_0_OR_GREATER
@@ -193,27 +192,6 @@ namespace Hi3Helper.Sophon.Helper
             => Convert.ToHexStringLower(bytes);
 #endif
 
-        internal static SophonChunk SophonPatchAssetAsChunk(this SophonPatchAsset asset,
-                                                            bool                  fromOriginalFile,
-                                                            bool                  fromTargetFile,
-                                                            bool                  isCompressed = false)
-        {
-            byte[] hash = HexToBytes((fromOriginalFile ? asset.OriginalFileHash : fromTargetFile ? asset.TargetFileHash : asset.PatchHash).AsSpan());
-            string fileName = fromOriginalFile ? asset.OriginalFilePath : fromTargetFile ? asset.TargetFilePath : asset.PatchNameSource;
-            long   fileSize = fromOriginalFile ? asset.OriginalFileSize : fromTargetFile ? asset.TargetFileSize : asset.PatchSize;
-
-            return new SophonChunk
-            {
-                ChunkHashDecompressed = hash,
-                ChunkName = fileName,
-                ChunkOffset = 0,
-                ChunkOldOffset = 0,
-                ChunkSize = fileSize,
-                ChunkSizeDecompressed = fileSize
-            };
-        }
-
-
         internal static async
 #if NET6_0_OR_GREATER
             ValueTask<bool>
@@ -228,17 +206,19 @@ namespace Hi3Helper.Sophon.Helper
         {
             XxHash64 hash = new XxHash64();
 
-            if (!isSingularStream)
-            {
-                outStream.Position = chunk.ChunkOffset;
-            }
-
-            await hash.AppendAsync(outStream, token);
+            await hash.AppendAsync(isSingularStream ? outStream : GetChunkStream(), token);
             bool isHashMatch = hash.GetHashAndReset()
                                    .AsSpan()
                                    .SequenceEqual(chunkXxh64Hash);
 
             return isHashMatch;
+
+            Stream GetChunkStream()
+            {
+                long chunkPosStart = chunk.ChunkOffset;
+                long chunkPosEnd   = chunkPosStart + chunk.ChunkSizeDecompressed;
+                return new ChunkStream(outStream, chunkPosStart, chunkPosEnd);
+            }
         }
 
         internal static async
@@ -252,42 +232,20 @@ namespace Hi3Helper.Sophon.Helper
                                    bool              isSingularStream,
                                    CancellationToken token)
         {
-            byte[] buffer = ArrayPool<byte>.Shared.Rent(SophonAsset.BufferSize);
-            int bufferSize = buffer.Length;
-            MD5 hash = MD5.Create();
+            using MD5 hash       = MD5.Create();
+            byte[]    resultHash = await hash.ComputeHashAsync(isSingularStream ? outStream : GetChunkStream(), token);
 
-            try
+            bool isHashMatch = resultHash
+                              .AsSpan()
+                              .SequenceEqual(chunk.ChunkHashDecompressed);
+
+            return isHashMatch;
+
+            Stream GetChunkStream()
             {
-                outStream.Position = chunk.ChunkOffset;
-                long remain = chunk.ChunkSizeDecompressed;
-
-                while (remain > 0)
-                {
-                    int toRead = (int)Math.Min(bufferSize, remain);
-                    int read = await outStream.ReadAsync(
-#if NET6_0_OR_GREATER
-                            buffer.AsMemory(0, toRead)
-#else
-                            buffer, 0, toRead
-#endif
-                            , token);
-
-                    hash.TransformBlock(buffer, 0, read, buffer, 0);
-
-                    remain -= read;
-                }
-
-                hash.TransformFinalBlock(buffer, 0, (int)remain);
-                bool isHashMatch = hash.Hash
-                                       .AsSpan()
-                                       .SequenceEqual(chunk.ChunkHashDecompressed);
-
-                return isHashMatch;
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(buffer);
-                hash.Dispose();
+                long chunkPosStart = chunk.ChunkOffset;
+                long chunkPosEnd   = chunkPosStart + chunk.ChunkSizeDecompressed;
+                return new ChunkStream(outStream, chunkPosStart, chunkPosEnd);
             }
         }
 
@@ -622,6 +580,43 @@ namespace Hi3Helper.Sophon.Helper
                                                           TaskScheduler.Default);
                 }
             }
+        }
+
+        internal static FileInfo GetLegacyOrHoyoPlayPatchChunkPath(this SophonPatchAsset asset, string patchOutputDir)
+        {
+            ArgumentNullException.ThrowIfNull(asset, nameof(asset));
+
+            ArgumentException.ThrowIfNullOrEmpty(patchOutputDir,        nameof(patchOutputDir));
+            ArgumentException.ThrowIfNullOrEmpty(asset.PatchNameSource, nameof(asset.PatchNameSource));
+
+            string nativeChunkPath = Path.Combine(patchOutputDir, asset.PatchNameSource);
+
+            ReadOnlySpan<char> outputDirParent = Path.GetDirectoryName(patchOutputDir.AsSpan());
+            // ReSharper disable once StringLiteralTypo
+            string hoyoPlayChunkDir  = Path.Join(outputDirParent, "ldiff");
+            string hoyoPlayChunkPath = Path.Combine(hoyoPlayChunkDir, asset.PatchNameSource);
+
+            string legacyChunkDir  = Path.Join(outputDirParent, "chunk_collapse");
+            string legacyChunkPath = Path.Combine(legacyChunkDir, asset.PatchNameSource);
+
+            FileInfo hoyoPlayChunkInfo = hoyoPlayChunkPath.CreateFileInfo();
+            FileInfo legacyChunkInfo   = legacyChunkPath.CreateFileInfo();
+            FileInfo nativeChunkInfo   = nativeChunkPath.CreateFileInfo();
+
+            // Check for HoYoPlay LDiff path first
+            if (hoyoPlayChunkInfo.Exists && hoyoPlayChunkInfo.Length == asset.PatchSize)
+            {
+                return hoyoPlayChunkInfo;
+            }
+
+            // If none, check for legacy path
+            if (legacyChunkInfo.Exists && legacyChunkInfo.Length == asset.PatchSize)
+            {
+                return legacyChunkInfo;
+            }
+
+            // Otherwise, use native path info
+            return nativeChunkInfo;
         }
     }
 }

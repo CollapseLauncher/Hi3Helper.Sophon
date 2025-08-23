@@ -29,20 +29,20 @@ namespace Hi3Helper.Sophon
     {
         internal const int BufferSize = 4 << 10;
 
-        public SophonAsset       MainAssetInfo    { get; set; }
-        public SophonChunksInfo  PatchInfo        { get; set; }
-        public SophonPatchMethod PatchMethod      { get; set; }
-        public string            PatchNameSource  { get; set; }
-        public string            PatchHash        { get; set; }
-        public long              PatchOffset      { get; set; }
-        public long              PatchSize        { get; set; }
-        public long              PatchChunkLength { get; set; }
-        public string            OriginalFilePath { get; set; }
-        public string            OriginalFileHash { get; set; }
-        public long              OriginalFileSize { get; set; }
-        public string            TargetFilePath   { get; set; }
-        public string            TargetFileHash   { get; set; }
-        public long              TargetFileSize   { get; set; }
+        public   SophonAsset       MainAssetInfo     { get; set; }
+        public   SophonChunksInfo  PatchInfo         { get; set; }
+        public   SophonPatchMethod PatchMethod       { get; set; }
+        public   string            PatchNameSource   { get; set; }
+        public   string            PatchHash         { get; set; }
+        public   long              PatchOffset       { get; set; }
+        public   long              PatchSize         { get; set; }
+        public   long              PatchChunkLength  { get; set; }
+        public   string            OriginalFilePath  { get; set; }
+        public   string            OriginalFileHash  { get; set; }
+        public   long              OriginalFileSize  { get; set; }
+        public   string            TargetFilePath    { get; set; }
+        public   string            TargetFileHash    { get; set; }
+        public   long              TargetFileSize    { get; set; }
 
 #nullable enable
         public async Task<bool> DownloadPatchAsync(HttpClient                  client,
@@ -60,56 +60,7 @@ namespace Hi3Helper.Sophon
                 return true;
             }
 
-            string   targetFilePathOnCheck = Path.Combine(inputDir, TargetFilePath);
-            FileInfo targetFilePathInfo    = new FileInfo(targetFilePathOnCheck);
-            if (targetFilePathInfo.Exists)
-            {
-                bool isReadOnly = targetFilePathInfo.IsReadOnly;
-                try
-                {
-#if NET6_0_OR_GREATER
-                    await
-#endif
-                    using FileStream checkStream = targetFilePathInfo.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-                    SophonChunk existingFileAsChunk = new SophonChunk
-                    {
-                        ChunkHashDecompressed = Extension.HexToBytes(TargetFileHash),
-                        ChunkName             = TargetFilePath,
-                        ChunkOffset           = 0,
-                        ChunkOldOffset        = 0,
-                        ChunkSize             = checkStream.Length,
-                        ChunkSizeDecompressed = checkStream.Length
-                    };
-
-                    bool isFileDownloaded = existingFileAsChunk.ChunkHashDecompressed.Length > 8 ?
-                        await existingFileAsChunk.CheckChunkMd5HashAsync(checkStream,
-                                                                         true,
-                                                                         token) :
-                        await existingFileAsChunk.CheckChunkXxh64HashAsync(checkStream,
-                                                                           existingFileAsChunk.ChunkHashDecompressed,
-                                                                           true,
-                                                                           token);
-
-                    if (isFileDownloaded)
-                    {
-#if DEBUG
-                        this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
-#endif
-                        downloadReadDelegate?.Invoke(PatchSize);
-                        return false;
-                    }
-                }
-                finally
-                {
-                    targetFilePathInfo.IsReadOnly = isReadOnly;
-                }
-            }
-
-            string   patchNameHashed             = PatchNameSource;
-            string   patchFilePathHashed         = Path.Combine(patchOutputDir, patchNameHashed);
-            FileInfo patchFilePathHashedFileInfo = patchFilePathHashed.CreateFileInfo();
-
+            FileInfo patchFilePathHashedFileInfo = this.GetLegacyOrHoyoPlayPatchChunkPath(patchOutputDir);
             if (!PatchNameSource.TryGetChunkXxh64Hash(out byte[] patchHash))
             {
                 patchHash = Extension.HexToBytes(PatchHash.AsSpan());
@@ -125,58 +76,78 @@ namespace Hi3Helper.Sophon
                 ChunkSizeDecompressed = PatchSize
             };
 
-#if NET6_0_OR_GREATER
-            await
-#endif
-            using FileStream fileStream = patchFilePathHashedFileInfo
-                .Open(FileMode.OpenOrCreate,
-                      FileAccess.ReadWrite,
-                      FileShare.ReadWrite);
-
-            bool isPatchUnmatched = fileStream.Length != PatchSize;
-            if (forceVerification)
-            {
-                isPatchUnmatched = patchHash.Length > 8 ?
-                    !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
-                                                               true,
-                                                               token) :
-                    !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
-                                                                 patchHash,
-                                                                 true,
-                                                                 token);
-
-                if (isPatchUnmatched)
+            FileStream fileStream = patchFilePathHashedFileInfo
+                .Open(new FileStreamOptions
                 {
-                    fileStream.Position = 0;
-                    fileStream.SetLength(0);
-                }
-            }
+                    Mode    = FileMode.OpenOrCreate,
+                    Access  = FileAccess.ReadWrite,
+                    Share   = FileShare.ReadWrite,
+                    Options = FileOptions.SequentialScan
+                });
 
-            if (!isPatchUnmatched)
+            try
             {
+                bool isPatchUnmatched = fileStream.Length != PatchSize;
+                if (forceVerification)
+                {
+                    isPatchUnmatched = patchHash.Length > 8 ?
+                        !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
+                                                                   true,
+                                                                   token) :
+                        !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
+                                                                     patchHash,
+                                                                     true,
+                                                                     token);
+                }
+
+                if (!isPatchUnmatched)
+                {
 #if DEBUG
-                this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
+                    this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
 #endif
-                downloadReadDelegate?.Invoke(PatchSize);
+                    downloadReadDelegate?.Invoke(PatchSize);
+
+                    return true;
+                }
+
+                if (fileStream.Length != 0)
+                {
+#if NET6_0_OR_GREATER
+                    await fileStream.DisposeAsync();
+#else
+                    fileStream.Dispose();
+#endif
+                    fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
+                    {
+                        Mode    = FileMode.Create,
+                        Access  = FileAccess.ReadWrite,
+                        Share   = FileShare.ReadWrite
+                    });
+                }
+
+                await InnerWriteChunkCopyAsync(client,
+                                               fileStream,
+                                               patchAsChunk,
+                                               PatchInfo,
+                                               PatchInfo,
+                                               writeInfoDelegate: null,
+                                               downloadInfoDelegate: (_, y) =>
+                                               {
+                                                   downloadReadDelegate?.Invoke(y);
+                                               },
+                                               downloadSpeedLimiter: downloadSpeedLimiter,
+                                               token: token);
 
                 return true;
             }
-
-            fileStream.Position = 0;
-            await InnerWriteChunkCopyAsync(client,
-                                           fileStream,
-                                           patchAsChunk,
-                                           PatchInfo,
-                                           PatchInfo,
-                                           writeInfoDelegate: null,
-                                           downloadInfoDelegate: (_, y) =>
-                                           {
-                                               downloadReadDelegate?.Invoke(y);
-                                           },
-                                           downloadSpeedLimiter: downloadSpeedLimiter,
-                                           token: token);
-
-            return true;
+            finally
+            {
+#if NET6_0_OR_GREATER
+                await fileStream.DisposeAsync();
+#else
+                fileStream.Dispose();
+#endif
+            }
         }
 
         private async
