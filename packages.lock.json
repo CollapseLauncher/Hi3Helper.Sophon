@@ -16,7 +16,7 @@
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
-        "requested": "[1.6.5, )",
+        "requested": "[*, )",
         "resolved": "1.6.5",
         "contentHash": "0Voe4Vi/kcUR+/33mOIKcJlP73oK9iauA2MuHXB0IHDvrbzT02L/2tfyTe621904LzN2zaML7JGKnOOLzuzmFQ=="
       },
@@ -38,7 +38,7 @@
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[9.0.9, )",
+        "requested": "[*, )",
         "resolved": "9.0.9",
         "contentHash": "hcGHdlcKtox37LQZBLYJ3GdTlHx16F5tL96Rt8iaFscCAJW9IZt3asQbyuJMjcM9oyrn3Yh2454VY2fU0d/stw=="
       },
