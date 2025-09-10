@@ -199,7 +199,13 @@ namespace Hi3Helper.Sophon
                 await
 #endif
                 using FileStream fileStream = chunkFilePathHashedFileInfo
-                    .Open(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+                    .Open(new FileStreamOptions
+                    {
+                        Mode       = FileMode.OpenOrCreate,
+                        Access     = FileAccess.ReadWrite,
+                        Share      = FileShare.ReadWrite,
+                        BufferSize = AssetSize.GetFileStreamBufferSize()
+                    });
 
                 bool isChunkUnmatch  = fileStream.Length != chunk.ChunkSize;
                 bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;

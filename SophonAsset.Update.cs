@@ -387,7 +387,7 @@ namespace Hi3Helper.Sophon
                             Mode       = FileMode.Open,
                             Share      = FileShare.ReadWrite,
                             Access     = FileAccess.Read,
-                            BufferSize = 4 << 10,
+                            BufferSize = chunk.ChunkSizeDecompressed.GetFileStreamBufferSize(),
                             Options    = removeChunkAfterApply
                                 ? FileOptions.DeleteOnClose
                                 : FileOptions.None
@@ -397,7 +397,7 @@ namespace Hi3Helper.Sophon
                                                      FileMode.Open,
                                                      FileAccess.Read,
                                                      FileShare.ReadWrite,
-                                                     4 << 10,
+                                                     chunk.ChunkSizeDecompressed.GetFileStreamBufferSize(),
                                                      removeChunkAfterApply
                                                          ? FileOptions.DeleteOnClose
                                                          : FileOptions.None);

@@ -66,23 +66,26 @@ namespace Hi3Helper.Sophon
                 patchHash = Extension.HexToBytes(PatchHash.AsSpan());
             }
 
-            SophonChunk patchAsChunk = new SophonChunk
+            SophonChunk patchAsChunk = new()
             {
-                ChunkHashDecompressed = patchHash,
-                ChunkName             = PatchNameSource,
-                ChunkOffset           = 0,
-                ChunkOldOffset        = 0,
-                ChunkSize             = PatchSize,
-                ChunkSizeDecompressed = PatchSize
+                ChunkHashDecompressed  = patchHash,
+                ChunkName              = PatchNameSource,
+                ChunkOffset            = 0,
+                ChunkOldOffset         = 0,
+                ChunkSize              = PatchSize,
+                ChunkSizeDecompressed  = PatchSize,
+                IsSkipHashCheckOnWrite = true
             };
 
+            bool isPatchFileExist = patchFilePathHashedFileInfo.Exists;
             FileStream fileStream = patchFilePathHashedFileInfo
                 .Open(new FileStreamOptions
                 {
-                    Mode    = FileMode.OpenOrCreate,
-                    Access  = FileAccess.ReadWrite,
-                    Share   = FileShare.ReadWrite,
-                    Options = FileOptions.SequentialScan
+                    // Use pre-check for file mode to prevent overhead over OS API.
+                    Mode       = isPatchFileExist ? FileMode.Open : FileMode.Create,
+                    Access     = FileAccess.Read,
+                    Share      = FileShare.Read, // Only share and open for read access to enable OS-level file caching.
+                    BufferSize = PatchSize.GetFileStreamBufferSize()
                 });
 
             try
@@ -110,7 +113,7 @@ namespace Hi3Helper.Sophon
                     return true;
                 }
 
-                if (fileStream.Length != 0)
+                if (fileStream.Length != 0 || isPatchUnmatched)
                 {
 #if NET6_0_OR_GREATER
                     await fileStream.DisposeAsync();
@@ -119,9 +122,10 @@ namespace Hi3Helper.Sophon
 #endif
                     fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
                     {
-                        Mode    = FileMode.Create,
-                        Access  = FileAccess.ReadWrite,
-                        Share   = FileShare.ReadWrite
+                        Mode       = FileMode.Create,
+                        Access     = FileAccess.Write,
+                        Share      = FileShare.Write,
+                        BufferSize = PatchSize.GetFileStreamBufferSize()
                     });
                 }
 
@@ -280,8 +284,8 @@ namespace Hi3Helper.Sophon
                         outStream.Position = 0;
                         Stream checkHashStream = outStream;
 
-                        bool isHashVerified;
-                        if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
+                        bool isHashVerified = chunk.IsSkipHashCheckOnWrite;
+                        if (!isHashVerified && chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
                                 await chunk.CheckChunkXxh64HashAsync(checkHashStream,
