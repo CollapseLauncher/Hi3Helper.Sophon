@@ -192,7 +192,7 @@ public sealed class ChunkStream : Stream
                 return;
 
             token.ThrowIfCancellationRequested();
-            int read = _stream.Read(bufferSpan);
+            int read = _stream.Read(bufferSpan[..(int)Math.Min(bufferSize, remained)]);
             destination.Write(bufferSpan[..read]);
             remained -= read;
 
