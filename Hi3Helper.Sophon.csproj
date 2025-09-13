@@ -43,8 +43,8 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Google.Protobuf" Version="3.32.0" />
-        <PackageReference Include="Google.Protobuf.Tools" Version="3.32.0">
+        <PackageReference Include="Google.Protobuf" Version="3.32.1" />
+        <PackageReference Include="Google.Protobuf.Tools" Version="3.32.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -59,7 +59,7 @@
 
     <!-- Cross-platform protoc path -->
     <PropertyGroup>
-        <GoogleProtobufVersion>3.32.0</GoogleProtobufVersion>
+        <GoogleProtobufVersion>3.32.1</GoogleProtobufVersion>
         <ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
