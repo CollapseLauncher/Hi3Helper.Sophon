@@ -288,11 +288,16 @@ namespace Hi3Helper.Sophon
                             await ThrottleAsync();
                         }
 
+                        if (chunk.IsSkipHashCheckOnWrite)
+                        {
+                            return;
+                        }
+
                         outStream.Position = 0;
                         Stream checkHashStream = outStream;
 
-                        bool isHashVerified = chunk.IsSkipHashCheckOnWrite;
-                        if (!isHashVerified && chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
+                        bool isHashVerified;
+                        if (chunk.ChunkName.TryGetChunkXxh64Hash(out byte[] outHash))
                         {
                             isHashVerified =
                                 await chunk.CheckChunkXxh64HashAsync(checkHashStream,
