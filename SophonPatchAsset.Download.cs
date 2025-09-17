@@ -27,7 +27,7 @@ namespace Hi3Helper.Sophon
 
     public partial class SophonPatchAsset
     {
-        internal const int BufferSize = 4 << 10;
+        internal const int BufferSize = 64 << 10;
 
         public   SophonAsset       MainAssetInfo     { get; set; }
         public   SophonChunksInfo  PatchInfo         { get; set; }
@@ -257,13 +257,14 @@ namespace Hi3Helper.Sophon
 #else
                                                                     buffer, 0, buffer.Length
 #endif
-                                                                  , cooperatedToken.Token)) > 0)
+                                                                  , cooperatedToken.Token)
+                                                         .ConfigureAwait(false)) > 0)
                         {
 
 #if NET6_0_OR_GREATER
-                            outStream.Write(buffer.AsSpan(0, read));
+                            await outStream.WriteAsync(buffer.AsMemory(0, read), cooperatedToken.Token).ConfigureAwait(false);
 #else
-                            outStream.Write(buffer, 0, read);
+                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token).ConfigureAwait(false);
 #endif
 
                             currentWriteOffset += read;
