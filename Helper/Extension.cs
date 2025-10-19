@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 #if !NET9_0_OR_GREATER
@@ -192,26 +193,52 @@ namespace Hi3Helper.Sophon.Helper
             => Convert.ToHexStringLower(bytes);
 #endif
 
-        internal static async
-#if NET6_0_OR_GREATER
-            ValueTask<bool>
-#else
-            Task<bool>
-#endif
+#nullable enable
+        internal static ConfiguredTaskAwaitable<bool>
             CheckChunkXxh64HashAsync(this SophonChunk  chunk,
                                      Stream            outStream,
                                      byte[]            chunkXxh64Hash,
                                      bool              isSingularStream,
                                      CancellationToken token)
         {
-            XxHash64 hash = new XxHash64();
+            return Task.Factory.StartNew(Impl, token).ConfigureAwait(false);
 
-            await hash.AppendAsync(isSingularStream ? outStream : GetChunkStream(), token);
-            bool isHashMatch = hash.GetHashAndReset()
-                                   .AsSpan()
-                                   .SequenceEqual(chunkXxh64Hash);
+            bool Impl()
+            {
+                XxHash64 hash        = new XxHash64();
+                Stream   streamToUse = isSingularStream ? outStream : GetChunkStream();
 
-            return isHashMatch;
+                long streamLen  = streamToUse.TryGetStreamLength();
+                int  bufferSize = streamLen.GetFileStreamBufferSize();
+
+                byte[]?           buffer     = bufferSize <= 4 << 10 ? null : ArrayPool<byte>.Shared.Rent(bufferSize);
+                scoped Span<byte> bufferSpan = buffer ?? stackalloc byte[bufferSize];
+
+                try
+                {
+                    int read;
+                    token.ThrowIfCancellationRequested();
+
+                    while ((read = streamToUse.Read(bufferSpan)) > 0)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        hash.Append(bufferSpan[..read]);
+                    }
+
+                    bool isHashMatch = hash.GetHashAndReset()
+                                           .AsSpan()
+                                           .SequenceEqual(chunkXxh64Hash);
+
+                    return isHashMatch;
+                }
+                finally
+                {
+                    if (buffer != null)
+                    {
+                        ArrayPool<byte>.Shared.Return(buffer);
+                    }
+                }
+            }
 
             Stream GetChunkStream()
             {
@@ -221,25 +248,50 @@ namespace Hi3Helper.Sophon.Helper
             }
         }
 
-        internal static async
-#if NET6_0_OR_GREATER
-            ValueTask<bool>
-#else
-            Task<bool>
-#endif
+        internal static ConfiguredTaskAwaitable<bool>
             CheckChunkMd5HashAsync(this SophonChunk  chunk,
                                    Stream            outStream,
                                    bool              isSingularStream,
                                    CancellationToken token)
         {
-            using MD5 hash       = MD5.Create();
-            byte[]    resultHash = await hash.ComputeHashAsync(isSingularStream ? outStream : GetChunkStream(), token);
+            return Task.Factory.StartNew(Impl, token).ConfigureAwait(false);
 
-            bool isHashMatch = resultHash
-                              .AsSpan()
-                              .SequenceEqual(chunk.ChunkHashDecompressed);
+            bool Impl()
+            {
+                using MD5 hash        = MD5.Create();
+                Stream    streamToUse = isSingularStream ? outStream : GetChunkStream();
 
-            return isHashMatch;
+                long streamLen  = streamToUse.TryGetStreamLength();
+                int  bufferSize = streamLen.GetFileStreamBufferSize() * 2;
+
+                byte[]     buffer     = ArrayPool<byte>.Shared.Rent(bufferSize);
+                Span<byte> bufferSpan = buffer;
+
+                try
+                {
+                    int read;
+                    token.ThrowIfCancellationRequested();
+
+                    while ((read = streamToUse.Read(bufferSpan)) > 0)
+                    {
+                        token.ThrowIfCancellationRequested();
+                        hash.TransformBlock(buffer, 0, read, buffer, 0);
+                    }
+
+                    hash.TransformFinalBlock(buffer, 0, read);
+                    byte[] resultHash = hash.Hash!;
+
+                    bool isHashMatch = resultHash
+                                      .AsSpan()
+                                      .SequenceEqual(chunk.ChunkHashDecompressed);
+
+                    return isHashMatch;
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+            }
 
             Stream GetChunkStream()
             {
@@ -248,6 +300,19 @@ namespace Hi3Helper.Sophon.Helper
                 return new ChunkStream(outStream, chunkPosStart, chunkPosEnd);
             }
         }
+
+        internal static long TryGetStreamLength(this Stream stream)
+        {
+            try
+            {
+                return stream.Length;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+#nullable restore
 
         internal static unsafe string GetChunkStagingFilenameHash(this SophonChunk chunk,
                                                                   SophonAsset      asset)
@@ -348,16 +413,6 @@ namespace Hi3Helper.Sophon.Helper
             if (outStream == null)
             {
                 throw new NullReferenceException("Output stream cannot be null!");
-            }
-
-            if (!outStream.CanRead)
-            {
-                throw new NotSupportedException("Output stream must be readable!");
-            }
-
-            if (!outStream.CanWrite)
-            {
-                throw new NotSupportedException("Output stream must be writable!");
             }
 
             if (!outStream.CanSeek)
@@ -618,5 +673,19 @@ namespace Hi3Helper.Sophon.Helper
             // Otherwise, use native path info
             return nativeChunkInfo;
         }
+
+        internal static int GetFileStreamBufferSize(this long fileSize)
+            => fileSize switch
+               {
+                   // 128 KiB
+                   <= 128 << 10 => 4 << 10,
+                   // 1 MiB
+                   <= 1 << 20 => 64 << 10,
+                   // 32 MiB
+                   <= 32 << 20 => 128 << 10,
+                   // 100 MiB
+                   <= 100 << 20 => 512 << 10,
+                   _ => 1 << 20
+               };
     }
 }

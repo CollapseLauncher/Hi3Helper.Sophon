@@ -247,6 +247,137 @@ namespace Hi3Helper.Sophon
             }
         }
 
+
+
+        /// <summary>
+        ///     Perform a download process by file and run each chunk download in parallel instead of sequentially.
+        /// </summary>
+        /// <param name="client">
+        ///     The <see cref="HttpClient" /> to be used for downloading process.<br />Ensure that the maximum connection for the
+        ///     <see cref="HttpClient" /> has been set to at least (Number of Threads/CPU core * 25%) or == Number of Threads/CPU
+        ///     core
+        /// </param>
+        /// <param name="outStreamFunc">
+        ///     Output <see cref="Stream" /> to write the file into by passing the pre-allocated size of the file.<br />
+        ///     The <see cref="Stream" /> must be readable, writeable and seekable, also be able to be shared both on Read and
+        ///     Write operation.
+        ///     It's recommended to use <see cref="FileStream" /> or other stream similar to that and please use
+        ///     <see cref="FileMode.OpenOrCreate" />,
+        ///     <see cref="FileAccess.ReadWrite" /> and <see cref="FileShare.ReadWrite" /> if you're using
+        ///     <see cref="FileStream" />.
+        /// </param>
+        /// <param name="parallelOptions">
+        ///     Parallelization settings to be used for downloading chunks and data hashing.
+        ///     Remember that while using this method, the <seealso cref="CancellationToken" /> needs to be passed with
+        ///     <c>CancellationToken</c> property.<br />
+        ///     If it's being set to <c>null</c>, a default setting will be used as below:
+        ///     <code>
+        ///     CancellationToken = <paramref name="token" />,
+        ///     MaxDegreeOfParallelism = [Number of CPU threads/cores available]
+        ///     </code>
+        /// </param>
+        /// <param name="writeInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        /// </param>
+        /// <param name="downloadInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
+        /// </param>
+        /// <param name="downloadCompleteDelegate">
+        ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
+        /// </param>
+        public async
+#if NET6_0_OR_GREATER
+            ValueTask
+#else
+            Task
+#endif
+            WriteToStreamAsync(HttpClient                    client,
+                               Func<long, Stream>            outStreamFunc,
+                               ParallelOptions               parallelOptions          = null,
+                               DelegateWriteStreamInfo       writeInfoDelegate        = null,
+                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
+                               DelegateDownloadAssetComplete downloadCompleteDelegate = null)
+        {
+            this.EnsureOrThrowChunksState();
+
+            using (Stream initStream = outStreamFunc(AssetSize))
+            {
+                this.EnsureOrThrowStreamState(initStream);
+
+                if (initStream.Length > AssetSize)
+                {
+                    initStream.SetLength(AssetSize);
+                }
+            }
+
+            if (parallelOptions == null)
+            {
+                int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
+                parallelOptions = new ParallelOptions
+                {
+                    CancellationToken = CancellationToken.None,
+                    MaxDegreeOfParallelism = maxChunksTask
+                };
+            }
+
+            try
+            {
+#if !NET6_0_OR_GREATER
+                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource linkedToken = CancellationTokenSource
+                    .CreateLinkedTokenSource(actionToken.Token,
+                                             parallelOptions.CancellationToken);
+                ActionBlock<SophonChunk> actionBlock = new(
+                    // ReSharper disable once AccessToDisposedClosure
+                    async chunk => await Impl(chunk, linkedToken.Token),
+                    new ExecutionDataflowBlockOptions
+                    {
+                        MaxDegreeOfParallelism = parallelOptions.MaxDegreeOfParallelism,
+                        CancellationToken      = linkedToken.Token
+                    });
+
+                foreach (SophonChunk chunk in Chunks)
+                {
+                    await actionBlock.SendAsync(chunk, linkedToken.Token);
+                }
+
+                actionBlock.Complete();
+                await actionBlock.Completion;
+#else
+                await Parallel.ForEachAsync(Chunks,
+                                            parallelOptions,
+                                            Impl);
+#endif
+            }
+            catch (AggregateException ex)
+            {
+                // Throw all other exceptions
+                throw ex.Flatten().InnerExceptions.First();
+            }
+
+#if DEBUG
+            this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
+                $" has been completely downloaded!");
+#endif
+            downloadCompleteDelegate?.Invoke(this);
+
+            return;
+
+            async ValueTask Impl(SophonChunk chunk, CancellationToken threadToken)
+            {
+#if NET6_0_OR_GREATER
+                await
+#endif
+                using Stream outStream = outStreamFunc(AssetSize);
+                await PerformWriteStreamThreadAsync(client,
+                                                    null, SourceStreamType.Internet,
+                                                    outStream, chunk,
+                                                    writeInfoDelegate,
+                                                    downloadInfoDelegate,
+                                                    DownloadSpeedLimiter, threadToken);
+            }
+        }
+
         private async
 #if NET6_0_OR_GREATER
             ValueTask

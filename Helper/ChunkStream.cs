@@ -2,6 +2,7 @@ using System.IO;
 using System.Threading.Tasks;
 using System.Threading;
 using System;
+using System.Runtime.CompilerServices;
 #if NET6_0_OR_GREATER
 using System.Buffers;
 #endif
@@ -47,6 +48,7 @@ public sealed class ChunkStream : Stream
     ~ChunkStream() => Dispose(IsDisposing);
 
 #if NET6_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int Read(Span<byte> buffer)
     {
         if (Remain == 0) return 0;
@@ -73,6 +75,7 @@ public sealed class ChunkStream : Stream
     }
 #endif
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int Read(byte[] buffer, int offset, int count)
     {
         if (Remain == 0) return 0;
@@ -105,6 +108,7 @@ public sealed class ChunkStream : Stream
     }
 
 #if NET6_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write(ReadOnlySpan<byte> buffer)
     {
         if (Remain == 0) return;
@@ -115,18 +119,19 @@ public sealed class ChunkStream : Stream
         _stream.Write(buffer[..toSlice]);
     }
 
-    public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
-                                               CancellationToken    token = default)
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer,
+                                         CancellationToken    token = default)
     {
-        if (Remain == 0) return;
+        if (Remain == 0) return ValueTask.CompletedTask;
 
         int toSlice = (int)(buffer.Length > Remain ? Remain : buffer.Length);
         CurPos += toSlice;
 
-        await _stream.WriteAsync(buffer[..toSlice], token);
+        return _stream.WriteAsync(buffer[..toSlice], token);
     }
 #endif
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void Write(byte[] buffer,
                                int    offset,
                                int    count)
@@ -160,44 +165,48 @@ public sealed class ChunkStream : Stream
     }
 
 #if NET6_0_OR_GREATER
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override void CopyTo(Stream destination,
                                 int    bufferSize)
-    {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
-
-        try
-        {
-            int read;
-            while ((read = Read(buffer)) > 0)
-            {
-                destination.Write(buffer.AsSpan(0, read));
-            }
-        }
-        finally
-        {
-            ArrayPool<byte>.Shared.Return(buffer);
-        }
-    }
+        => CopyToCoreSync(destination, bufferSize, CancellationToken.None);
 
     public override async Task CopyToAsync(Stream            destination,
                                            int               bufferSize,
                                            CancellationToken cancellationToken)
-    {
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
+        => await Task.Factory.StartNew(() => CopyToCoreSync(destination, bufferSize, cancellationToken), cancellationToken)
+                     .ConfigureAwait(false);
 
+#nullable enable
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private void CopyToCoreSync(Stream destination, int bufferSize, CancellationToken token)
+    {
+        byte[]?           buffer     = bufferSize <= 4 << 10 ? null : ArrayPool<byte>.Shared.Rent(bufferSize);
+        scoped Span<byte> bufferSpan = buffer ?? stackalloc byte[bufferSize];
+
+        long remained = Size - CurPos;
+        CurPos = Size;
         try
         {
-            int read;
-            while ((read = await ReadAsync(buffer, cancellationToken)) > 0)
-            {
-                await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-            }
+            Read:
+            if (remained == 0)
+                return;
+
+            token.ThrowIfCancellationRequested();
+            int read = _stream.Read(bufferSpan[..(int)Math.Min(bufferSize, remained)]);
+            destination.Write(bufferSpan[..read]);
+            remained -= read;
+
+            goto Read;
         }
         finally
         {
-            ArrayPool<byte>.Shared.Return(buffer);
+            if (buffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
     }
+#nullable restore
 #endif
 
     public override bool CanRead

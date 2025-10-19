@@ -17,5 +17,6 @@ namespace Hi3Helper.Sophon.Structs
         public long   ChunkOffset;
         public long   ChunkSize;
         public long   ChunkSizeDecompressed;
+        public bool   IsSkipHashCheckOnWrite;
     }
 }

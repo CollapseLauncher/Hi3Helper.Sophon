@@ -27,7 +27,7 @@ namespace Hi3Helper.Sophon
 
     public partial class SophonPatchAsset
     {
-        internal const int BufferSize = 4 << 10;
+        internal const int BufferSize = 64 << 10;
 
         public   SophonAsset       MainAssetInfo     { get; set; }
         public   SophonChunksInfo  PatchInfo         { get; set; }
@@ -66,41 +66,46 @@ namespace Hi3Helper.Sophon
                 patchHash = Extension.HexToBytes(PatchHash.AsSpan());
             }
 
-            SophonChunk patchAsChunk = new SophonChunk
+            SophonChunk patchAsChunk = new()
             {
-                ChunkHashDecompressed = patchHash,
-                ChunkName             = PatchNameSource,
-                ChunkOffset           = 0,
-                ChunkOldOffset        = 0,
-                ChunkSize             = PatchSize,
-                ChunkSizeDecompressed = PatchSize
+                ChunkHashDecompressed  = patchHash,
+                ChunkName              = PatchNameSource,
+                ChunkOffset            = 0,
+                ChunkOldOffset         = 0,
+                ChunkSize              = PatchSize,
+                ChunkSizeDecompressed  = PatchSize,
+                IsSkipHashCheckOnWrite = true
             };
 
-            FileStream fileStream = patchFilePathHashedFileInfo
-                .Open(new FileStreamOptions
-                {
-                    Mode    = FileMode.OpenOrCreate,
-                    Access  = FileAccess.ReadWrite,
-                    Share   = FileShare.ReadWrite,
-                    Options = FileOptions.SequentialScan
-                });
+            bool isPatchFileExist = patchFilePathHashedFileInfo.Exists;
+            FileStream? fileStream = isPatchFileExist
+                ? patchFilePathHashedFileInfo
+                   .Open(new FileStreamOptions
+                    {
+                        // Use pre-check for file mode to prevent overhead over OS API.
+                        Mode = FileMode.Open,
+                        Access = FileAccess.Read,
+                        Share = FileShare.Read, // Only share and open for read access to enable OS-level file caching.
+                        BufferSize = PatchSize.GetFileStreamBufferSize()
+                    })
+                : null;
 
             try
             {
-                bool isPatchUnmatched = fileStream.Length != PatchSize;
-                if (forceVerification)
+                bool isPatchMatched = fileStream != null && fileStream.Length == PatchSize;
+                if (forceVerification && fileStream != null)
                 {
-                    isPatchUnmatched = patchHash.Length > 8 ?
-                        !await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
-                                                                   true,
-                                                                   token) :
-                        !await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
-                                                                     patchHash,
-                                                                     true,
-                                                                     token);
+                    isPatchMatched = patchHash.Length > 8
+                        ? await patchAsChunk.CheckChunkMd5HashAsync(fileStream,
+                                                                    true,
+                                                                    token)
+                        : await patchAsChunk.CheckChunkXxh64HashAsync(fileStream,
+                                                                      patchHash,
+                                                                      true,
+                                                                      token);
                 }
 
-                if (!isPatchUnmatched)
+                if (isPatchMatched)
                 {
 #if DEBUG
                     this.PushLogDebug($"Skipping patch {PatchNameSource} for: {TargetFilePath}");
@@ -110,20 +115,22 @@ namespace Hi3Helper.Sophon
                     return true;
                 }
 
-                if (fileStream.Length != 0)
+                if (fileStream != null)
                 {
 #if NET6_0_OR_GREATER
                     await fileStream.DisposeAsync();
 #else
-                    fileStream.Dispose();
+                    fileStream?.Dispose();
 #endif
-                    fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
-                    {
-                        Mode    = FileMode.Create,
-                        Access  = FileAccess.ReadWrite,
-                        Share   = FileShare.ReadWrite
-                    });
                 }
+
+                fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
+                {
+                    Mode       = FileMode.Create,
+                    Access     = FileAccess.ReadWrite,
+                    Share      = FileShare.ReadWrite,
+                    BufferSize = PatchSize.GetFileStreamBufferSize()
+                });
 
                 await InnerWriteChunkCopyAsync(client,
                                                fileStream,
@@ -142,11 +149,14 @@ namespace Hi3Helper.Sophon
             }
             finally
             {
+                if (fileStream != null)
+                {
 #if NET6_0_OR_GREATER
-                await fileStream.DisposeAsync();
+                    await fileStream.DisposeAsync();
 #else
-                fileStream.Dispose();
+                    fileStream?.Dispose();
 #endif
+                }
             }
         }
 
@@ -247,13 +257,14 @@ namespace Hi3Helper.Sophon
 #else
                                                                     buffer, 0, buffer.Length
 #endif
-                                                                  , cooperatedToken.Token)) > 0)
+                                                                  , cooperatedToken.Token)
+                                                         .ConfigureAwait(false)) > 0)
                         {
 
 #if NET6_0_OR_GREATER
-                            outStream.Write(buffer.AsSpan(0, read));
+                            await outStream.WriteAsync(buffer.AsMemory(0, read), cooperatedToken.Token).ConfigureAwait(false);
 #else
-                            outStream.Write(buffer, 0, read);
+                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token).ConfigureAwait(false);
 #endif
 
                             currentWriteOffset += read;
@@ -275,6 +286,11 @@ namespace Hi3Helper.Sophon
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
                             await ThrottleAsync();
+                        }
+
+                        if (chunk.IsSkipHashCheckOnWrite)
+                        {
+                            return;
                         }
 
                         outStream.Position = 0;
