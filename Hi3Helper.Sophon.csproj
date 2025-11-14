@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <ImplicitUsings>disable</ImplicitUsings>
         <Platforms>x64</Platforms>
@@ -43,14 +43,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Google.Protobuf" Version="3.32.1" />
-        <PackageReference Include="Google.Protobuf.Tools" Version="3.32.1">
+        <PackageReference Include="Google.Protobuf" Version="3.33.1" />
+        <PackageReference Include="Google.Protobuf.Tools" Version="3.33.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
-        <PackageReference Include="System.IO.Hashing" Version="10.0.0-rc.2.25502.107" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
 		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
 		<PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 		<PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
