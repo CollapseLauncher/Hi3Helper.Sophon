@@ -42,9 +42,18 @@
         <None Include="README.md" Pack="true" PackagePath="\" />
     </ItemGroup>
 
+    <!-- Cross-platform protoc path -->
+    <PropertyGroup>
+        <GoogleProtobufVersion>3.33.1</GoogleProtobufVersion>
+        <ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
+        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
+        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
+        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(ProtoToolsRoot)/macosx_x64/protoc</ProtocPath>
+    </PropertyGroup>
+
     <ItemGroup>
-        <PackageReference Include="Google.Protobuf" Version="3.33.1" />
-        <PackageReference Include="Google.Protobuf.Tools" Version="3.33.1">
+        <PackageReference Include="Google.Protobuf" Version="$(GoogleProtobufVersion)" />
+        <PackageReference Include="Google.Protobuf.Tools" Version="$(GoogleProtobufVersion)">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
@@ -56,15 +65,6 @@
 		<PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
 	</ItemGroup>
-
-    <!-- Cross-platform protoc path -->
-    <PropertyGroup>
-        <GoogleProtobufVersion>3.32.1</GoogleProtobufVersion>
-        <ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
-        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
-        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
-        <ProtocPath Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(ProtoToolsRoot)/macosx_x64/protoc</ProtocPath>
-    </PropertyGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">
         <Message Text="Generating SophonManifestProto C# code..." Importance="high" />
