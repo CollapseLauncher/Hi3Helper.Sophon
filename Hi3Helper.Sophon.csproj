@@ -6,7 +6,7 @@
         <DefineConstants>NOSTREAMLOCK</DefineConstants>
         <IsAotCompatible>true</IsAotCompatible>
         <IsTrimmable>true</IsTrimmable>
-		<TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
 
         <Version>1.7.1</Version>
         <AssemblyVersion>1.7.1</AssemblyVersion>
@@ -32,9 +32,9 @@
         <DebugType>portable</DebugType>
     </PropertyGroup>
     <ItemGroup>
-      <Compile Remove="Test\**" />
-      <EmbeddedResource Remove="Test\**" />
-      <None Remove="Test\**" />
+        <Compile Remove="Test\**" />
+        <EmbeddedResource Remove="Test\**" />
+        <None Remove="Test\**" />
     </ItemGroup>
 
     <ItemGroup>
@@ -60,11 +60,11 @@
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
         <PackageReference Include="System.IO.Hashing" Version="10.0.0" />
-		<PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
-		<PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
-		<PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
-		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
-	</ItemGroup>
+        <PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
+        <PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
+        <PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
+        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
+    </ItemGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">
         <Message Text="Generating SophonManifestProto C# code..." Importance="high" />
