@@ -48,6 +48,8 @@ namespace Hi3Helper.Sophon
         internal SophonChunksInfo           SophonChunksInfo     { get; set; }
         internal SophonChunksInfo           SophonChunksInfoAlt  { get; set; }
 
+        public override string ToString() => AssetName;
+
         /// <summary>
         ///     Perform a download process by file and run each chunk download sequentially.
         /// </summary>

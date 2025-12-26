@@ -44,7 +44,9 @@ namespace Hi3Helper.Sophon
         public   string            TargetFileHash    { get; set; }
         public   long              TargetFileSize    { get; set; }
 
-#nullable enable
+        public override string ToString() => TargetFilePath;
+
+    #nullable enable
         public async Task<bool> DownloadPatchAsync(HttpClient                  client,
                                                    string                      inputDir,
                                                    string                      patchOutputDir,
