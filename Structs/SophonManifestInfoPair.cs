@@ -23,6 +23,8 @@ namespace Hi3Helper.Sophon.Structs
         public   string?                  CategoryName         { get; internal set; }
         public   int                      CategoryId           { get; internal set; }
 
+        public override string ToString() => $"{CategoryId} - {MatchingField} ({CategoryName})";
+
         public SophonChunkManifestInfoPair GetOtherManifestInfoPair(string matchingField)
         {
             SophonManifestBuildIdentity? sophonManifestIdentity =
