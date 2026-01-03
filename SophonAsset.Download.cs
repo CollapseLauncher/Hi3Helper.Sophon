@@ -26,7 +26,7 @@ using ZstdStream = ZstdNet.DecompressionStream;
 
 namespace Hi3Helper.Sophon
 {
-    public partial class SophonAsset
+    public partial class SophonAsset : SophonIdentifiableProperty
     {
         private enum SourceStreamType
         {

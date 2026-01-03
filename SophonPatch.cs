@@ -14,6 +14,7 @@ using System.Threading;
 
 #if NET6_0_OR_GREATER
 using ZstdNet;
+// ReSharper disable RedundantCallerArgumentExpressionDefaultValue
 #endif
 
 // ReSharper disable CommentTypo
@@ -154,7 +155,7 @@ namespace Hi3Helper.Sophon
                         SophonPatchProto.Parser,
                         innerToken);
 
-                var patchManifestProto = await TaskExtensions
+                SophonPatchProto? patchManifestProto = await TaskExtensions
                    .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
                                       TaskExtensions.DefaultTimeoutSec,
                                       null,
@@ -164,8 +165,8 @@ namespace Hi3Helper.Sophon
 
                 foreach (SophonPatchAssetProperty patchAssetProperty in patchManifestProto.PatchAssets)
                 {
-                    var patchAssetInfo = patchAssetProperty.AssetInfos
-                                                           .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
+                    SophonPatchAssetInfo? patchAssetInfo = patchAssetProperty.AssetInfos
+                                                                             .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
 
                     if (patchAssetInfo != null)
                     {
@@ -186,7 +187,7 @@ namespace Hi3Helper.Sophon
                     continue;
                 }
 
-                ref var patchProperty = ref CollectionsMarshal
+                ref (SophonPatchAssetProperty, SophonPatchAssetInfo) patchProperty = ref CollectionsMarshal
                     .GetValueRefOrNullRef(patchAssetPropertyDict,
                                           mainAsset.AssetName);
 
@@ -198,7 +199,10 @@ namespace Hi3Helper.Sophon
                         TargetFilePath = mainAsset.AssetName,
                         TargetFileSize = mainAsset.AssetSize,
                         TargetFileHash = mainAsset.AssetHash,
-                        PatchMethod    = SophonPatchMethod.DownloadOver
+                        PatchMethod    = SophonPatchMethod.DownloadOver,
+                        MatchingField  = mainAsset.MatchingField,
+                        CategoryId     = mainAsset.CategoryId,
+                        CategoryName   = mainAsset.CategoryName
                     };
                     continue;
                 }
@@ -217,7 +221,10 @@ namespace Hi3Helper.Sophon
                         TargetFilePath   = mainAsset.AssetName,
                         TargetFileSize   = mainAsset.AssetSize,
                         TargetFileHash   = mainAsset.AssetHash,
-                        PatchMethod      = SophonPatchMethod.CopyOver
+                        PatchMethod      = SophonPatchMethod.CopyOver,
+                        MatchingField    = mainAsset.MatchingField,
+                        CategoryId       = mainAsset.CategoryId,
+                        CategoryName     = mainAsset.CategoryName
                     };
                     continue;
                 }
@@ -237,7 +244,10 @@ namespace Hi3Helper.Sophon
                     OriginalFilePath = patchProperty.Item2.Chunk.OriginalFileName,
                     OriginalFileSize = patchProperty.Item2.Chunk.OriginalFileLength,
                     OriginalFileHash = patchProperty.Item2.Chunk.OriginalFileMd5,
-                    PatchMethod      = SophonPatchMethod.Patch
+                    PatchMethod      = SophonPatchMethod.Patch,
+                    MatchingField    = mainAsset.MatchingField,
+                    CategoryId       = mainAsset.CategoryId,
+                    CategoryName     = mainAsset.CategoryName
                 };
             }
         }
@@ -371,7 +381,7 @@ namespace Hi3Helper.Sophon
                                                                                SophonPatchProto.Parser,
                                                                                innerToken);
 
-            var patchManifestProto = await TaskExtensions
+            SophonPatchProto? patchManifestProto = await TaskExtensions
                .WaitForRetryAsync(() => manifestFromProtoTaskCallback,
                                   TaskExtensions.DefaultTimeoutSec,
                                   null,
@@ -395,7 +405,10 @@ namespace Hi3Helper.Sophon
                             OriginalFileHash = unusedAssetFile.FileMd5,
                             OriginalFileSize = unusedAssetFile.FileSize,
                             OriginalFilePath = unusedAssetFile.FileName,
-                            PatchMethod      = SophonPatchMethod.Remove
+                            PatchMethod      = SophonPatchMethod.Remove,
+                            MatchingField    = patchManifestInfo.MatchingField,
+                            CategoryId       = patchManifestInfo.CategoryId,
+                            CategoryName     = patchManifestInfo.CategoryName
                         };
                     }
                 }

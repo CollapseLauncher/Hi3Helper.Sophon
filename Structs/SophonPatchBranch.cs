@@ -19,7 +19,7 @@ namespace Hi3Helper.Sophon
                                               string?           matchingField = null,
                                               CancellationToken token         = default)
         {
-            var sophonPatchBranch = await SophonManifest.GetSophonBranchInfo
+            SophonManifestPatchBranch? sophonPatchBranch = await SophonManifest.GetSophonBranchInfo
 #if !NET6_0_OR_GREATER
                 <SophonManifestPatchBranch>
 #endif
@@ -37,7 +37,10 @@ namespace Hi3Helper.Sophon
                 {
                     IsFound       = false,
                     ReturnCode    = sophonPatchBranch.ReturnCode,
-                    ReturnMessage = sophonPatchBranch.ReturnMessage
+                    ReturnMessage = sophonPatchBranch.ReturnMessage,
+                    MatchingField = null,
+                    CategoryId    = 0,
+                    CategoryName  = null
                 };
             }
 
@@ -55,7 +58,10 @@ namespace Hi3Helper.Sophon
                 {
                     IsFound       = false,
                     ReturnCode    = 404,
-                    ReturnMessage = $"Sophon patch with matching field: {matchingField} is not found!"
+                    ReturnMessage = $"Sophon patch with matching field: {matchingField} is not found!",
+                    MatchingField = null,
+                    CategoryId    = 0,
+                    CategoryName  = null
                 };
             }
 
@@ -66,9 +72,10 @@ namespace Hi3Helper.Sophon
             {
                 return new SophonChunkManifestInfoPair
                 {
-                    IsFound = false,
-                    ReturnCode = 404,
-                    ReturnMessage = $"Sophon patch diff tagged info with version: {versionUpdateFrom} is not found!"
+                    IsFound       = false,
+                    ReturnCode    = 404,
+                    ReturnMessage = $"Sophon patch diff tagged info with version: {versionUpdateFrom} is not found!",
+                    MatchingField = null
                 };
             }
 
@@ -79,15 +86,24 @@ namespace Hi3Helper.Sophon
                                                              sophonChunkInfo.FileCount,
                                                              sophonPatchIdentity.DiffUrlInfo.IsCompressed,
                                                              sophonChunkInfo.UncompressedSize,
-                                                             sophonChunkInfo.CompressedSize),
+                                                             sophonChunkInfo.CompressedSize,
+                                                             sophonPatchIdentity.MatchingField,
+                                                             sophonPatchIdentity.CategoryId,
+                                                             sophonPatchIdentity.CategoryName),
                 ManifestInfo = SophonManifest.CreateManifestInfo(sophonPatchIdentity.ManifestUrlInfo.UrlPrefix,
                                                                  sophonPatchIdentity.ManifestFileInfo.Checksum,
                                                                  sophonPatchIdentity.ManifestFileInfo.FileName,
                                                                  sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
                                                                  sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
-                                                                 sophonPatchIdentity.ManifestFileInfo.CompressedSize),
+                                                                 sophonPatchIdentity.ManifestFileInfo.CompressedSize,
+                                                                 sophonPatchIdentity.MatchingField,
+                                                                 sophonPatchIdentity.CategoryId,
+                                                                 sophonPatchIdentity.CategoryName),
                 OtherSophonBuildData = null,
-                OtherSophonPatchData = sophonPatchBranch.Data
+                OtherSophonPatchData = sophonPatchBranch.Data,
+                MatchingField        = sophonPatchIdentity.MatchingField,
+                CategoryId           = sophonPatchIdentity.CategoryId,
+                CategoryName         = sophonPatchIdentity.CategoryName
             };
         }
     }

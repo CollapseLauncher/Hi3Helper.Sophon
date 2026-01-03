@@ -71,7 +71,7 @@ namespace Hi3Helper.Sophon
                                               bool              isThrowIfNotFound = true,
                                               CancellationToken token             = default)
         {
-            var sophonBranch = await GetSophonBranchInfo
+            SophonManifestBuildBranch sophonBranch = await GetSophonBranchInfo
 #if !NET6_0_OR_GREATER
                 <SophonManifestBuildBranch>
 #endif
@@ -89,7 +89,10 @@ namespace Hi3Helper.Sophon
                 {
                     IsFound       = false,
                     ReturnCode    = sophonBranch.ReturnCode,
-                    ReturnMessage = sophonBranch.ReturnMessage
+                    ReturnMessage = sophonBranch.ReturnMessage,
+                    MatchingField = null,
+                    CategoryId    = 0,
+                    CategoryName  = null
                 };
             }
 
@@ -98,7 +101,7 @@ namespace Hi3Helper.Sophon
                 matchingField = "game";
             }
 
-            var sophonManifestIdentity =
+            SophonManifestBuildIdentity sophonManifestIdentity =
                 sophonBranch.Data.ManifestIdentityList?
                    .FirstOrDefault(x => x.MatchingField == matchingField);
 
@@ -111,13 +114,19 @@ namespace Hi3Helper.Sophon
                                                   sophonManifestIdentity.ChunkInfo.FileCount,
                                                   sophonManifestIdentity.ChunksUrlInfo.IsCompressed,
                                                   sophonManifestIdentity.ChunkInfo.UncompressedSize,
-                                                  sophonManifestIdentity.ChunkInfo.CompressedSize),
+                                                  sophonManifestIdentity.ChunkInfo.CompressedSize,
+                                                  sophonManifestIdentity.MatchingField,
+                                                  sophonManifestIdentity.CategoryId,
+                                                  sophonManifestIdentity.CategoryName),
                     ManifestInfo = CreateManifestInfo(sophonManifestIdentity.ManifestUrlInfo.UrlPrefix,
                                                       sophonManifestIdentity.ManifestFileInfo.Checksum,
                                                       sophonManifestIdentity.ManifestFileInfo.FileName,
                                                       sophonManifestIdentity.ManifestUrlInfo.IsCompressed,
                                                       sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
-                                                      sophonManifestIdentity.ManifestFileInfo.CompressedSize),
+                                                      sophonManifestIdentity.ManifestFileInfo.CompressedSize,
+                                                      sophonManifestIdentity.MatchingField,
+                                                      sophonManifestIdentity.CategoryId,
+                                                      sophonManifestIdentity.CategoryName),
                     OtherSophonBuildData = sophonBranch.Data,
                     MatchingField        = sophonManifestIdentity.MatchingField,
                     CategoryName         = sophonManifestIdentity.CategoryName,
@@ -132,7 +141,10 @@ namespace Hi3Helper.Sophon
             {
                 IsFound       = false,
                 ReturnCode    = 404,
-                ReturnMessage = $"Sophon manifest with matching field: {matchingField} is not found!"
+                ReturnMessage = $"Sophon manifest with matching field: {matchingField} is not found!",
+                MatchingField = null,
+                CategoryId    = 0,
+                CategoryName  = null
             };
         }
     }

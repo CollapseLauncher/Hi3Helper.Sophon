@@ -340,7 +340,10 @@ namespace Hi3Helper.Sophon
                 SophonChunksInfoAlt  = oldChunksInfo,
                 IsDirectory          = false,
                 IsHasPatch           = isNewAssetHasPatch,
-                DownloadSpeedLimiter = downloadSpeedLimiter
+                DownloadSpeedLimiter = downloadSpeedLimiter,
+                MatchingField        = newChunksInfo.MatchingField,
+                CategoryId           = newChunksInfo.CategoryId,
+                CategoryName         = newChunksInfo.CategoryName
             };
         }
 

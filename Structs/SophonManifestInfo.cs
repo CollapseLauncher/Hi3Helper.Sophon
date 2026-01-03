@@ -1,18 +1,21 @@
 ﻿using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Structs;
 
 // ReSharper disable IdentifierTypo
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
+
+#nullable enable
 namespace Hi3Helper.Sophon.Infos
 {
-    public class SophonManifestInfo
+    public class SophonManifestInfo : SophonIdentifiableProperty
     {
-        public   string          ManifestBaseUrl        { get; internal set; }
-        public   string          ManifestId             { get; internal set; }
-        public   string          ManifestChecksumMd5    { get; internal set; }
-        public   bool            IsUseCompression       { get; internal set; }
-        public   long            ManifestSize           { get; internal set; }
-        public   long            ManifestCompressedSize { get; internal set; }
+        public required string ManifestBaseUrl        { get; init; }
+        public required string ManifestId             { get; init; }
+        public required string ManifestChecksumMd5    { get; init; }
+        public          bool   IsUseCompression       { get; init; }
+        public          long   ManifestSize           { get; init; }
+        public          long   ManifestCompressedSize { get; init; }
 
         public string ManifestFileUrl => ManifestBaseUrl.TrimEnd('/') + '/' + ManifestId;
     }
@@ -47,13 +50,25 @@ namespace Hi3Helper.Sophon
         ///     The compressed size of the manifest file. To find the value, See the API section called: <c>stats</c> ->
         ///     <c>compressed_size</c>
         /// </param>
+        /// <param name="matchingField">
+        ///     The matching field of the parent manifest. To find the value, See the API section called: <c>matching_field</c>
+        /// </param>
+        /// <param name="categoryId">
+        ///     The category ID of the parent manifest. To find the value, See the API section called: <c>category_id</c>
+        /// </param>
+        /// <param name="categoryName">
+        ///     The category name of the parent manifest. To find the value, See the API section called: <c>category_name</c>
+        /// </param>
         /// <returns>Sophon Manifest Build Information instance</returns>
-        public static SophonManifestInfo CreateManifestInfo(string manifestBaseUrl,
-                                                            string manifestChecksumMd5,
-                                                            string manifestId,
-                                                            bool   isUseCompression,
-                                                            long   manifestSize,
-                                                            long   manifestCompressedSize = 0)
+        public static SophonManifestInfo CreateManifestInfo(string  manifestBaseUrl,
+                                                            string  manifestChecksumMd5,
+                                                            string  manifestId,
+                                                            bool    isUseCompression,
+                                                            long    manifestSize,
+                                                            long    manifestCompressedSize,
+                                                            string? matchingField,
+                                                            int     categoryId,
+                                                            string? categoryName)
             => new()
             {
                 ManifestBaseUrl        = manifestBaseUrl,
@@ -61,7 +76,10 @@ namespace Hi3Helper.Sophon
                 ManifestId             = manifestId,
                 IsUseCompression       = isUseCompression,
                 ManifestSize           = manifestSize,
-                ManifestCompressedSize = manifestCompressedSize
+                ManifestCompressedSize = manifestCompressedSize,
+                MatchingField          = matchingField,
+                CategoryId             = categoryId,
+                CategoryName           = categoryName
             };
     }
 }

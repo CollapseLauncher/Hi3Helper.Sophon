@@ -10,7 +10,7 @@ using System.Runtime.CompilerServices;
 // ReSharper disable CommentTypo
 namespace Hi3Helper.Sophon.Structs
 {
-    public class SophonChunkManifestInfoPair
+    public class SophonChunkManifestInfoPair : SophonIdentifiableProperty
     {
         public   SophonChunksInfo?        ChunksInfo           { get; internal set; }
         public   SophonManifestInfo?      ManifestInfo         { get; internal set; }
@@ -19,9 +19,6 @@ namespace Hi3Helper.Sophon.Structs
         public   bool                     IsFound              { get; internal set; } = true;
         public   int                      ReturnCode           { get; internal set; } = 0;
         public   string?                  ReturnMessage        { get; internal set; }
-        public   string?                  MatchingField        { get; internal set; }
-        public   string?                  CategoryName         { get; internal set; }
-        public   int                      CategoryId           { get; internal set; }
 
         public override string ToString() => $"{CategoryId} - {MatchingField} ({CategoryName})";
 
@@ -43,13 +40,19 @@ namespace Hi3Helper.Sophon.Structs
                                                              sophonManifestIdentity.ChunkInfo.FileCount,
                                                              sophonManifestIdentity.ChunksUrlInfo.IsCompressed,
                                                              sophonManifestIdentity.ChunkInfo.UncompressedSize,
-                                                             sophonManifestIdentity.ChunkInfo.CompressedSize),
+                                                             sophonManifestIdentity.ChunkInfo.CompressedSize,
+                                                             sophonManifestIdentity.MatchingField,
+                                                             sophonManifestIdentity.CategoryId,
+                                                             sophonManifestIdentity.CategoryName),
                 ManifestInfo = SophonManifest.CreateManifestInfo(sophonManifestIdentity.ManifestUrlInfo.UrlPrefix,
                                                                  sophonManifestIdentity.ManifestFileInfo.Checksum,
                                                                  sophonManifestIdentity.ManifestFileInfo.FileName,
                                                                  sophonManifestIdentity.ManifestUrlInfo.IsCompressed,
                                                                  sophonManifestIdentity.ManifestFileInfo.UncompressedSize,
-                                                                 sophonManifestIdentity.ManifestFileInfo.CompressedSize),
+                                                                 sophonManifestIdentity.ManifestFileInfo.CompressedSize,
+                                                                 sophonManifestIdentity.MatchingField,
+                                                                 sophonManifestIdentity.CategoryId,
+                                                                 sophonManifestIdentity.CategoryName),
                 OtherSophonBuildData = OtherSophonBuildData,
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonManifestIdentity.MatchingField,
@@ -78,7 +81,7 @@ namespace Hi3Helper.Sophon.Structs
             if (!sophonPatchIdentity
                 .DiffTaggedInfo
                 .TryGetValue(versionUpdateFrom,
-                             out var sophonChunkInfo))
+                             out SophonManifestChunkInfo? sophonChunkInfo))
             {
                 otherPatchIdentity = new SophonChunkManifestInfoPair
                 {
@@ -88,7 +91,10 @@ namespace Hi3Helper.Sophon.Structs
                                                                      sophonPatchIdentity.ManifestFileInfo.FileName,
                                                                      sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
                                                                      sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
-                                                                     sophonPatchIdentity.ManifestFileInfo.CompressedSize),
+                                                                     sophonPatchIdentity.ManifestFileInfo.CompressedSize,
+                                                                     sophonPatchIdentity.MatchingField,
+                                                                     sophonPatchIdentity.CategoryId,
+                                                                     sophonPatchIdentity.CategoryName),
                     OtherSophonBuildData = OtherSophonBuildData,
                     OtherSophonPatchData = OtherSophonPatchData,
                     MatchingField        = sophonPatchIdentity.MatchingField,
@@ -106,13 +112,19 @@ namespace Hi3Helper.Sophon.Structs
                                                              sophonChunkInfo.FileCount,
                                                              sophonPatchIdentity.DiffUrlInfo.IsCompressed,
                                                              sophonChunkInfo.UncompressedSize,
-                                                             sophonChunkInfo.CompressedSize),
+                                                             sophonChunkInfo.CompressedSize,
+                                                             sophonPatchIdentity.MatchingField,
+                                                             sophonPatchIdentity.CategoryId,
+                                                             sophonPatchIdentity.CategoryName),
                 ManifestInfo = SophonManifest.CreateManifestInfo(sophonPatchIdentity.ManifestUrlInfo.UrlPrefix,
                                                                  sophonPatchIdentity.ManifestFileInfo.Checksum,
                                                                  sophonPatchIdentity.ManifestFileInfo.FileName,
                                                                  sophonPatchIdentity.ManifestUrlInfo.IsCompressed,
                                                                  sophonPatchIdentity.ManifestFileInfo.UncompressedSize,
-                                                                 sophonPatchIdentity.ManifestFileInfo.CompressedSize),
+                                                                 sophonPatchIdentity.ManifestFileInfo.CompressedSize,
+                                                                 sophonPatchIdentity.MatchingField,
+                                                                 sophonPatchIdentity.CategoryId,
+                                                                 sophonPatchIdentity.CategoryName),
                 OtherSophonBuildData = OtherSophonBuildData,
                 OtherSophonPatchData = OtherSophonPatchData,
                 MatchingField        = sophonPatchIdentity.MatchingField,
@@ -126,7 +138,7 @@ namespace Hi3Helper.Sophon.Structs
         public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField,
                                                                  string versionUpdateFrom)
         {
-            if (TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, out var otherPatchIdentity))
+            if (TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, out SophonChunkManifestInfoPair? otherPatchIdentity))
             {
                 return otherPatchIdentity;
             }

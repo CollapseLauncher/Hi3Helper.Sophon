@@ -149,7 +149,10 @@ namespace Hi3Helper.Sophon
                 {
                     AssetName            = assetName,
                     IsDirectory          = true,
-                    DownloadSpeedLimiter = downloadSpeedLimiter
+                    DownloadSpeedLimiter = downloadSpeedLimiter,
+                    MatchingField        = chunksInfo.MatchingField,
+                    CategoryId           = chunksInfo.CategoryId,
+                    CategoryName         = chunksInfo.CategoryName
                 };
                 return assetAdd;
             }
@@ -177,7 +180,10 @@ namespace Hi3Helper.Sophon
                 Chunks               = assetChunks,
                 SophonChunksInfo     = chunksInfo,
                 IsDirectory          = false,
-                DownloadSpeedLimiter = downloadSpeedLimiter
+                DownloadSpeedLimiter = downloadSpeedLimiter,
+                MatchingField        = chunksInfo.MatchingField,
+                CategoryId           = chunksInfo.CategoryId,
+                CategoryName         = chunksInfo.CategoryName
             };
             return assetAdd;
         }

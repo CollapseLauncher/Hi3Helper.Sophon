@@ -25,7 +25,7 @@ namespace Hi3Helper.Sophon
         Remove
     }
 
-    public partial class SophonPatchAsset
+    public partial class SophonPatchAsset : SophonIdentifiableProperty
     {
         internal const int BufferSize = 64 << 10;
 

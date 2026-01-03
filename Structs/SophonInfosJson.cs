@@ -74,12 +74,8 @@ namespace Hi3Helper.Sophon.Structs
     }
 
     [Obsolete("To avoid future breaking changes, please define your instance as SophonManifestBuildIdentity or SophonManifestPatchIdentity instead as this class will be renamed in future release")]
-    public class SophonManifestIdentity
+    public class SophonManifestIdentity : SophonIdentifiableProperty
     {
-        [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
-        [JsonPropertyName("category_id")] public int CategoryId { get; set; }
-        [JsonPropertyName("category_name")] public string CategoryName { get; set; }
-        [JsonPropertyName("matching_field")] public string MatchingField { get; set; }
         [JsonPropertyName("manifest")] public SophonManifestFileInfo ManifestFileInfo { get; set; }
         [JsonPropertyName("manifest_download")] public SophonManifestUrlInfo ManifestUrlInfo { get; set; }
     }

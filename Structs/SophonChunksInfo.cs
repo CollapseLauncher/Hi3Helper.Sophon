@@ -1,4 +1,5 @@
 ﻿using Hi3Helper.Sophon.Infos;
+using Hi3Helper.Sophon.Structs;
 using System;
 
 // ReSharper disable NonReadonlyMemberInGetHashCode
@@ -6,26 +7,28 @@ using System;
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
 
+#nullable enable
 namespace Hi3Helper.Sophon.Infos
 {
-    public class SophonChunksInfo : IEquatable<SophonChunksInfo>
+    public class SophonChunksInfo : SophonIdentifiableProperty, IEquatable<SophonChunksInfo>
     {
-        public string ChunksBaseUrl       { get; set; }
-        public int    ChunksCount         { get; set; }
-        public int    FilesCount          { get; set; }
-        public long   TotalSize           { get; set; }
-        public long   TotalCompressedSize { get; set; }
-        public bool   IsUseCompression    { get; set; }
+        public string? ChunksBaseUrl       { get; set; }
+        public int     ChunksCount         { get; set; }
+        public int     FilesCount          { get; set; }
+        public long    TotalSize           { get; set; }
+        public long    TotalCompressedSize { get; set; }
+        public bool    IsUseCompression    { get; set; }
 
-        public bool Equals(SophonChunksInfo other) =>
+        public bool Equals(SophonChunksInfo? other) =>
             ChunksBaseUrl == other?.ChunksBaseUrl &&
             ChunksCount == other?.ChunksCount &&
             FilesCount == other.FilesCount &&
             TotalSize == other.TotalSize &&
             TotalCompressedSize == other.TotalCompressedSize &&
-            IsUseCompression == other.IsUseCompression;
+            IsUseCompression == other.IsUseCompression &&
+            base.Equals(other);
 
-        public override bool Equals(object obj) => obj is SophonChunksInfo other && Equals(other);
+        public override bool Equals(object? obj) => obj is SophonChunksInfo other && Equals(other);
 
         public override int GetHashCode() => 
 #if NET6_0_OR_GREATER
@@ -77,13 +80,25 @@ namespace Hi3Helper.Sophon
         ///     Total compressed size of files to be downloaded. To find the value, See the API section called: <c>stats</c> ->
         ///     <c>compressed_size</c>
         /// </param>
+        /// <param name="matchingField">
+        ///     The matching field of the parent manifest. To find the value, See the API section called: <c>matching_field</c>
+        /// </param>
+        /// <param name="categoryId">
+        ///     The category ID of the parent manifest. To find the value, See the API section called: <c>category_id</c>
+        /// </param>
+        /// <param name="categoryName">
+        ///     The category name of the parent manifest. To find the value, See the API section called: <c>category_name</c>
+        /// </param>
         /// <returns>Sophon Chunks Information struct</returns>
-        public static SophonChunksInfo CreateChunksInfo(string chunksBaseUrl,
-                                                        int    chunksCount,
-                                                        int    filesCount,
-                                                        bool   isUseCompression,
-                                                        long   totalSize,
-                                                        long   totalCompressedSize = 0)
+        internal static SophonChunksInfo CreateChunksInfo(string  chunksBaseUrl,
+                                                          int     chunksCount,
+                                                          int     filesCount,
+                                                          bool    isUseCompression,
+                                                          long    totalSize,
+                                                          long    totalCompressedSize,
+                                                          string? matchingField,
+                                                          int     categoryId,
+                                                          string? categoryName)
         {
             return new SophonChunksInfo
             {
@@ -92,7 +107,10 @@ namespace Hi3Helper.Sophon
                 FilesCount          = filesCount,
                 IsUseCompression    = isUseCompression,
                 TotalSize           = totalSize,
-                TotalCompressedSize = totalCompressedSize
+                TotalCompressedSize = totalCompressedSize,
+                MatchingField       = matchingField,
+                CategoryId          = categoryId,
+                CategoryName        = categoryName
             };
         }
     }
