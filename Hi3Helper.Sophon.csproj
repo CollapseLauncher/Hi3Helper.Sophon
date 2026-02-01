@@ -44,7 +44,7 @@
 
     <!-- Cross-platform protoc path -->
     <PropertyGroup>
-        <GoogleProtobufVersion>3.33.2</GoogleProtobufVersion>
+        <GoogleProtobufVersion>3.33.5</GoogleProtobufVersion>
         <ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
@@ -59,7 +59,7 @@
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
-        <PackageReference Include="System.IO.Hashing" Version="10.0.1" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.2" />
         <PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
         <PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
         <PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
