@@ -401,7 +401,7 @@ namespace Hi3Helper.Sophon.Helper
 
         internal static void EnsureOrThrowChunksState(this SophonAsset asset)
         {
-            if (asset.Chunks == null)
+            if (asset.Chunks == null || asset.Chunks.Length == 0)
             {
                 throw new NullReferenceException("This asset does not have chunk(s)!");
             }

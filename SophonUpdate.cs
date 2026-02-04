@@ -330,16 +330,15 @@ namespace Hi3Helper.Sophon
             string assetName = newAssetProperty.AssetName;
             string assetHash = newAssetProperty.AssetHashMd5;
             long   assetSize = newAssetProperty.AssetSize;
-            return new SophonAsset
+            return new SophonAsset(assetName,
+                                   assetSize,
+                                   assetHash,
+                                   false,
+                                   isNewAssetHasPatch,
+                                   newAssetPatchedChunks)
             {
-                AssetName            = assetName,
-                AssetHash            = assetHash,
-                AssetSize            = assetSize,
-                Chunks               = newAssetPatchedChunks,
                 SophonChunksInfo     = newChunksInfo,
                 SophonChunksInfoAlt  = oldChunksInfo,
-                IsDirectory          = false,
-                IsHasPatch           = isNewAssetHasPatch,
                 DownloadSpeedLimiter = downloadSpeedLimiter,
                 MatchingField        = newChunksInfo.MatchingField,
                 CategoryId           = newChunksInfo.CategoryId,

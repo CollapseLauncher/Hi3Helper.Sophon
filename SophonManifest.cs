@@ -145,10 +145,8 @@ namespace Hi3Helper.Sophon
             int         assetType = asset.AssetType;
             if (assetType != 0 || string.IsNullOrEmpty(asset.AssetHashMd5))
             {
-                assetAdd = new SophonAsset
+                assetAdd = new SophonAsset(assetName, true)
                 {
-                    AssetName            = assetName,
-                    IsDirectory          = true,
                     DownloadSpeedLimiter = downloadSpeedLimiter,
                     MatchingField        = chunksInfo.MatchingField,
                     CategoryId           = chunksInfo.CategoryId,
@@ -172,14 +170,14 @@ namespace Hi3Helper.Sophon
                 ChunkSizeDecompressed = x.ChunkSizeDecompressed
             }).ToArray();
 
-            assetAdd = new SophonAsset
+            assetAdd = new SophonAsset(assetName,
+                                       assetSize,
+                                       assetHash,
+                                       false,
+                                       false,
+                                       assetChunks)
             {
-                AssetName            = assetName,
-                AssetHash            = assetHash,
-                AssetSize            = assetSize,
-                Chunks               = assetChunks,
                 SophonChunksInfo     = chunksInfo,
-                IsDirectory          = false,
                 DownloadSpeedLimiter = downloadSpeedLimiter,
                 MatchingField        = chunksInfo.MatchingField,
                 CategoryId           = chunksInfo.CategoryId,

@@ -28,6 +28,29 @@ namespace Hi3Helper.Sophon
 {
     public partial class SophonAsset : SophonIdentifiableProperty
     {
+        internal SophonAsset(string assetName, bool isDirectory)
+            : this(assetName,
+                   0,
+                   null,
+                   isDirectory,
+                   false,
+                   []) { }
+
+        internal SophonAsset(string        assetName,
+                             long          assetSize,
+                             string        assetHash,
+                             bool          isDirectory,
+                             bool          isHasPatch,
+                             SophonChunk[] chunks)
+        {
+            AssetName   = assetName;
+            AssetSize   = assetSize;
+            AssetHash   = assetHash;
+            IsDirectory = isDirectory;
+            IsHasPatch  = isHasPatch;
+            Chunks      = chunks;
+        }
+
         private enum SourceStreamType
         {
             Internet,
@@ -38,17 +61,28 @@ namespace Hi3Helper.Sophon
         internal const int BufferSize     = 4 << 10;
         private const  int ZstdBufferSize = 0; // Default
 
-        public   string                     AssetName            { get; internal set; }
-        public   long                       AssetSize            { get; internal set; }
-        public   string                     AssetHash            { get; internal set; }
-        public   bool                       IsDirectory          { get; internal set; }
-        public   bool                       IsHasPatch           { get; internal set; }
-        public   SophonChunk[]              Chunks               { get; internal set; }
+        public   string                     AssetName            { get; }
+        public   long                       AssetSize            { get; }
+        public   string                     AssetHash            { get; }
+        public   bool                       IsDirectory          { get; }
+        public   bool                       IsHasPatch           { get; }
+        public   SophonChunk[]              Chunks               { get; }
         internal SophonDownloadSpeedLimiter DownloadSpeedLimiter { get; set; }
         internal SophonChunksInfo           SophonChunksInfo     { get; set; }
         internal SophonChunksInfo           SophonChunksInfoAlt  { get; set; }
 
         public override string ToString() => AssetName;
+
+        public override int GetHashCode()
+        {
+#if NET6_0_OR_GREATER
+            return HashCode.Combine(IsHasPatch, AssetName, AssetHash);
+#else
+            return IsHasPatch.GetHashCode() ^
+                   (AssetName?.GetHashCode() ?? 0)
+                   (AssetHash?.GetHashCode() ?? 0);
+#endif
+        }
 
         /// <summary>
         ///     Perform a download process by file and run each chunk download sequentially.
@@ -80,11 +114,11 @@ namespace Hi3Helper.Sophon
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
         public async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             WriteToStreamAsync(HttpClient                    client,
                                Stream                        outStream,
                                DelegateWriteStreamInfo       writeInfoDelegate        = null,
@@ -113,10 +147,10 @@ namespace Hi3Helper.Sophon
                                                     token);
             }
 
-        #if DEBUG
+#if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
                 " has been completely downloaded!");
-        #endif
+#endif
             downloadCompleteDelegate?.Invoke(this);
         }
 
@@ -157,11 +191,11 @@ namespace Hi3Helper.Sophon
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
         public async
-        #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             ValueTask
-        #else
+#else
             Task
-        #endif
+#endif
             WriteToStreamAsync(HttpClient                    client,
                                Func<Stream>                  outStreamFunc,
                                ParallelOptions               parallelOptions          = null,
@@ -226,10 +260,10 @@ namespace Hi3Helper.Sophon
                 throw ex.Flatten().InnerExceptions.First();
             }
 
-        #if DEBUG
+#if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
                 $" has been completely downloaded!");
-        #endif
+#endif
             downloadCompleteDelegate?.Invoke(this);
 
             return;
