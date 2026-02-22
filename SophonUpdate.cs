@@ -77,6 +77,7 @@ namespace Hi3Helper.Sophon
                                                                      infoPairNew.ManifestInfo,
                                                                      infoPairNew.ChunksInfo,
                                                                      removeChunkAfterApply,
+                                                                     downloadSpeedLimiter,
                                                                      token: token))
             {
                 yield return asset;

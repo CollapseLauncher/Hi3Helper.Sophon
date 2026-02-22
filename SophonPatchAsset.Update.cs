@@ -172,6 +172,7 @@ namespace Hi3Helper.Sophon
                                                                            inputDir,
                                                                            downloadReadDelegate,
                                                                            diskWriteDelegate,
+                                                                           downloadSpeedLimiter,
                                                                            token),
                 SophonPatchMethod.CopyOver => PerformPatchCopyOver(inputDir,
                                                                    patchOutputDir,                                   
@@ -215,11 +216,12 @@ namespace Hi3Helper.Sophon
             }
         }
 
-        private async Task<bool> PerformPatchDownloadOver(HttpClient        client,
-                                                          string            inputDir,
-                                                          Action<long>?     downloadReadDelegate,
-                                                          Action<long>?     diskWriteDelegate,
-                                                          CancellationToken token)
+        private async Task<bool> PerformPatchDownloadOver(HttpClient                  client,
+                                                          string                      inputDir,
+                                                          Action<long>?               downloadReadDelegate,
+                                                          Action<long>?               diskWriteDelegate,
+                                                          SophonDownloadSpeedLimiter? downloadSpeedLimiter,
+                                                          CancellationToken           token)
         {
             bool isSuccess      = false;
             long writtenToDisk  = 0;

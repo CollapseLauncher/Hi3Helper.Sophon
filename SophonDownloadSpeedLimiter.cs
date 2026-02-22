@@ -1,56 +1,33 @@
 ﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
+
 // ReSharper disable UnusedType.Global
 // ReSharper disable InvalidXmlDocComment
 // ReSharper disable IdentifierTypo
 
-namespace Hi3Helper.Sophon
+#nullable enable
+namespace Hi3Helper.Sophon;
+
+public class SophonDownloadSpeedLimiter
 {
-    public class SophonDownloadSpeedLimiter
+    public static Func<nint, long, CancellationToken, ValueTask>? AddBytesOrWaitAsyncDelegate;
+
+    public nint Context { get; }
+
+    private SophonDownloadSpeedLimiter(nint serviceContext)
     {
-        internal event EventHandler<int>  CurrentChunkProcessingChangedEvent;
-        internal event EventHandler<long> DownloadSpeedChangedEvent;
-        // ReSharper disable once MemberCanBePrivate.Global
-        internal long?              InitialRequestedSpeed { get; set; }
-        private  EventHandler<long> InnerListener         { get; set; }
-        internal int                CurrentChunkProcessing;
-
-        private SophonDownloadSpeedLimiter(long initialRequestedSpeed)
-        {
-            InitialRequestedSpeed = initialRequestedSpeed;
-        }
-
-        /// <summary>
-        /// Create an instance by its initial speed to request.
-        /// </summary>
-        /// <param name="initialSpeed">The initial speed to be requested</param>
-        /// <returns>An instance of the speed limiter</returns>
-        public static SophonDownloadSpeedLimiter CreateInstance(long initialSpeed)
-            => new(initialSpeed);
-
-        /// <summary>
-        /// Get the listener for the parent event
-        /// </summary>
-        /// <returns>The EventHandler of the listener.</returns>
-        /// <seealso cref="EventHandler"/>
-        public EventHandler<long> GetListener() => InnerListener ??= DownloadSpeedChangeListener;
-
-        private void DownloadSpeedChangeListener(object sender, long newRequestedSpeed)
-        {
-            DownloadSpeedChangedEvent?.Invoke(this, newRequestedSpeed);
-            InitialRequestedSpeed = newRequestedSpeed;
-        }
-
-        internal void IncrementChunkProcessedCount()
-        {
-            Interlocked.Increment(ref CurrentChunkProcessing);
-            CurrentChunkProcessingChangedEvent?.Invoke(this, CurrentChunkProcessing);
-        }
-
-        internal void DecrementChunkProcessedCount()
-        {
-            Interlocked.Decrement(ref CurrentChunkProcessing);
-            CurrentChunkProcessingChangedEvent?.Invoke(this, CurrentChunkProcessing);
-        }
+        Context = serviceContext;
     }
+
+    /// <summary>
+    /// Create an instance by using current service context.
+    /// </summary>
+    /// <param name="serviceContext">The context to be used for the service.</param>
+    /// <returns>An instance of the speed limiter</returns>
+    public static SophonDownloadSpeedLimiter CreateInstance(nint serviceContext)
+        => new(serviceContext);
+
+    internal ValueTask AddBytesOrWaitAsync(long readBytes, CancellationToken token)
+        => AddBytesOrWaitAsyncDelegate?.Invoke(Context, readBytes, token) ?? ValueTask.CompletedTask;
 }

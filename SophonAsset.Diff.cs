@@ -292,21 +292,6 @@ namespace Hi3Helper.Sophon
             }
 #endif
 
-            long      written                       = 0;
-            long      thisInstanceDownloadLimitBase = downloadSpeedLimiter?.InitialRequestedSpeed ?? -1;
-            Stopwatch currentStopwatch              = Stopwatch.StartNew();
-
-            double maximumBytesPerSecond;
-            double bitPerUnit;
-
-            CalculateBps();
-
-            if (downloadSpeedLimiter != null)
-            {
-                downloadSpeedLimiter.CurrentChunkProcessingChangedEvent += UpdateChunkRangesCountEvent;
-                downloadSpeedLimiter.DownloadSpeedChangedEvent          += DownloadClientDownloadSpeedLimitChanged;
-            }
-
             while (true)
             {
                 bool                allowDispose        = false;
@@ -320,11 +305,11 @@ namespace Hi3Helper.Sophon
                     try
                     {
                         CancellationTokenSource innerTimeoutToken =
-                            new CancellationTokenSource(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-#if NET8_0_OR_GREATER
-                                                      , TimeProvider.System
-#endif
-                                                       );
+                            new(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
+                            #if NET8_0_OR_GREATER
+                              , TimeProvider.System
+                            #endif
+                               );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
 
@@ -358,7 +343,6 @@ namespace Hi3Helper.Sophon
                             $" for chunk: {chunk.ChunkName}");
 #endif
 
-                        downloadSpeedLimiter?.IncrementChunkProcessedCount();
                         int read;
                         while ((read = await sourceStream.ReadAsync(
 #if NET6_0_OR_GREATER
@@ -368,6 +352,8 @@ namespace Hi3Helper.Sophon
 #endif
                                                                   , cooperatedToken.Token)) > 0)
                         {
+                            await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ?? ValueTask.CompletedTask);
+
 #if NET6_0_OR_GREATER
                             outStream.Write(buffer.AsSpan(0, read));
 #else
@@ -377,7 +363,6 @@ namespace Hi3Helper.Sophon
                             currentWriteOffset += read;
                             writeInfoDelegate?.Invoke(read);
                             downloadInfoDelegate?.Invoke(read, read);
-                            written += read;
 
                             currentRetry = 0;
                             innerTimeoutToken.Dispose();
@@ -391,8 +376,6 @@ namespace Hi3Helper.Sophon
                                                            );
                             cooperatedToken =
                                 CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
-
-                            await ThrottleAsync();
                         }
 
                         outStream.Position = 0;
@@ -483,81 +466,7 @@ namespace Hi3Helper.Sophon
 #endif
                         }
 
-                        downloadSpeedLimiter?.DecrementChunkProcessedCount();
                         ArrayPool<byte>.Shared.Return(buffer);
-                    }
-                }
-            }
-
-            void CalculateBps()
-            {
-                if (thisInstanceDownloadLimitBase <= 0)
-                {
-                    thisInstanceDownloadLimitBase = -1;
-                }
-                else
-                {
-                    thisInstanceDownloadLimitBase = Math.Max(64 << 10, thisInstanceDownloadLimitBase);
-                }
-
-#if NET6_0_OR_GREATER
-                double threadNum = Math.Clamp(downloadSpeedLimiter?.CurrentChunkProcessing ?? 1, 1, 16 << 10);
-#else
-                double threadNum = downloadSpeedLimiter?.CurrentChunkProcessing ?? 1;
-                threadNum = threadNum switch
-                {
-                    < 1 => 1,
-                    > 16 << 10 => 16 << 10,
-                    _ => threadNum
-                };
-#endif
-                maximumBytesPerSecond = thisInstanceDownloadLimitBase / threadNum;
-                bitPerUnit            = 940 - (threadNum - 2) / (16 - 2) * 400;
-            }
-
-            void DownloadClientDownloadSpeedLimitChanged(object sender, long e)
-            {
-                thisInstanceDownloadLimitBase = e == 0 ? -1 : e;
-                CalculateBps();
-            }
-
-            void UpdateChunkRangesCountEvent(object sender, int e)
-            {
-                CalculateBps();
-            }
-
-            async Task ThrottleAsync()
-            {
-                // Make sure the buffer isn't empty.
-                if (maximumBytesPerSecond <= 0 || written <= 0)
-                {
-                    return;
-                }
-
-                long elapsedMilliseconds = currentStopwatch.ElapsedMilliseconds;
-
-                if (elapsedMilliseconds > 0)
-                {
-                    // Calculate the current bps.
-                    double bps = written * bitPerUnit / elapsedMilliseconds;
-
-                    // If the bps are more then the maximum bps, try to throttle.
-                    if (bps > maximumBytesPerSecond)
-                    {
-                        // Calculate the time to sleep.
-                        double wakeElapsed = written * bitPerUnit / maximumBytesPerSecond;
-                        double toSleep     = wakeElapsed - elapsedMilliseconds;
-
-                        if (toSleep > 1)
-                        {
-                            // The time to sleep is more than a millisecond, so sleep.
-                            await Task.Delay(TimeSpan.FromMilliseconds(toSleep), token);
-
-                            // A sleep has been done, reset.
-                            currentStopwatch.Restart();
-
-                            written = 0;
-                        }
                     }
                 }
             }
