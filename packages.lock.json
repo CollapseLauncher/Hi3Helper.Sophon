@@ -4,15 +4,15 @@
     "net10.0": {
       "Google.Protobuf": {
         "type": "Direct",
-        "requested": "[3.34.0, )",
-        "resolved": "3.34.0",
-        "contentHash": "a5US9akiNczS5kC7qBqYqJmnxHVQDITZD6GRRbwGHk/oa17EwOGE3PHIWFVeHTqCctq8mVjLSelwsxCkYYBinA=="
+        "requested": "[3.34.1, )",
+        "resolved": "3.34.1",
+        "contentHash": "212vdYxRuVopGE5bess6Jg5oXWyizA6hcLPTI7G+qA4PthQEvfeof3njT+7VSY5v/+O0P22xTydiP5fSJJpGEA=="
       },
       "Google.Protobuf.Tools": {
         "type": "Direct",
-        "requested": "[3.34.0, )",
-        "resolved": "3.34.0",
-        "contentHash": "oMw3GyyFXNsfBntRcc7Zp42FnPDYP5fX+zjo3m6nNReU9ANPLQwcuLYHZs/FidA+TPcTArW12XhUXJoJ/+VDxA=="
+        "requested": "[3.34.1, )",
+        "resolved": "3.34.1",
+        "contentHash": "S/3uOvLZttS7+WOIzbI4QJR6r66xGZKuNy/kPYVV0HxM+SHzi4ZGtlFsQipzRInLNJImaJ36JVJQKK5ACag7gA=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
