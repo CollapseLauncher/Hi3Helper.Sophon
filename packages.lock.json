@@ -38,9 +38,9 @@
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[10.0.5, )",
-        "resolved": "10.0.5",
-        "contentHash": "8IBJWcCT9+e4Bmevm4T7+fQEiAh133KGiz4oiVTgJckd3Q76OFdR1falgn9lpz7+C4HJvogCDJeAa2QmvbeVtg=="
+        "requested": "[10.0.6, )",
+        "resolved": "10.0.6",
+        "contentHash": "lbMLkqFekDR4DeFd26eEfrG2HlvixIfs22uk/e2+9/NJ7WxMycVVakcQpuJvvqgc9XxwEgSd/Td+dZA+TjDDwA=="
       },
       "ZstdSharp.Port": {
         "type": "Transitive",
