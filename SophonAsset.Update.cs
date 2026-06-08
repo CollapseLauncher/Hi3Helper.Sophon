@@ -18,6 +18,7 @@ using System.Threading.Tasks.Dataflow;
 // ReSharper disable IdentifierTypo
 // ReSharper disable ConvertIfStatementToSwitchStatement
 
+#nullable enable
 namespace Hi3Helper.Sophon
 {
     public partial class SophonAsset
@@ -51,6 +52,9 @@ namespace Hi3Helper.Sophon
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
@@ -60,15 +64,16 @@ namespace Hi3Helper.Sophon
         #else
             Task
         #endif
-            WriteUpdateAsync(HttpClient                    client,
-                             string                        oldInputDir,
-                             string                        newOutputDir,
-                             string                        chunkDir,
-                             bool                          removeChunkAfterApply    = false,
-                             DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                             DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
-                             DelegateDownloadAssetComplete downloadCompleteDelegate = null,
-                             CancellationToken             token                    = default)
+            WriteUpdateAsync(HttpClient                     client,
+                             string                         oldInputDir,
+                             string                         newOutputDir,
+                             string                         chunkDir,
+                             bool                           removeChunkAfterApply    = false,
+                             DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                             DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                             DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                             SophonDownloadSpeedLimiter?    downloadSpeedLimiter     = null,
+                             CancellationToken              token                    = default)
         {
             const string tempExt = "_tempUpdate";
 
@@ -77,10 +82,12 @@ namespace Hi3Helper.Sophon
             this.EnsureOrThrowOutputDirectoryExistence(newOutputDir);
             this.EnsureOrThrowOutputDirectoryExistence(chunkDir);
 
-            string outputOldPath     = Path.Combine(oldInputDir,  AssetName);
-            string outputNewPath     = Path.Combine(newOutputDir, AssetName);
-            string outputNewTempPath = outputNewPath + tempExt;
-            string outputNewDir      = Path.GetDirectoryName(outputNewPath);
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
+            string  outputOldPath     = Path.Combine(oldInputDir,  AssetName ?? "");
+            string  outputNewPath     = Path.Combine(newOutputDir, AssetName ?? "");
+            string  outputNewTempPath = outputNewPath + tempExt;
+            string? outputNewDir      = Path.GetDirectoryName(outputNewPath);
 
             if (!Directory.Exists(outputNewDir) && outputNewDir != null)
             {
@@ -102,7 +109,7 @@ namespace Hi3Helper.Sophon
                                             chunkDir,
                                             writeInfoDelegate,
                                             downloadInfoDelegate,
-                                            DownloadSpeedLimiter,
+                                            downloadSpeedLimiter,
                                             outputOldFileInfo,
                                             outputNewTempFileInfo,
                                             chunk,
@@ -189,21 +196,25 @@ namespace Hi3Helper.Sophon
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         public async
         #if NET6_0_OR_GREATER
             ValueTask
         #else
             Task
         #endif
-            WriteUpdateAsync(HttpClient                    client,
-                             string                        oldInputDir,
-                             string                        newOutputDir,
-                             string                        chunkDir,
-                             bool                          removeChunkAfterApply    = false,
-                             ParallelOptions               parallelOptions          = null,
-                             DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                             DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
-                             DelegateDownloadAssetComplete downloadCompleteDelegate = null)
+            WriteUpdateAsync(HttpClient                     client,
+                             string                         oldInputDir,
+                             string                         newOutputDir,
+                             string                         chunkDir,
+                             bool                           removeChunkAfterApply    = false,
+                             ParallelOptions?               parallelOptions          = null,
+                             DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                             DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                             DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                             SophonDownloadSpeedLimiter?    downloadSpeedLimiter     = null)
         {
             const string tempExt = "_tempUpdate";
 
@@ -212,10 +223,12 @@ namespace Hi3Helper.Sophon
             this.EnsureOrThrowOutputDirectoryExistence(newOutputDir);
             this.EnsureOrThrowOutputDirectoryExistence(chunkDir);
 
-            string outputOldPath     = Path.Combine(oldInputDir,  AssetName);
-            string outputNewPath     = Path.Combine(newOutputDir, AssetName);
-            string outputNewTempPath = outputNewPath + tempExt;
-            string outputNewDir      = Path.GetDirectoryName(outputNewPath);
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
+            string  outputOldPath     = Path.Combine(oldInputDir,  AssetName ?? "");
+            string  outputNewPath     = Path.Combine(newOutputDir, AssetName ?? "");
+            string  outputNewTempPath = outputNewPath + tempExt;
+            string? outputNewDir      = Path.GetDirectoryName(outputNewPath);
 
             if (!Directory.Exists(outputNewDir) && outputNewDir != null)
             {
@@ -254,7 +267,7 @@ namespace Hi3Helper.Sophon
                                                      chunkDir,
                                                      writeInfoDelegate,
                                                      downloadInfoDelegate,
-                                                     DownloadSpeedLimiter,
+                                                     downloadSpeedLimiter,
                                                      outputOldFileInfo,
                                                      outputNewTempFileInfo,
                                                      chunk,
@@ -284,7 +297,7 @@ namespace Hi3Helper.Sophon
                                                                         chunkDir,
                                                                         writeInfoDelegate,
                                                                         downloadInfoDelegate,
-                                                                        DownloadSpeedLimiter,
+                                                                        downloadSpeedLimiter,
                                                                         outputOldFileInfo,
                                                                         outputNewTempFileInfo,
                                                                         chunk,
@@ -332,19 +345,19 @@ namespace Hi3Helper.Sophon
             downloadCompleteDelegate?.Invoke(this);
         }
 
-        private async Task InnerWriteUpdateAsync(HttpClient                 client,
-                                                 string                     chunkDir,
-                                                 DelegateWriteStreamInfo    writeInfoDelegate,
-                                                 DelegateWriteDownloadInfo  downloadInfoDelegate,
-                                                 SophonDownloadSpeedLimiter downloadSpeedLimiter,
-                                                 FileInfo                   outputOldFileInfo,
-                                                 FileInfo                   outputNewFileInfo,
-                                                 SophonChunk                chunk,
-                                                 bool                       removeChunkAfterApply,
-                                                 CancellationToken          token)
+        private async Task InnerWriteUpdateAsync(HttpClient                  client,
+                                                 string                      chunkDir,
+                                                 DelegateWriteStreamInfo?    writeInfoDelegate,
+                                                 DelegateWriteDownloadInfo?  downloadInfoDelegate,
+                                                 SophonDownloadSpeedLimiter? downloadSpeedLimiter,
+                                                 FileInfo                    outputOldFileInfo,
+                                                 FileInfo                    outputNewFileInfo,
+                                                 SophonChunk                 chunk,
+                                                 bool                        removeChunkAfterApply,
+                                                 CancellationToken           token)
         {
-            Stream           inputStream  = null;
-            Stream           outputStream = null;
+            Stream?          inputStream  = null;
+            Stream?          outputStream = null;
             SourceStreamType streamType   = SourceStreamType.Internet;
 
             try
@@ -465,7 +478,7 @@ namespace Hi3Helper.Sophon
                                                               CancellationToken token = default)
         {
             // Check if the asset path has been completely downloaded, then return 0
-            string   assetFullPath       = Path.Combine(outputDir, AssetName);
+            string   assetFullPath       = Path.Combine(outputDir, AssetName ?? "");
             FileInfo assetFileInfo       = assetFullPath.CreateFileInfo();
             bool     isAssetExist        = assetFileInfo.Exists;
             long     assetDownloadedSize = isAssetExist ? assetFileInfo.Length : 0L;
@@ -493,7 +506,7 @@ namespace Hi3Helper.Sophon
             }
 
             // If the chunk array is null or empty, return 0
-            if (Chunks == null || Chunks.Length == 0)
+            if (Chunks.Length == 0)
             {
                 return 0L;
             }

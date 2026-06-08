@@ -112,56 +112,6 @@ namespace Hi3Helper.Sophon
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
-        /// <param name="token">
-        ///     Cancellation token for handling cancellation while the routine is running.
-        /// </param>
-        public
-#if NET6_0_OR_GREATER
-            ValueTask
-#else
-            Task
-#endif
-            WriteToStreamAsync(
-                HttpClient                     client,
-                Stream                         outStream,
-                DelegateWriteStreamInfo?       writeInfoDelegate        = null,
-                DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
-                DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
-                CancellationToken              token                    = default)
-            => WriteToStreamAsync(client,
-                                  outStream,
-                                  writeInfoDelegate,
-                                  downloadInfoDelegate,
-                                  downloadCompleteDelegate,
-                                  null,
-                                  token);
-
-        /// <summary>
-        ///     Perform a download process by file and run each chunk download sequentially.
-        /// </summary>
-        /// <param name="client">
-        ///     The <see cref="HttpClient" /> to be used for downloading process.<br />Ensure that the maximum connection for the
-        ///     <see cref="HttpClient" /> has been set to at least (Number of Threads/CPU core * 25%) or == Number of Threads/CPU
-        ///     core
-        /// </param>
-        /// <param name="outStream">
-        ///     Output <see cref="Stream" /> to write the file into.<br />
-        ///     The <see cref="Stream" /> must be readable, writeable and seekable, also be able to be shared both on Read and
-        ///     Write operation.
-        ///     It's recommended to use <see cref="FileStream" /> or other stream similar to that and please use
-        ///     <see cref="FileMode.OpenOrCreate" />,
-        ///     <see cref="FileAccess.ReadWrite" /> and <see cref="FileShare.ReadWrite" /> if you're using
-        ///     <see cref="FileStream" />.
-        /// </param>
-        /// <param name="writeInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
-        /// </param>
-        /// <param name="downloadInfoDelegate">
-        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
-        /// </param>
-        /// <param name="downloadCompleteDelegate">
-        ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
-        /// </param>
         /// <param name="downloadSpeedLimiter">
         ///     If the download speed limiter is null, the download speed will be set to unlimited.
         /// </param>
@@ -279,6 +229,8 @@ namespace Hi3Helper.Sophon
                 }
             }
 
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
             if (parallelOptions == null)
             {
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
@@ -323,8 +275,6 @@ namespace Hi3Helper.Sophon
                 // Throw all other exceptions
                 throw ex.Flatten().InnerExceptions.First();
             }
-
-            downloadSpeedLimiter ??= DownloadSpeedLimiter;
 
 #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
@@ -420,6 +370,8 @@ namespace Hi3Helper.Sophon
                 }
             }
 
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
             if (parallelOptions == null)
             {
                 int maxChunksTask = Math.Min(8, Environment.ProcessorCount);
@@ -464,8 +416,6 @@ namespace Hi3Helper.Sophon
                 // Throw all other exceptions
                 throw ex.Flatten().InnerExceptions.First();
             }
-
-            downloadSpeedLimiter ??= DownloadSpeedLimiter;
 
 #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
