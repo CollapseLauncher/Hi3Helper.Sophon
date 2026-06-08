@@ -387,7 +387,7 @@ namespace Hi3Helper.Sophon
                 SophonManifestAssetChunk newProtoChunk = newProtoChunks[i];
 
                 // Init the new chunk
-                SophonChunk newChunk = new SophonChunk
+                SophonChunk newChunk = new()
                 {
                     ChunkName = newProtoChunk.ChunkName,
                     ChunkHashDecompressed = Extension.HexToBytes(

@@ -22,7 +22,7 @@ namespace SophonUpdatePreload
     {
         private static string _cancelMessage = "";
         private static bool _isRetry;
-        private static readonly string[] SizeSuffixes = new string[] { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+        private static readonly string[] SizeSuffixes = { "B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
 
         private static int UsageHelp()
         {
@@ -290,12 +290,13 @@ namespace SophonUpdatePreload
 
                         totalRemoteCompressedSize += patchInfoPair.ChunksInfo.TotalCompressedSize;
 
-                        await foreach (SophonPatchAsset patchAsset in SophonPatch.EnumerateUpdateAsync(httpClient,
-                                           patchInfoPair,
-                                           sophonVersionUpdateFrom,
-                                           scatteredFilesUrl,
-                                           null,
-                                           tokenSource.Token))
+                        await foreach (SophonPatchAsset patchAsset in SophonPatch.EnumerateUpdateAsync(
+                                        httpClient,
+                                        patchInfoPair,
+                                        patchInfoPair.GetOtherManifestInfoPair(matchingField),
+                                        scatteredFilesUrl,
+                                        null,
+                                        token: tokenSource.Token))
                         {
                             patchAssetList.Add(patchAsset);
                         }
@@ -343,17 +344,18 @@ namespace SophonUpdatePreload
                                 CancellationToken token = ctx.Item3;
 
                                 await asset.DownloadPatchAsync(client,
-                                    patchesDir,
-                                    true,
-                                    downloadRead =>
-                                    {
-                                        Interlocked.Add(ref currentRead, downloadRead);
-                                        string sizeUnit = SummarizeSizeSimple(currentRead);
-                                        string speedUnit = SummarizeSizeSimple(CalculateSpeed(downloadRead));
-                                        Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} (Download: {speedUnit}/s)    \r");
-                                    },
-                                    null,
-                                    token);
+                                                               oldDir,
+                                                               patchesDir,
+                                                               true,
+                                                               downloadRead =>
+                                                               {
+                                                                   Interlocked.Add(ref currentRead, downloadRead);
+                                                                   string sizeUnit = SummarizeSizeSimple(currentRead);
+                                                                   string speedUnit = SummarizeSizeSimple(CalculateSpeed(downloadRead));
+                                                                   Console.Write($"{_cancelMessage} | {sizeUnit}/{totalAssetPatchSizeUnit} -> {currentRead} (Download: {speedUnit}/s)    \r");
+                                                               },
+                                                               null,
+                                                               token);
                             }, dataflowBlockOpt);
 
                         object currentLock = new();

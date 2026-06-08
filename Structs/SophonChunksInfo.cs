@@ -39,7 +39,7 @@ namespace Hi3Helper.Sophon.Infos
                              TotalCompressedSize,
                              IsUseCompression);
 #else
-            ChunksBaseUrl.GetHashCode() ^
+            (ChunksBaseUrl?.GetHashCode() ?? 0) ^
             ChunksCount.GetHashCode() ^
             FilesCount.GetHashCode() ^
             TotalSize.GetHashCode() ^

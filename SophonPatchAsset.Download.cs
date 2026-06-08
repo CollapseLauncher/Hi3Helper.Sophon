@@ -79,6 +79,8 @@ namespace Hi3Helper.Sophon
             };
 
             bool isPatchFileExist = patchFilePathHashedFileInfo.Exists;
+
+#if NET6_0_OR_GREATER
             FileStream? fileStream = isPatchFileExist
                 ? patchFilePathHashedFileInfo
                    .Open(new FileStreamOptions
@@ -90,6 +92,16 @@ namespace Hi3Helper.Sophon
                         BufferSize = PatchSize.GetFileStreamBufferSize()
                     })
                 : null;
+#else
+            FileStream? fileStream = isPatchFileExist
+                ? new FileStream(patchFilePathHashedFileInfo.FullName,
+                                 // Use pre-check for file mode to prevent overhead over OS API.
+                                 FileMode.Open,
+                                 FileAccess.Read,
+                                 FileShare.Read, // Only share and open for read access to enable OS-level file caching.
+                                 PatchSize.GetFileStreamBufferSize())
+                : null;
+#endif
 
             try
             {
@@ -116,15 +128,16 @@ namespace Hi3Helper.Sophon
                     return true;
                 }
 
+#if NET6_0_OR_GREATER
                 if (fileStream != null)
                 {
-#if NET6_0_OR_GREATER
                     await fileStream.DisposeAsync();
-#else
-                    fileStream?.Dispose();
-#endif
                 }
+#else
+                fileStream?.Dispose();
+#endif
 
+#if NET6_0_OR_GREATER
                 fileStream = patchFilePathHashedFileInfo.Open(new FileStreamOptions
                 {
                     Mode       = FileMode.Create,
@@ -132,6 +145,13 @@ namespace Hi3Helper.Sophon
                     Share      = FileShare.ReadWrite,
                     BufferSize = PatchSize.GetFileStreamBufferSize()
                 });
+#else
+                fileStream = new FileStream(patchFilePathHashedFileInfo.FullName,
+                                           FileMode.Create,
+                                           FileAccess.ReadWrite,
+                                           FileShare.ReadWrite,
+                                           PatchSize.GetFileStreamBufferSize());
+#endif
 
                 await InnerWriteChunkCopyAsync(client,
                                                fileStream,
@@ -150,14 +170,14 @@ namespace Hi3Helper.Sophon
             }
             finally
             {
+#if NET6_0_OR_GREATER
                 if (fileStream != null)
                 {
-#if NET6_0_OR_GREATER
                     await fileStream.DisposeAsync();
-#else
-                    fileStream?.Dispose();
-#endif
                 }
+#else
+                fileStream?.Dispose();
+#endif
             }
         }
 
@@ -202,9 +222,9 @@ namespace Hi3Helper.Sophon
                     {
                         CancellationTokenSource innerTimeoutToken =
                             new(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                            #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                               , TimeProvider.System
-                            #endif
+#endif
                                );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
@@ -245,7 +265,10 @@ namespace Hi3Helper.Sophon
                                                                   , cooperatedToken.Token)
                                                          .ConfigureAwait(false)) > 0)
                         {
-                            await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ?? ValueTask.CompletedTask);
+                            if (downloadSpeedLimiter != null)
+                            {
+                                await downloadSpeedLimiter.AddBytesOrWaitAsync(read, cooperatedToken.Token);
+                            }
 
 #if NET6_0_OR_GREATER
                             await outStream.WriteAsync(buffer.AsMemory(0, read), cooperatedToken.Token).ConfigureAwait(false);

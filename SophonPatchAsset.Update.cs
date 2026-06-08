@@ -105,6 +105,7 @@ namespace Hi3Helper.Sophon
                     // If the length check is passed, try check the hash of the file and compare it
                     if (!isNeedCompleteDownload)
                     {
+#if NET6_0_OR_GREATER
                         // Open the stream, read it and check for the original file hash
                         sourceFileStreamToCheck = sourceFileInfoToCheck
                             .Open(new FileStreamOptions
@@ -117,6 +118,17 @@ namespace Hi3Helper.Sophon
                                 Options    = FileOptions.RandomAccess,
                                 BufferSize = sourceFileToCheckAsChunk.ChunkSizeDecompressed.GetFileStreamBufferSize()
                             });
+#else
+                        // Open the stream, read it and check for the original file hash
+                        sourceFileStreamToCheck = new FileStream(sourceFileInfoToCheck.FullName,
+                                                                 isSourceFileExist ? FileMode.Open : FileMode.Create,
+                                                                 FileAccess.Read,
+                                                                 FileShare.Read, // Lock to only share read access
+                                                                 sourceFileToCheckAsChunk.ChunkSizeDecompressed.GetFileStreamBufferSize(),
+                                                                 // Use RandomAccess due to repeated access from other asset activity, so the OS
+                                                                 // can perform better read optimization if seeking is rapidly happening.
+                                                                 FileOptions.RandomAccess);
+#endif
 
                         isNeedCompleteDownload = !(sourceFileToCheckAsChunk.ChunkHashDecompressed.Length != 8 ?
                             await sourceFileToCheckAsChunk.CheckChunkMd5HashAsync(sourceFileStreamToCheck,
@@ -241,6 +253,7 @@ namespace Hi3Helper.Sophon
 
             // Create target temporary file stream.
             targetFileInfoTemp.Directory?.Create();
+#if NET6_0_OR_GREATER
             FileStream targetFileStreamTemp = targetFileInfoTemp.Open(new FileStreamOptions
             {
                 Mode       = FileMode.Create,
@@ -248,6 +261,13 @@ namespace Hi3Helper.Sophon
                 Share      = FileShare.Write,
                 BufferSize = TargetFileSize.GetFileStreamBufferSize()
             });
+#else
+            FileStream targetFileStreamTemp = new(targetFileInfoTemp.FullName,
+                                                  FileMode.Create,
+                                                  FileAccess.Write,
+                                                  FileShare.Write,
+                                                  TargetFileSize.GetFileStreamBufferSize());
+#endif
             targetFileInfoTemp.Refresh();
             try
             {
@@ -265,7 +285,8 @@ namespace Hi3Helper.Sophon
                                                                   downloadReadDelegate?.Invoke(read);
                                                                   Interlocked.Add(ref downloadedRead, read);
                                                               },
-                                        token: token);
+                                        token: token,
+                                        downloadSpeedLimiter: downloadSpeedLimiter);
                 isSuccess = true;
                 return true;
             }
@@ -386,7 +407,7 @@ namespace Hi3Helper.Sophon
                     patchTargetProperty.PatchChunkStream.Position = 0;
 
                     string   originalFilePath = Path.Combine(inputDir, TargetFilePath + BlankFileDiffExt);
-                    FileInfo fileInfo         = new FileInfo(originalFilePath);
+                    FileInfo fileInfo         = new(originalFilePath);
 
                     if (fileInfo.Exists)
                     {
@@ -406,7 +427,7 @@ namespace Hi3Helper.Sophon
                     PatchMethod      =   SophonPatchMethod.Patch;
 
                     // Remove if there's a left-over patch file caused by post issue files
-                    FileInfo leftFile = new FileInfo(Path.Combine(inputDir, TargetFilePath));
+                    FileInfo leftFile = new(Path.Combine(inputDir, TargetFilePath));
                     if (!leftFile.Exists)
                     {
                         return false;
@@ -414,9 +435,7 @@ namespace Hi3Helper.Sophon
 
                     bool isDeleteLeftFile;
 #if NET6_0_OR_GREATER
-                    await
-#endif
-                    using (FileStream leftFileStream = leftFile.Open(new FileStreamOptions
+                    await using (FileStream leftFileStream = leftFile.Open(new FileStreamOptions
                     {
                         Mode       = FileMode.Open,
                         Access     = FileAccess.Read,
@@ -424,15 +443,25 @@ namespace Hi3Helper.Sophon
                         Options    = FileOptions.RandomAccess,
                         BufferSize = leftFile.Length.GetFileStreamBufferSize()
                     }))
+#else
+                    using (FileStream leftFileStream = new(leftFile.FullName,
+                                                           FileMode.Open,
+                                                           FileAccess.Read,
+                                                           FileShare.Read,
+                                                           leftFile.Length.GetFileStreamBufferSize(),
+                                                           FileOptions.RandomAccess))
+#endif
                     {
                         isDeleteLeftFile = IsChunkActuallyHDiff(leftFileStream);
                     }
 
-                    if (isDeleteLeftFile)
+                    if (!isDeleteLeftFile)
                     {
-                        leftFile.IsReadOnly = false;
-                        leftFile.Delete();
+                        return false;
                     }
+
+                    leftFile.IsReadOnly = false;
+                    leftFile.Delete();
 
                     return false;
                 }
@@ -467,9 +496,9 @@ namespace Hi3Helper.Sophon
                                )) > 0)
                     {
 #if NET6_0_OR_GREATER
-                        patchTargetProperty.TargetFileTempStream.Write(buffer.AsSpan(0, read));
+                        await patchTargetProperty.TargetFileTempStream.WriteAsync(buffer.AsMemory(0, read), token);
 #else
-                        patchTargetProperty.TargetFileTempStream.Write(buffer, 0, read);
+                        await patchTargetProperty.TargetFileTempStream.WriteAsync(buffer, 0, read, token);
 #endif
 
                         diskWriteDelegate?.Invoke(read);
@@ -546,7 +575,7 @@ namespace Hi3Helper.Sophon
 
             void Impl(object? ctx)
             {
-                HDiffPatch patcher   = new HDiffPatch();
+                HDiffPatch patcher   = new();
                 string     inputPath = Path.Combine(inputDir, OriginalFilePath);
                 try
                 {
@@ -573,7 +602,7 @@ namespace Hi3Helper.Sophon
                 {
                     if (inputPath.EndsWith(BlankFileDiffExt, StringComparison.OrdinalIgnoreCase))
                     {
-                        FileInfo fileInfo = new FileInfo(inputPath);
+                        FileInfo fileInfo = new(inputPath);
                         if (fileInfo.Exists)
                         {
                             fileInfo.IsReadOnly = false;
@@ -585,6 +614,7 @@ namespace Hi3Helper.Sophon
 
             ChunkStream CreateChunkStream()
             {
+#if NET6_0_OR_GREATER
                 FileStream fileStream = patchPath.Open(new FileStreamOptions
                 {
                     Mode    = FileMode.Open,
@@ -592,10 +622,18 @@ namespace Hi3Helper.Sophon
                     Share   = FileShare.Read,
                     Options = FileOptions.SequentialScan
                 });
-                ChunkStream chunkStream = new ChunkStream(fileStream,
-                                                          PatchOffset,
-                                                          PatchOffset + PatchChunkLength,
-                                                          true);
+#else
+                FileStream fileStream = new(patchPath.FullName,
+                                            FileMode.Open,
+                                            FileAccess.Read,
+                                            FileShare.Read,
+                                            4 << 10,
+                                            FileOptions.SequentialScan);
+#endif
+                ChunkStream chunkStream = new(fileStream,
+                                              PatchOffset,
+                                              PatchOffset + PatchChunkLength,
+                                              true);
 
                 return chunkStream;
             }
@@ -616,7 +654,7 @@ namespace Hi3Helper.Sophon
                 return false;
             }
 
-            SophonChunk checkByHashChunk = new SophonChunk
+            SophonChunk checkByHashChunk = new()
             {
                 ChunkHashDecompressed = Extension.HexToBytes(TargetFileHash.AsSpan()),
                 ChunkName             = TargetFilePath,
@@ -627,15 +665,20 @@ namespace Hi3Helper.Sophon
             };
 
 #if NET6_0_OR_GREATER
-            await
-#endif
-            using FileStream targetFileStream = targetFileInfo.Open(new FileStreamOptions
+            await using FileStream targetFileStream = targetFileInfo.Open(new FileStreamOptions
             {
                 Mode       = FileMode.Open,
                 Access     = FileAccess.Read,
                 Share      = FileShare.Read,
                 BufferSize = TargetFileSize.GetFileStreamBufferSize()
             });
+#else
+            using FileStream targetFileStream = new(targetFileInfo.FullName,
+                                                    FileMode.Open,
+                                                    FileAccess.Read,
+                                                    FileShare.Read,
+                                                    TargetFileSize.GetFileStreamBufferSize());
+#endif
 
             bool isHashMatched = checkByHashChunk.ChunkHashDecompressed.Length == 8 ?
                 await checkByHashChunk.CheckChunkXxh64HashAsync(targetFileStream,
@@ -708,6 +751,7 @@ namespace Hi3Helper.Sophon
             long patchChunkStart = asset.PatchOffset;
             long patchChunkEnd   = patchChunkStart + asset.PatchChunkLength;
 
+#if NET6_0_OR_GREATER
             TargetFileTempStream = TargetFileTempInfo.Open(new FileStreamOptions
             {
                 Mode       = FileMode.Create,
@@ -724,6 +768,20 @@ namespace Hi3Helper.Sophon
                 Options    = FileOptions.RandomAccess,
                 BufferSize = patchChunkSize.GetFileStreamBufferSize()
             });
+#else
+            TargetFileTempStream = new FileStream(TargetFileTempInfo.FullName,
+                                                  FileMode.Create,
+                                                  FileAccess.Write,
+                                                  FileShare.Write,
+                                                  targetFileSize.GetFileStreamBufferSize());
+
+            PatchFileStream = new FileStream(PatchFilePath.FullName,
+                                             FileMode.Open,
+                                             FileAccess.Read,
+                                             FileShare.Read,
+                                             patchChunkSize.GetFileStreamBufferSize(),
+                                             FileOptions.RandomAccess);
+#endif
 
             PatchChunkStream = new ChunkStream(PatchFileStream, patchChunkStart, patchChunkEnd);
         }

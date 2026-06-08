@@ -241,7 +241,7 @@ namespace Hi3Helper.Sophon
             }
 
 #if !NET6_0_OR_GREATER
-            using (CancellationTokenSource actionToken = new CancellationTokenSource())
+            using (CancellationTokenSource actionToken = new())
             {
                 using (CancellationTokenSource linkedToken = CancellationTokenSource
                           .CreateLinkedTokenSource(actionToken.Token,

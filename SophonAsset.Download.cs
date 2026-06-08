@@ -23,11 +23,12 @@ using System.Threading.Tasks.Dataflow;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
 using ZstdStream = ZstdNet.DecompressionStream;
 
+#nullable enable
 namespace Hi3Helper.Sophon
 {
     public partial class SophonAsset : SophonIdentifiableProperty
     {
-        internal SophonAsset(string assetName, bool isDirectory)
+        internal SophonAsset(string? assetName, bool isDirectory)
             : this(assetName,
                    0,
                    null,
@@ -35,9 +36,10 @@ namespace Hi3Helper.Sophon
                    false,
                    []) { }
 
-        internal SophonAsset(string        assetName,
-                             long          assetSize,
-                             string        assetHash,
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
+        internal SophonAsset(string?       assetName,
+            long          assetSize,
+                             string?       assetHash,
                              bool          isDirectory,
                              bool          isHasPatch,
                              SophonChunk[] chunks)
@@ -49,6 +51,7 @@ namespace Hi3Helper.Sophon
             IsHasPatch  = isHasPatch;
             Chunks      = chunks;
         }
+#pragma warning restore CS8618
 
         private enum SourceStreamType
         {
@@ -60,17 +63,17 @@ namespace Hi3Helper.Sophon
         internal const int BufferSize     = 4 << 10;
         private const  int ZstdBufferSize = 0; // Default
 
-        public   string                     AssetName            { get; }
-        public   long                       AssetSize            { get; }
-        public   string                     AssetHash            { get; }
-        public   bool                       IsDirectory          { get; }
-        public   bool                       IsHasPatch           { get; }
-        public   SophonChunk[]              Chunks               { get; }
-        internal SophonDownloadSpeedLimiter DownloadSpeedLimiter { get; set; }
-        internal SophonChunksInfo           SophonChunksInfo     { get; set; }
-        internal SophonChunksInfo           SophonChunksInfoAlt  { get; set; }
+        public   string?                     AssetName            { get; }
+        public   long                        AssetSize            { get; }
+        public   string?                     AssetHash            { get; }
+        public   bool                        IsDirectory          { get; }
+        public   bool                        IsHasPatch           { get; }
+        public   SophonChunk[]               Chunks               { get; }
+        internal SophonDownloadSpeedLimiter? DownloadSpeedLimiter { get; set; }
+        internal SophonChunksInfo            SophonChunksInfo     { get; set; }
+        internal SophonChunksInfo?           SophonChunksInfoAlt  { get; set; }
 
-        public override string ToString() => AssetName;
+        public override string? ToString() => AssetName;
 
         public override int GetHashCode()
         {
@@ -78,7 +81,7 @@ namespace Hi3Helper.Sophon
             return HashCode.Combine(IsHasPatch, AssetName, AssetHash);
 #else
             return IsHasPatch.GetHashCode() ^
-                   (AssetName?.GetHashCode() ?? 0)
+                   (AssetName?.GetHashCode() ?? 0) ^
                    (AssetHash?.GetHashCode() ?? 0);
 #endif
         }
@@ -112,18 +115,73 @@ namespace Hi3Helper.Sophon
         /// <param name="token">
         ///     Cancellation token for handling cancellation while the routine is running.
         /// </param>
+        public
+#if NET6_0_OR_GREATER
+            ValueTask
+#else
+            Task
+#endif
+            WriteToStreamAsync(
+                HttpClient                     client,
+                Stream                         outStream,
+                DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                CancellationToken              token                    = default)
+            => WriteToStreamAsync(client,
+                                  outStream,
+                                  writeInfoDelegate,
+                                  downloadInfoDelegate,
+                                  downloadCompleteDelegate,
+                                  null,
+                                  token);
+
+        /// <summary>
+        ///     Perform a download process by file and run each chunk download sequentially.
+        /// </summary>
+        /// <param name="client">
+        ///     The <see cref="HttpClient" /> to be used for downloading process.<br />Ensure that the maximum connection for the
+        ///     <see cref="HttpClient" /> has been set to at least (Number of Threads/CPU core * 25%) or == Number of Threads/CPU
+        ///     core
+        /// </param>
+        /// <param name="outStream">
+        ///     Output <see cref="Stream" /> to write the file into.<br />
+        ///     The <see cref="Stream" /> must be readable, writeable and seekable, also be able to be shared both on Read and
+        ///     Write operation.
+        ///     It's recommended to use <see cref="FileStream" /> or other stream similar to that and please use
+        ///     <see cref="FileMode.OpenOrCreate" />,
+        ///     <see cref="FileAccess.ReadWrite" /> and <see cref="FileShare.ReadWrite" /> if you're using
+        ///     <see cref="FileStream" />.
+        /// </param>
+        /// <param name="writeInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteStreamInfo" />
+        /// </param>
+        /// <param name="downloadInfoDelegate">
+        ///     <inheritdoc cref="DelegateWriteDownloadInfo" />
+        /// </param>
+        /// <param name="downloadCompleteDelegate">
+        ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
+        /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
+        /// <param name="token">
+        ///     Cancellation token for handling cancellation while the routine is running.
+        /// </param>
         public async
 #if NET6_0_OR_GREATER
             ValueTask
 #else
             Task
 #endif
-            WriteToStreamAsync(HttpClient                    client,
-                               Stream                        outStream,
-                               DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
-                               DelegateDownloadAssetComplete downloadCompleteDelegate = null,
-                               CancellationToken             token                    = default)
+            WriteToStreamAsync(
+                HttpClient                     client,
+                Stream                         outStream,
+                DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                SophonDownloadSpeedLimiter?    downloadSpeedLimiter     = null,
+                CancellationToken              token                    = default)
         {
             this.EnsureOrThrowChunksState();
             this.EnsureOrThrowStreamState(outStream);
@@ -132,6 +190,8 @@ namespace Hi3Helper.Sophon
             {
                 outStream.SetLength(AssetSize);
             }
+
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
 
             foreach (SophonChunk chunk in Chunks)
             {
@@ -142,7 +202,7 @@ namespace Hi3Helper.Sophon
                                                     chunk,
                                                     writeInfoDelegate,
                                                     downloadInfoDelegate,
-                                                    DownloadSpeedLimiter,
+                                                    downloadSpeedLimiter,
                                                     token);
             }
 
@@ -189,18 +249,23 @@ namespace Hi3Helper.Sophon
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         public async
 #if NET6_0_OR_GREATER
             ValueTask
 #else
             Task
 #endif
-            WriteToStreamAsync(HttpClient                    client,
-                               Func<Stream>                  outStreamFunc,
-                               ParallelOptions               parallelOptions          = null,
-                               DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
-                               DelegateDownloadAssetComplete downloadCompleteDelegate = null)
+            WriteToStreamAsync(
+                HttpClient                     client,
+                Func<Stream>                   outStreamFunc,
+                ParallelOptions?               parallelOptions          = null,
+                DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                SophonDownloadSpeedLimiter?    downloadSpeedLimiter     = null)
         {
             this.EnsureOrThrowChunksState();
 
@@ -227,7 +292,7 @@ namespace Hi3Helper.Sophon
             try
             {
 #if !NET6_0_OR_GREATER
-                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource actionToken = new();
                 using CancellationTokenSource linkedToken = CancellationTokenSource
                     .CreateLinkedTokenSource(actionToken.Token,
                                              parallelOptions.CancellationToken);
@@ -259,6 +324,8 @@ namespace Hi3Helper.Sophon
                 throw ex.Flatten().InnerExceptions.First();
             }
 
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
 #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
                 $" has been completely downloaded!");
@@ -280,7 +347,7 @@ namespace Hi3Helper.Sophon
                                                     chunk,
                                                     writeInfoDelegate,
                                                     downloadInfoDelegate,
-                                                    DownloadSpeedLimiter,
+                                                    downloadSpeedLimiter,
                                                     threadToken);
             }
         }
@@ -323,18 +390,23 @@ namespace Hi3Helper.Sophon
         /// <param name="downloadCompleteDelegate">
         ///     <inheritdoc cref="DelegateDownloadAssetComplete" />
         /// </param>
+        /// <param name="downloadSpeedLimiter">
+        ///     If the download speed limiter is null, the download speed will be set to unlimited.
+        /// </param>
         public async
 #if NET6_0_OR_GREATER
             ValueTask
 #else
             Task
 #endif
-            WriteToStreamAsync(HttpClient                    client,
-                               Func<long, Stream>            outStreamFunc,
-                               ParallelOptions               parallelOptions          = null,
-                               DelegateWriteStreamInfo       writeInfoDelegate        = null,
-                               DelegateWriteDownloadInfo     downloadInfoDelegate     = null,
-                               DelegateDownloadAssetComplete downloadCompleteDelegate = null)
+            WriteToStreamAsync(
+                HttpClient                     client,
+                Func<long, Stream>             outStreamFunc,
+                ParallelOptions?               parallelOptions          = null,
+                DelegateWriteStreamInfo?       writeInfoDelegate        = null,
+                DelegateWriteDownloadInfo?     downloadInfoDelegate     = null,
+                DelegateDownloadAssetComplete? downloadCompleteDelegate = null,
+                SophonDownloadSpeedLimiter?    downloadSpeedLimiter     = null)
         {
             this.EnsureOrThrowChunksState();
 
@@ -361,7 +433,7 @@ namespace Hi3Helper.Sophon
             try
             {
 #if !NET6_0_OR_GREATER
-                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource actionToken = new();
                 using CancellationTokenSource linkedToken = CancellationTokenSource
                     .CreateLinkedTokenSource(actionToken.Token,
                                              parallelOptions.CancellationToken);
@@ -393,6 +465,8 @@ namespace Hi3Helper.Sophon
                 throw ex.Flatten().InnerExceptions.First();
             }
 
+            downloadSpeedLimiter ??= DownloadSpeedLimiter;
+
 #if DEBUG
             this.PushLogInfo($"Asset: {AssetName} | (Hash: {AssetHash} -> {AssetSize} bytes)" +
                 $" has been completely downloaded!");
@@ -414,7 +488,7 @@ namespace Hi3Helper.Sophon
                                                     chunk,
                                                     writeInfoDelegate,
                                                     downloadInfoDelegate,
-                                                    DownloadSpeedLimiter,
+                                                    downloadSpeedLimiter,
                                                     threadToken);
             }
         }
@@ -425,15 +499,15 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            PerformWriteStreamThreadAsync(HttpClient                 client,
-                                          Stream                     sourceStream,
-                                          SourceStreamType           sourceStreamType,
-                                          Stream                     outStream,
-                                          SophonChunk                chunk,
-                                          DelegateWriteStreamInfo    writeInfoDelegate,
-                                          DelegateWriteDownloadInfo  downloadInfoDelegate,
-                                          SophonDownloadSpeedLimiter downloadSpeedLimiter,
-                                          CancellationToken          token)
+            PerformWriteStreamThreadAsync(HttpClient                  client,
+                                          Stream?                     sourceStream,
+                                          SourceStreamType            sourceStreamType,
+                                          Stream                      outStream,
+                                          SophonChunk                 chunk,
+                                          DelegateWriteStreamInfo?    writeInfoDelegate,
+                                          DelegateWriteDownloadInfo?  downloadInfoDelegate,
+                                          SophonDownloadSpeedLimiter? downloadSpeedLimiter,
+                                          CancellationToken           token)
         {
             long totalSizeFromOffset = chunk.ChunkOffset + chunk.ChunkSizeDecompressed;
             bool isSkipChunk         = outStream.Length >= totalSizeFromOffset;
@@ -477,15 +551,15 @@ namespace Hi3Helper.Sophon
 #else
             Task
 #endif
-            InnerWriteStreamToAsync(HttpClient                 client,
-                                    Stream                     sourceStream,
-                                    SourceStreamType           sourceStreamType,
-                                    Stream                     outStream,
-                                    SophonChunk                chunk,
-                                    DelegateWriteStreamInfo    writeInfoDelegate,
-                                    DelegateWriteDownloadInfo  downloadInfoDelegate,
-                                    SophonDownloadSpeedLimiter downloadSpeedLimiter,
-                                    CancellationToken          token)
+            InnerWriteStreamToAsync(HttpClient                  client,
+                                    Stream?                     sourceStream,
+                                    SourceStreamType            sourceStreamType,
+                                    Stream                      outStream,
+                                    SophonChunk                 chunk,
+                                    DelegateWriteStreamInfo?    writeInfoDelegate,
+                                    DelegateWriteDownloadInfo?  downloadInfoDelegate,
+                                    SophonDownloadSpeedLimiter? downloadSpeedLimiter,
+                                    CancellationToken           token)
         {
             if (sourceStreamType != SourceStreamType.Internet && sourceStream == null)
             {
@@ -515,9 +589,9 @@ namespace Hi3Helper.Sophon
 
             while (true)
             {
-                bool                allowDispose        = false;
-                HttpResponseMessage httpResponseMessage = null;
-                Stream              httpResponseStream  = null;
+                bool allowDispose = false;
+                HttpResponseMessage? httpResponseMessage = null;
+                Stream? httpResponseStream = null;
 
                 using MD5 hashInstance = MD5.Create();
                 byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
@@ -577,7 +651,7 @@ namespace Hi3Helper.Sophon
                                 }
                             }
                                 break;
-                            case SourceStreamType.OldReference:
+                            case SourceStreamType.OldReference when sourceStream != null:
                             {
                                 sourceStream.Position = chunk.ChunkOldOffset;
                             }
@@ -589,6 +663,11 @@ namespace Hi3Helper.Sophon
                         this.PushLogDebug($"[Complete init.] by offset: 0x{chunk.ChunkOffset:x8}" +
                             $" -> L: 0x{chunk.ChunkSizeDecompressed:x8} for chunk: {chunk.ChunkName}");
 #endif
+
+                        if (sourceStream == null)
+                        {
+                            throw new NullReferenceException("Source Stream is null and it shouldn't be happening.");
+                        }
 
                         long remain = chunk.ChunkSizeDecompressed;
                         while (remain > 0)
@@ -605,14 +684,16 @@ namespace Hi3Helper.Sophon
 
                             if (currentSourceStreamType == SourceStreamType.Internet)
                             {
-                                await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ??
-                                       ValueTask.CompletedTask);
+                                if (downloadSpeedLimiter != null)
+                                {
+                                    await downloadSpeedLimiter.AddBytesOrWaitAsync(read, cooperatedToken.Token);
+                                }
                             }
 
 #if NET6_0_OR_GREATER
-                            outStream.Write(buffer.AsSpan(0, read));
+                            await outStream.WriteAsync(buffer.AsMemory(0, read), cooperatedToken.Token);
 #else
-                            outStream.Write(buffer, 0, read);
+                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
 #endif
 
                             currentWriteOffset += read;

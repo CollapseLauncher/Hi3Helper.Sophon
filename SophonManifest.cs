@@ -112,7 +112,7 @@ namespace Hi3Helper.Sophon
                 throw new DllNotFoundException("libzstd is not found!");
             }
         #else
-            List<SophonAsset> assetList = new List<SophonAsset>();
+            List<SophonAsset> assetList = [];
         #endif
 
             ActionTimeoutTaskCallback<SophonManifestProto> manifestProtoTaskCallback =
@@ -157,18 +157,21 @@ namespace Hi3Helper.Sophon
 
             string assetHash = asset.AssetHashMd5;
             long   assetSize = asset.AssetSize;
-            SophonChunk[] assetChunks = asset.AssetChunks.Select(x => new SophonChunk
-            {
-                ChunkName = x.ChunkName,
-                ChunkHashDecompressed = Extension.HexToBytes(x.ChunkDecompressedHashMd5
-                                                           #if !NET6_0_OR_GREATER
-                                                              .AsSpan()
-                                                           #endif
-                                                            ),
-                ChunkOffset           = x.ChunkOnFileOffset,
-                ChunkSize             = x.ChunkSize,
-                ChunkSizeDecompressed = x.ChunkSizeDecompressed
-            }).ToArray();
+            SophonChunk[] assetChunks =
+            [
+                .. asset.AssetChunks.Select(x => new SophonChunk
+                {
+                    ChunkName = x.ChunkName,
+                    ChunkHashDecompressed = Extension.HexToBytes(x.ChunkDecompressedHashMd5
+#if !NET6_0_OR_GREATER
+                                                                  .AsSpan()
+#endif
+                                                                ),
+                    ChunkOffset = x.ChunkOnFileOffset,
+                    ChunkSize = x.ChunkSize,
+                    ChunkSizeDecompressed = x.ChunkSizeDecompressed
+                })
+            ];
 
             assetAdd = new SophonAsset(assetName,
                                        assetSize,

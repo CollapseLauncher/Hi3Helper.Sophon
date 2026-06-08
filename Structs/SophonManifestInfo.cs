@@ -10,14 +10,14 @@ namespace Hi3Helper.Sophon.Infos
 {
     public class SophonManifestInfo : SophonIdentifiableProperty
     {
-        public required string ManifestBaseUrl        { get; init; }
-        public required string ManifestId             { get; init; }
-        public required string ManifestChecksumMd5    { get; init; }
-        public          bool   IsUseCompression       { get; init; }
-        public          long   ManifestSize           { get; init; }
-        public          long   ManifestCompressedSize { get; init; }
+        public string? ManifestBaseUrl        { get; set; }
+        public string? ManifestId             { get; set; }
+        public string? ManifestChecksumMd5    { get; set; }
+        public bool    IsUseCompression       { get; set; }
+        public long    ManifestSize           { get; set; }
+        public long    ManifestCompressedSize { get; set; }
 
-        public string ManifestFileUrl => ManifestBaseUrl.TrimEnd('/') + '/' + ManifestId;
+        public string? ManifestFileUrl => ManifestBaseUrl?.TrimEnd('/') + '/' + ManifestId;
     }
 }
 

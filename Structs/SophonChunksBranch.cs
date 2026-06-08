@@ -28,7 +28,7 @@ namespace Hi3Helper.Sophon
                 HttpMethod httpMethod,
                 CancellationToken token = default)
         {
-            using HttpRequestMessage requestMessage = new HttpRequestMessage(httpMethod, url);
+            using HttpRequestMessage requestMessage = new(httpMethod, url);
             using HttpResponseMessage responseMessage = await client.SendAsync(requestMessage,
                                                                                HttpCompletionOption.ResponseHeadersRead,
                                                                                token);

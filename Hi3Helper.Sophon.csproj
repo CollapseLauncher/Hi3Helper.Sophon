@@ -1,22 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <ImplicitUsings>disable</ImplicitUsings>
-        <Platforms>x64</Platforms>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <DefineConstants>NOSTREAMLOCK</DefineConstants>
-        <IsAotCompatible>true</IsAotCompatible>
-        <IsTrimmable>true</IsTrimmable>
-        <TargetFramework>net10.0</TargetFramework>
+	    <TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Platforms>x64</Platforms>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<DefineConstants>$(DefineConstants);NOSTREAMLOCK</DefineConstants>
+		<IsAotCompatible>true</IsAotCompatible>
+		<IsTrimmable>true</IsTrimmable>
 
-        <Version>1.7.1</Version>
-        <AssemblyVersion>1.7.1</AssemblyVersion>
+        <Version>1.8.0</Version>
+        <AssemblyVersion>1.8.0</AssemblyVersion>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <AssemblyName>Hi3Helper.Sophon</AssemblyName>
         <AssemblyTitle>Hi3Helper.Sophon - A deserializer and downloader for the new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</AssemblyTitle>
         <Description>Hi3Helper.Sophon is a tool used by Collapse Launcher project to deserialize and download files using a new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</Description>
         <PackageProjectUrl>https://github.com/CollapseLauncher/Hi3Helper.Sophon</PackageProjectUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <Copyright>Copyright (c) 2024-2025 Collapse Project Team, Kemal Setya Adhi (neon-nyan)</Copyright>
+        <Copyright>Copyright (c) 2024-2026 Collapse Project Team, Kemal Setya Adhi (neon-nyan)</Copyright>
         <Authors>neon-nyan</Authors>
         <PackageIcon>icon.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -59,11 +59,7 @@
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
-        <PackageReference Include="System.IO.Hashing" Version="10.0.8" />
-        <PackageReference Include="System.Net.Http" Version="*" Condition="$(DefineConstants.Contains('NET462'))" />
-        <PackageReference Include="System.Net.Http.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
-        <PackageReference Include="System.Text.Json" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
-        <PackageReference Include="System.Threading.Tasks.Dataflow" Version="*" Condition="$(DefineConstants.Contains('NETSTANDARD2_0'))" />
+        <PackageReference Include="System.IO.Hashing" Version="*" />
     </ItemGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">

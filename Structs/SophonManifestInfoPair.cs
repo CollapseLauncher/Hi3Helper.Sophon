@@ -1,6 +1,8 @@
 using Hi3Helper.Sophon.Infos;
 using System.Collections.Generic;
+#if NET6_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
+#endif
 using System.Linq;
 using System.Runtime.CompilerServices;
 
@@ -33,7 +35,7 @@ namespace Hi3Helper.Sophon.Structs
                 throw new KeyNotFoundException($"Sophon manifest with matching field: {matchingField} is not found!");
             }
 
-            SophonChunkManifestInfoPair otherManifestIdentity = new SophonChunkManifestInfoPair
+            SophonChunkManifestInfoPair otherManifestIdentity = new()
             {
                 ChunksInfo = SophonManifest.CreateChunksInfo(sophonManifestIdentity.ChunksUrlInfo.UrlPrefix,
                                                              sophonManifestIdentity.ChunkInfo.ChunkCount,
@@ -65,7 +67,11 @@ namespace Hi3Helper.Sophon.Structs
 
         public bool TryGetOtherPatchInfoPair(string matchingField,
                                              string versionUpdateFrom,
+#if NET6_0_OR_GREATER
                                              [NotNullWhen(true)] out SophonChunkManifestInfoPair? otherPatchIdentity)
+#else
+                                             out SophonChunkManifestInfoPair? otherPatchIdentity)
+#endif
         {
             Unsafe.SkipInit(out otherPatchIdentity);
 
@@ -135,8 +141,9 @@ namespace Hi3Helper.Sophon.Structs
             return true;
         }
 
-        public SophonChunkManifestInfoPair GetOtherPatchInfoPair(string matchingField,
-                                                                 string versionUpdateFrom)
+        public SophonChunkManifestInfoPair? GetOtherPatchInfoPair(
+            string matchingField,
+            string versionUpdateFrom)
         {
             if (TryGetOtherPatchInfoPair(matchingField, versionUpdateFrom, out SophonChunkManifestInfoPair? otherPatchIdentity))
             {

@@ -15,7 +15,7 @@ public class SophonIdentifiableProperty
     public string? CategoryName { get; set; }
 
     [JsonPropertyName("matching_field")]
-    public required string? MatchingField { get; set; }
+    public string? MatchingField { get; set; }
 
     public bool Equals(SophonIdentifiableProperty? other) =>
         CategoryId == other?.CategoryId &&
@@ -31,7 +31,7 @@ public class SophonIdentifiableProperty
                          MatchingField);
 #else
             CategoryId.GetHashCode() ^
-            CategoryName.GetHashCode() ^
-            MatchingField.GetHashCode();
+            (CategoryName?.GetHashCode() ?? 0) ^
+            (MatchingField?.GetHashCode() ?? 0);
 #endif
 }

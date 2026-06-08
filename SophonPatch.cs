@@ -4,15 +4,15 @@ using Hi3Helper.Sophon.Protos;
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
 
 #if NET6_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using ZstdNet;
 // ReSharper disable RedundantCallerArgumentExpressionDefaultValue
 #endif
@@ -126,14 +126,24 @@ namespace Hi3Helper.Sophon
             EnumerateUpdateAsync(HttpClient                                 httpClient,
                                  SophonManifestInfo?                        patchManifestInfo,
                                  SophonChunksInfo?                          patchChunksInfo,
-                                 [NotNull] SophonManifestInfo?              mainManifestInfo,
-                                 [NotNull] SophonChunksInfo?                mainChunksInfo,
+#if NET6_0_OR_GREATER
+                                 [NotNull] SophonManifestInfo? mainManifestInfo,
+                                 [NotNull] SophonChunksInfo?   mainChunksInfo,
+#else
+                                 SophonManifestInfo? mainManifestInfo,
+                                 SophonChunksInfo?   mainChunksInfo,
+#endif
                                  string                                     versionTagUpdateFrom,
                                  SophonDownloadSpeedLimiter?                downloadSpeedLimiter = null,
                                  [EnumeratorCancellation] CancellationToken token                = default)
         {
+#if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(mainManifestInfo, nameof(mainManifestInfo));
             ArgumentNullException.ThrowIfNull(mainChunksInfo, nameof(mainChunksInfo));
+#else
+            if (mainManifestInfo == null) throw new ArgumentNullException(nameof(mainManifestInfo));
+            if (mainChunksInfo == null) throw new ArgumentNullException(nameof(mainChunksInfo));
+#endif
 
 #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -168,10 +178,18 @@ namespace Hi3Helper.Sophon
                     SophonPatchAssetInfo? patchAssetInfo = patchAssetProperty.AssetInfos
                                                                              .FirstOrDefault(x => x.VersionTag.Equals(versionTagUpdateFrom, StringComparison.OrdinalIgnoreCase));
 
+#if NET6_0_OR_GREATER
                     if (patchAssetInfo != null)
                     {
                         patchAssetPropertyDict.TryAdd(patchAssetProperty.AssetName, (patchAssetProperty, patchAssetInfo));
                     }
+#else
+                    if (patchAssetInfo != null &&
+                        !patchAssetPropertyDict.ContainsKey(patchAssetProperty.AssetName))
+                    {
+                        patchAssetPropertyDict.Add(patchAssetProperty.AssetName, (patchAssetProperty, patchAssetInfo));
+                    }
+#endif
                 }
             }
 
@@ -187,11 +205,17 @@ namespace Hi3Helper.Sophon
                     continue;
                 }
 
+#if NET6_0_OR_GREATER
                 ref (SophonPatchAssetProperty, SophonPatchAssetInfo) patchProperty = ref CollectionsMarshal
                     .GetValueRefOrNullRef(patchAssetPropertyDict,
-                                          mainAsset.AssetName);
+                                          mainAsset.AssetName ?? "");
 
                 if (Unsafe.IsNullRef(ref patchProperty))
+#else
+                if (!patchAssetPropertyDict
+                        .TryGetValue(mainAsset.AssetName ?? "",
+                                     out (SophonPatchAssetProperty, SophonPatchAssetInfo) patchProperty))
+#endif
                 {
                     yield return new SophonPatchAsset
                     {
@@ -347,17 +371,28 @@ namespace Hi3Helper.Sophon
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
         public static async IAsyncEnumerable<SophonPatchAsset>
-            EnumerateRemovableAsync(HttpClient                                 httpClient,
-                                    SophonManifestInfo?                        patchManifestInfo,
-                                    SophonChunksInfo?                          patchChunksInfo,
-                                    [NotNull] SophonManifestInfo?              mainManifestInfo,
-                                    [NotNull] SophonChunksInfo?                mainChunksInfo,
-                                    string                                     versionTagUpdateFrom,
-                                    HashSet<string>                            compareWithList,
-                                    [EnumeratorCancellation] CancellationToken token = default)
+            EnumerateRemovableAsync(
+                HttpClient          httpClient,
+                SophonManifestInfo? patchManifestInfo,
+                SophonChunksInfo?   patchChunksInfo,
+#if NET6_0_OR_GREATER
+                [NotNull] SophonManifestInfo? mainManifestInfo,
+                [NotNull] SophonChunksInfo?   mainChunksInfo,
+#else
+                SophonManifestInfo? mainManifestInfo,
+                SophonChunksInfo?   mainChunksInfo,
+#endif
+                string                                     versionTagUpdateFrom,
+                HashSet<string>                            compareWithList,
+                [EnumeratorCancellation] CancellationToken token = default)
         {
+#if NET6_0_OR_GREATER
             ArgumentNullException.ThrowIfNull(mainManifestInfo, nameof(mainManifestInfo));
             ArgumentNullException.ThrowIfNull(mainChunksInfo, nameof(mainChunksInfo));
+#else
+            if (mainManifestInfo == null) throw new ArgumentNullException(nameof(mainManifestInfo));
+            if (mainChunksInfo == null) throw new ArgumentNullException(nameof(mainChunksInfo));
+#endif
 
 #if NET6_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
@@ -510,14 +545,20 @@ namespace Hi3Helper.Sophon
         ///     Indicates if an argument is <c>null</c> or empty.
         /// </exception>
         public static IAsyncEnumerable<SophonPatchAsset>
-            EnumerateRemovableAsync(HttpClient                    httpClient,
-                                    SophonManifestInfo?           patchManifestInfo,
-                                    SophonChunksInfo?             patchChunksInfo,
-                                    [NotNull] SophonManifestInfo? mainManifestInfo,
-                                    [NotNull] SophonChunksInfo?   mainChunksInfo,
-                                    string                        versionTagUpdateFrom,
-                                    List<SophonPatchAsset>        compareWithList,
-                                    CancellationToken             token = default)
+            EnumerateRemovableAsync(
+                HttpClient          httpClient,
+                SophonManifestInfo? patchManifestInfo,
+                SophonChunksInfo?   patchChunksInfo,
+#if NET6_0_OR_GREATER
+                [NotNull] SophonManifestInfo? mainManifestInfo,
+                [NotNull] SophonChunksInfo?   mainChunksInfo,
+#else
+                SophonManifestInfo? mainManifestInfo,
+                SophonChunksInfo?   mainChunksInfo,
+#endif
+                string                 versionTagUpdateFrom,
+                List<SophonPatchAsset> compareWithList,
+                CancellationToken      token = default)
         {
             HashSet<string> hashSet = new(StringComparer.OrdinalIgnoreCase);
             foreach (SophonPatchAsset asset in compareWithList)

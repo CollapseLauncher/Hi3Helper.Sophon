@@ -2,7 +2,9 @@
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
+#if NET6_0_OR_GREATER
 using System.Diagnostics;
+#endif
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -94,7 +96,7 @@ namespace Hi3Helper.Sophon
             try
             {
 #if !NET6_0_OR_GREATER
-                using CancellationTokenSource actionToken = new CancellationTokenSource();
+                using CancellationTokenSource actionToken = new();
                 using CancellationTokenSource linkedToken = CancellationTokenSource
                     .CreateLinkedTokenSource(actionToken.Token, parallelOptions.CancellationToken);
                 ActionBlock<ValueTuple<SophonChunk, CancellationToken>> actionBlock = new(
@@ -196,9 +198,7 @@ namespace Hi3Helper.Sophon
                 Interlocked.Increment(ref _currentChunksDownloadPos);
                 Interlocked.Increment(ref _currentChunksDownloadQueue);
 #if NET6_0_OR_GREATER
-                await
-#endif
-                using FileStream fileStream = chunkFilePathHashedFileInfo
+                await using FileStream fileStream = chunkFilePathHashedFileInfo
                     .Open(new FileStreamOptions
                     {
                         Mode       = FileMode.OpenOrCreate,
@@ -206,6 +206,13 @@ namespace Hi3Helper.Sophon
                         Share      = FileShare.ReadWrite,
                         BufferSize = AssetSize.GetFileStreamBufferSize()
                     });
+#else
+                using FileStream fileStream = new(chunkFilePathHashedFileInfo.FullName,
+                                                  FileMode.OpenOrCreate,
+                                                  FileAccess.ReadWrite,
+                                                  FileShare.ReadWrite,
+                                                  AssetSize.GetFileStreamBufferSize());
+#endif
 
                 bool isChunkUnmatch  = fileStream.Length != chunk.ChunkSize;
                 bool isChunkVerified = File.Exists(chunkFileCheckedPath) && !isChunkUnmatch;
@@ -306,9 +313,9 @@ namespace Hi3Helper.Sophon
                     {
                         CancellationTokenSource innerTimeoutToken =
                             new(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                            #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                               , TimeProvider.System
-                            #endif
+#endif
                                );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
@@ -352,12 +359,15 @@ namespace Hi3Helper.Sophon
 #endif
                                                                   , cooperatedToken.Token)) > 0)
                         {
-                            await (downloadSpeedLimiter?.AddBytesOrWaitAsync(read, token) ?? ValueTask.CompletedTask);
+                            if (downloadSpeedLimiter != null)
+                            {
+                                await downloadSpeedLimiter.AddBytesOrWaitAsync(read, cooperatedToken.Token);
+                            }
 
 #if NET6_0_OR_GREATER
-                            outStream.Write(buffer.AsSpan(0, read));
+                            await outStream.WriteAsync(buffer.AsMemory(0, read), cooperatedToken.Token);
 #else
-                            outStream.Write(buffer, 0, read);
+                            await outStream.WriteAsync(buffer, 0, read, cooperatedToken.Token);
 #endif
 
                             currentWriteOffset += read;
