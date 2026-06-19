@@ -49,7 +49,7 @@
 
 	<!-- Cross-platform protoc path -->
 	<PropertyGroup>
-		<GoogleProtobufVersion>3.35.0</GoogleProtobufVersion>
+		<GoogleProtobufVersion>3.35.1</GoogleProtobufVersion>
 		<ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
 		<ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
