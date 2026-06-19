@@ -4,15 +4,15 @@
     "net10.0": {
       "Google.Protobuf": {
         "type": "Direct",
-        "requested": "[3.35.0, )",
-        "resolved": "3.35.0",
-        "contentHash": "OrUZCUzBXqdSmsQSWp/EPeINjOBcMU+PrZEJegw0aLgOGFHZ9ZI37X/SFrIxo8C9ghKynaKpPr3BVPc4EujWYg=="
+        "requested": "[3.35.1, )",
+        "resolved": "3.35.1",
+        "contentHash": "pxtkuXhR8svkvDTQrYew9GZQt6eWhblz/V/WKUFrQgkHYlQPsumJTeF6ppHRJpe6j9ffukkd5lQULiiKaek4xA=="
       },
       "Google.Protobuf.Tools": {
         "type": "Direct",
-        "requested": "[3.35.0, )",
-        "resolved": "3.35.0",
-        "contentHash": "W1pG23GZsTt6YrInU5EllMSxu1kmhBhCS/z0LN5jLueLQD2ai60qRwCqnxdZ4UTqbz3LeOxdWUsTdGYe8vj7fQ=="
+        "requested": "[3.35.1, )",
+        "resolved": "3.35.1",
+        "contentHash": "tM2NOWuOYMGjU3zIRqTl8LBt6YgeRXVKHRPCf1T+dTac9sW0WYYFmrkPq6lzgrxflGOk8r6PtDBbj0OjqOPrvA=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
@@ -38,7 +38,7 @@
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[*, )",
+        "requested": "[10.0.9, )",
         "resolved": "10.0.9",
         "contentHash": "vixglGnKEexAJDeIRhyayZYzxyrgK1K9GU3K/zRZVwDbaDcMkSqj4WDHoVmQMNfsdUtLALfNSJw6mBIpdxie4A=="
       },

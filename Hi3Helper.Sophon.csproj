@@ -52,14 +52,14 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Google.Protobuf" Version="$(GoogleProtobufVersion)" />
-        <PackageReference Include="Google.Protobuf.Tools" Version="$(GoogleProtobufVersion)">
+        <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+        <PackageReference Include="Google.Protobuf.Tools" Version="3.35.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
-        <PackageReference Include="System.IO.Hashing" Version="*" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.9" />
     </ItemGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">
