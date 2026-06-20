@@ -29,11 +29,11 @@
       "SharpHDiffPatch.Core": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "2.3.4",
-        "contentHash": "Id0lCnBTvvFRUQl6EArE449RmPh/hqjxnhDxQLUgIMMad2nF2ryY7Hh1oKazumgk0Ov7c5/aLiAA6lYCfv1mMw==",
+        "resolved": "2.4.0",
+        "contentHash": "1Ml6JmXTwX6zYFsTghNTOOCB8SLLGLABNCIFQPvGNXhJhMjZS3APZkEQdbCgWsB+Ljmyv9UxoJPXAYjL5xdV1g==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.5",
-          "ZstdSharp.Port": "0.8.6"
+          "ZstdSharp.Port": "0.8.8"
         }
       },
       "System.IO.Hashing": {
@@ -44,8 +44,8 @@
       },
       "ZstdSharp.Port": {
         "type": "Transitive",
-        "resolved": "0.8.6",
-        "contentHash": "iP4jVLQoQmUjMU88g1WObiNr6YKZGvh4aOXn3yOJsHqZsflwRsxZPcIBvNXgjXO3vQKSLctXGLTpcBPLnWPS8A=="
+        "resolved": "0.8.8",
+        "contentHash": "UIDFkA5DC3en3tOJ3Mof11yBx9kUQLsaeo/oFdvN6Bbkr9E9+VCqfIadHci8cu+I51K2Sl7XYWVl2R/mA75NBQ=="
       }
     }
   }
