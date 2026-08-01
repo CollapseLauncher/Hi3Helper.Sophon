@@ -59,7 +59,7 @@
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="*" />
         <PackageReference Include="SharpHDiffPatch.Core" Version="*" />
-        <PackageReference Include="System.IO.Hashing" Version="10.0.9" />
+        <PackageReference Include="System.IO.Hashing" Version="10.0.10" />
     </ItemGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">
