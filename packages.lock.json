@@ -4,21 +4,21 @@
     "net10.0": {
       "Google.Protobuf": {
         "type": "Direct",
-        "requested": "[3.35.1, )",
-        "resolved": "3.35.1",
-        "contentHash": "pxtkuXhR8svkvDTQrYew9GZQt6eWhblz/V/WKUFrQgkHYlQPsumJTeF6ppHRJpe6j9ffukkd5lQULiiKaek4xA=="
+        "requested": "[3.36.0, )",
+        "resolved": "3.36.0",
+        "contentHash": "wDPg8sKlmA8we1bqnC9DYKwLog4PNJ4GYTWV9FkzlGvfs3kNCSt2x0Qe31SBOeBPS2JGEZ/lNfil/Bkwx18Ufg=="
       },
       "Google.Protobuf.Tools": {
         "type": "Direct",
-        "requested": "[3.35.1, )",
-        "resolved": "3.35.1",
-        "contentHash": "tM2NOWuOYMGjU3zIRqTl8LBt6YgeRXVKHRPCf1T+dTac9sW0WYYFmrkPq6lzgrxflGOk8r6PtDBbj0OjqOPrvA=="
+        "requested": "[3.36.0, )",
+        "resolved": "3.36.0",
+        "contentHash": "uRO3uyR1IF2lruQAblDv6WMGl6HOoNCIKtztIDRI4JOK6UrD/JLnWur7H1PEBSMxHjonv2GDq8UuU9GOx2dsGw=="
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "1.6.5",
-        "contentHash": "0Voe4Vi/kcUR+/33mOIKcJlP73oK9iauA2MuHXB0IHDvrbzT02L/2tfyTe621904LzN2zaML7JGKnOOLzuzmFQ=="
+        "resolved": "1.6.7",
+        "contentHash": "tKRsB+itZCtsIlHkQk7eGVbPzOcprMAmKxha+ZpduVz8BnsDZZVrh2GXpuoK3YuOVEspMVr7pKJ8IrnFF0ZAiQ=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
@@ -29,10 +29,11 @@
       "SharpHDiffPatch.Core": {
         "type": "Direct",
         "requested": "[*, )",
-        "resolved": "2.4.0",
-        "contentHash": "1Ml6JmXTwX6zYFsTghNTOOCB8SLLGLABNCIFQPvGNXhJhMjZS3APZkEQdbCgWsB+Ljmyv9UxoJPXAYjL5xdV1g==",
+        "resolved": "2.4.1",
+        "contentHash": "jc9lm95YoZqDHxLRBE0p4NRabmo5lZYHJEe0th/8ozx/nCGPSg8epKWoD+r3W9YOBHCqht1DUBSN6Sl0ePW44Q==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.5",
+          "System.IO.Hashing": "10.0.11",
           "ZstdSharp.Port": "0.8.8"
         }
       },
