@@ -28,11 +28,11 @@
       },
       "SharpHDiffPatch.Core": {
         "type": "Direct",
-        "requested": "[*, )",
-        "resolved": "2.4.1",
-        "contentHash": "jc9lm95YoZqDHxLRBE0p4NRabmo5lZYHJEe0th/8ozx/nCGPSg8epKWoD+r3W9YOBHCqht1DUBSN6Sl0ePW44Q==",
+        "requested": "[2.4.2, )",
+        "resolved": "2.4.2",
+        "contentHash": "omycz2nSYxHS/vzDrS3EBQOJimtd8I9LXiGqM4AmOA3OQEueVHDjKg9mWWv8sufgTXaM1SUXK2hs/Q/ssJtPmA==",
         "dependencies": {
-          "Hi3Helper.ZstdNet": "1.6.5",
+          "Hi3Helper.ZstdNet": "1.6.7",
           "System.IO.Hashing": "10.0.11",
           "ZstdSharp.Port": "0.8.8"
         }
