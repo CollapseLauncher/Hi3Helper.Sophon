@@ -16,7 +16,7 @@
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
-        "requested": "[*, )",
+        "requested": "[1.6.7, )",
         "resolved": "1.6.7",
         "contentHash": "tKRsB+itZCtsIlHkQk7eGVbPzOcprMAmKxha+ZpduVz8BnsDZZVrh2GXpuoK3YuOVEspMVr7pKJ8IrnFF0ZAiQ=="
       },
