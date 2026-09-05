@@ -570,12 +570,10 @@ namespace Hi3Helper.Sophon
 #endif
                     ;
 
-                ProgressCallback progressCallback = ProgressCallback.CreateFromManaged(InvokeWriteProgress);
-
                 try
                 {
                     using HDiffInfo hdiffInfo = await HPatch.CreateInstanceAsync(CreateChunkStream, token);
-                    Exception? ex = await HPatch.PatchAsync(hdiffInfo, CreateChunkStream, inputPath, targetTempPath, options, progressCallback, token);
+                    Exception? ex = await HPatch.PatchAsync(hdiffInfo, CreateChunkStream, inputPath, targetTempPath, options, InvokeWriteProgress, token);
 
                     if (ex != null)
                         throw ex;
