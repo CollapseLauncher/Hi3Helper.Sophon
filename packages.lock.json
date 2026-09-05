@@ -26,11 +26,11 @@
         "resolved": "10.0.11",
         "contentHash": "IBf7lbovvjGWVWXZX5cJ/cO0WXbId0Zq4BuSeT94mGZuOAP66oMeH9PTBZ9Jpp3Jb6jtK0qm/NyUbPRo1gC/wQ=="
       },
-      "SharpHDiffPatch.Core": {
+      "SharpHPatchZ": {
         "type": "Direct",
-        "requested": "[2.4.2, )",
-        "resolved": "2.4.2",
-        "contentHash": "omycz2nSYxHS/vzDrS3EBQOJimtd8I9LXiGqM4AmOA3OQEueVHDjKg9mWWv8sufgTXaM1SUXK2hs/Q/ssJtPmA==",
+        "requested": "[3.0.0, )",
+        "resolved": "3.0.0",
+        "contentHash": "Rr8IGWnHMEOSNwwTlKy+C6ddD0tMm/hgKtW72GuAv08xOGxuVYV+Mv6XPIQneB3WX1sYyOWOrdCdO5PZ5hn/Og==",
         "dependencies": {
           "Hi3Helper.ZstdNet": "1.6.7",
           "System.IO.Hashing": "10.0.11",

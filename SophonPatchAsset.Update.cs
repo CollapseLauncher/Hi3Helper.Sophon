@@ -1,6 +1,7 @@
 ﻿using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Structs;
-using SharpHDiffPatch.Core;
+using SharpHPatchZ;
+using SharpHPatchZ.Header;
 using System;
 using System.Buffers;
 using System.IO;
@@ -554,44 +555,30 @@ namespace Hi3Helper.Sophon
 
             try
             {
-                await Task.Factory
-                          .StartNew(Impl,
-                                    token,
-                                    token)
-                          .ConfigureAwait(false);
+                string inputPath = Path.Combine(inputDir, OriginalFilePath);
+                PatchOptions options = TargetFileSize switch
+                    {
+                        <= 16 << 10  => PatchOptions.SmallBuffer,
+                        <= 512 << 10 => PatchOptions.Default,
+                        _            => PatchOptions.BigBuffer
+                    }
+#if NET6_0_OR_GREATER
+                    with
+                    {
+                        UseSIMD = true
+                    }
+#endif
+                    ;
 
-                this.PushLogDebug(logMessage);
-                isSuccess = true;
-            }
-            finally
-            {
-                if (isSuccess)
-                    patchTargetProperty.Dispose();
-                else
-                    patchTargetProperty.DisposeAndDeleteTemp();
-            }
+                ProgressCallback progressCallback = ProgressCallback.CreateFromManaged(InvokeWriteProgress);
 
-            return true;
-
-            void Impl(object? ctx)
-            {
-                HDiffPatch patcher   = new();
-                string     inputPath = Path.Combine(inputDir, OriginalFilePath);
                 try
                 {
-                    patcher.Initialize(CreateChunkStream);
+                    using HDiffInfo hdiffInfo = await HPatch.CreateInstanceAsync(CreateChunkStream, token);
+                    Exception? ex = await HPatch.PatchAsync(hdiffInfo, CreateChunkStream, inputPath, targetTempPath, options, progressCallback, token);
 
-                    patcher.Patch(inputPath,
-                                  targetTempPath,
-                                  true,
-                                  x =>
-                                  {
-                                      diskWriteDelegate?.Invoke(x);
-                                      Interlocked.Add(ref writtenToDisk, x);
-                                  },
-                                  (CancellationToken)ctx!,
-                                  false,
-                                  true);
+                    if (ex != null)
+                        throw ex;
                 }
                 catch
                 {
@@ -610,9 +597,27 @@ namespace Hi3Helper.Sophon
                         }
                     }
                 }
+
+                this.PushLogDebug(logMessage);
+                isSuccess = true;
+            }
+            finally
+            {
+                if (isSuccess)
+                    patchTargetProperty.Dispose();
+                else
+                    patchTargetProperty.DisposeAndDeleteTemp();
             }
 
-            ChunkStream CreateChunkStream()
+            return true;
+
+            void InvokeWriteProgress(long totalWritten, long totalSize, int currentlyWritten)
+            {
+                diskWriteDelegate?.Invoke(currentlyWritten);
+                Interlocked.Add(ref writtenToDisk, currentlyWritten);
+            }
+
+            ValueTask<(Stream Stream, bool LeaveOpen)> CreateChunkStream(long pos, CancellationToken factoryToken)
             {
 #if NET6_0_OR_GREATER
                 FileStream fileStream = patchPath.Open(new FileStreamOptions
@@ -630,12 +635,8 @@ namespace Hi3Helper.Sophon
                                             4 << 10,
                                             FileOptions.SequentialScan);
 #endif
-                ChunkStream chunkStream = new(fileStream,
-                                              PatchOffset,
-                                              PatchOffset + PatchChunkLength,
-                                              true);
-
-                return chunkStream;
+                fileStream.Position = pos + PatchOffset;
+                return new ValueTask<(Stream Stream, bool LeaveOpen)>((fileStream, false));
             }
         }
 
