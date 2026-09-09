@@ -729,15 +729,22 @@ namespace Hi3Helper.Sophon.Helper
                    _ => 1 << 20
                };
 
-        internal static PatchOptions GetPatchOptions(this long fileSize, int parallelThreads)
+        internal static PatchOptions GetPatchOptions(this FileInfo fileInfo)
+            => fileInfo.Exists ? fileInfo.Length.GetPatchOptions() : PatchOptions.Default;
+
+        internal static PatchOptions GetPatchOptions(this long fileSize)
             => fileSize switch
                 {
                     <= 128 << 10 => PatchOptions.SmallBuffer,
                     <= 1 << 20   => PatchOptions.Default,
                     _            => PatchOptions.BigBuffer
-                } with
+                }
+#if NET6_0_OR_GREATER
+                with
                 {
-                    ParallelThreads = (uint)parallelThreads
-                };
+                    UseSIMD = true
+                }
+#endif
+        ;
     }
 }

@@ -555,15 +555,8 @@ namespace Hi3Helper.Sophon
 
             try
             {
-                string inputPath = Path.Combine(inputDir, OriginalFilePath);
-                PatchOptions options = PatchOptions.BigBuffer
-#if NET6_0_OR_GREATER
-                    with
-                    {
-                        UseSIMD = true
-                    }
-#endif
-                    ;
+                string       inputPath = Path.Combine(inputDir, OriginalFilePath);
+                PatchOptions options   = patchPath.GetPatchOptions();
 
                 try
                 {
