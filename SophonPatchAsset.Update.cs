@@ -556,12 +556,7 @@ namespace Hi3Helper.Sophon
             try
             {
                 string inputPath = Path.Combine(inputDir, OriginalFilePath);
-                PatchOptions options = TargetFileSize switch
-                    {
-                        <= 16 << 10  => PatchOptions.SmallBuffer,
-                        <= 512 << 10 => PatchOptions.Default,
-                        _            => PatchOptions.BigBuffer
-                    }
+                PatchOptions options = PatchOptions.BigBuffer
 #if NET6_0_OR_GREATER
                     with
                     {

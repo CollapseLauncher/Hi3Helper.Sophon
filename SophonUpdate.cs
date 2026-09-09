@@ -2,10 +2,6 @@
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo
 // ReSharper disable InvalidXmlDocComment
-
-#if NET6_0_OR_GREATER
-using ZstdNet;
-#endif
 using Google.Protobuf.Collections;
 using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Infos;
@@ -19,6 +15,11 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+
+#if NET8_0_OR_GREATER && !NET11_0_OR_GREATER
+using ZstdNet;
+#endif
+
 // ReSharper disable ArrangeObjectCreationWhenTypeEvident
 // ReSharper disable ConvertToUsingDeclaration
 // ReSharper disable UseAwaitUsing
@@ -131,12 +132,12 @@ namespace Hi3Helper.Sophon
                                  SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
                                  [EnumeratorCancellation] CancellationToken token                = default)
         {
-        #if NET6_0_OR_GREATER
+#if NET8_0_OR_GREATER && !NET11_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
                 throw new DllNotFoundException("libzstd is not found!");
             }
-        #endif
+#endif
 
             ActionTimeoutTaskCallback<SophonManifestProto> manifestFromProtoTaskCallback =
                 async innerToken => await httpClient

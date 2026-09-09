@@ -3,9 +3,6 @@
 // ReSharper disable CommentTypo
 // ReSharper disable InvalidXmlDocComment
 
-#if NET9_0_OR_GREATER
-using ZstdNet;
-#endif
 using Hi3Helper.Sophon.Helper;
 using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Protos;
@@ -17,6 +14,10 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+
+#if NET8_0_OR_GREATER && !NET11_0_OR_GREATER
+using ZstdNet;
+#endif
 
 // ReSharper disable ConvertToUsingDeclaration
 // ReSharper disable UseAwaitUsing
@@ -106,14 +107,12 @@ namespace Hi3Helper.Sophon
                            SophonDownloadSpeedLimiter                 downloadSpeedLimiter = null,
                            [EnumeratorCancellation] CancellationToken token                = default)
         {
-        #if NET9_0_OR_GREATER
+#if NET8_0_OR_GREATER && !NET11_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
                 throw new DllNotFoundException("libzstd is not found!");
             }
-        #else
-            List<SophonAsset> assetList = [];
-        #endif
+#endif
 
             ActionTimeoutTaskCallback<SophonManifestProto> manifestProtoTaskCallback =
                 async innerToken => await httpClient.ReadProtoFromManifestInfo(manifestInfo,

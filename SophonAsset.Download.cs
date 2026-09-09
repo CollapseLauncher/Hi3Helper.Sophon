@@ -21,7 +21,13 @@ using System.Threading.Tasks.Dataflow;
 // ReSharper disable UnusedAutoPropertyAccessor.Global
 
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+
+#if NET11_0_OR_GREATER
+using System.IO.Compression;
+using ZstdStream = System.IO.Compression.ZstandardStream;
+#else
 using ZstdStream = ZstdNet.DecompressionStream;
+#endif
 
 #nullable enable
 namespace Hi3Helper.Sophon
@@ -38,7 +44,7 @@ namespace Hi3Helper.Sophon
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         internal SophonAsset(string?       assetName,
-            long          assetSize,
+                             long          assetSize,
                              string?       assetHash,
                              bool          isDirectory,
                              bool          isHasPatch,
@@ -60,8 +66,11 @@ namespace Hi3Helper.Sophon
             OldReference
         }
 
-        internal const int BufferSize     = 4 << 10;
+        internal const int BufferSize = 4 << 10;
+
+#if !NET11_0_OR_GREATER
         private const  int ZstdBufferSize = 0; // Default
+#endif
 
         public   string?                     AssetName            { get; }
         public   long                        AssetSize            { get; }
@@ -552,9 +561,9 @@ namespace Hi3Helper.Sophon
                     {
                         CancellationTokenSource innerTimeoutToken =
                             new(TimeSpan.FromSeconds(TaskExtensions.DefaultTimeoutSec)
-                            #if NET8_0_OR_GREATER
+#if NET8_0_OR_GREATER
                               , TimeProvider.System
-                            #endif
+#endif
                                );
                         CancellationTokenSource cooperatedToken =
                             CancellationTokenSource.CreateLinkedTokenSource(token, innerTimeoutToken.Token);
@@ -589,7 +598,11 @@ namespace Hi3Helper.Sophon
 
                                 if (SophonChunksInfo.IsUseCompression)
                                 {
+#if NET11_0_OR_GREATER
+                                    sourceStream = new ZstdStream(httpResponseStream, CompressionMode.Decompress);
+#else
                                     sourceStream = new ZstdStream(httpResponseStream, ZstdBufferSize);
+#endif
                                 }
                             }
                                 break;
@@ -597,7 +610,11 @@ namespace Hi3Helper.Sophon
                             {
                                 if (SophonChunksInfo.IsUseCompression)
                                 {
+#if NET11_0_OR_GREATER
+                                    sourceStream = new ZstdStream(sourceStream!, CompressionMode.Decompress);
+#else
                                     sourceStream = new ZstdStream(sourceStream, ZstdBufferSize);
+#endif
                                 }
                             }
                                 break;

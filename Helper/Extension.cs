@@ -1,11 +1,11 @@
-﻿using Google.Protobuf;
+﻿// ReSharper disable IdentifierTypo
+
+using Google.Protobuf;
 using Hi3Helper.Sophon.Infos;
 using Hi3Helper.Sophon.Structs;
+using SharpHPatchZ;
 using System;
 using System.Buffers;
-#if NETSTANDARD2_0_OR_GREATER
-using System.Collections.Generic;
-#endif
 using System.IO;
 using System.IO.Hashing;
 using System.Net.Http;
@@ -15,16 +15,17 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-// ReSharper disable UseCollectionExpression
-// ReSharper disable IdentifierTypo
-// ReSharper disable CommentTypo
-// ReSharper disable ConvertToUsingDeclaration
-// ReSharper disable IdentifierTypo
-// ReSharper disable EntityNameCapturedOnly.Global
 
+#if NETSTANDARD2_0_OR_GREATER
+using System.Collections.Generic;
+#endif
+
+#if NET11_0_OR_GREATER
+using System.IO.Compression;
+using ZstdStream = System.IO.Compression.ZstandardStream;
+#else
 using ZstdStream = ZstdNet.DecompressionStream;
-// ReSharper disable UnusedMember.Global
-// ReSharper disable StringLiteralTypo
+#endif
 
 namespace Hi3Helper.Sophon.Helper
 {
@@ -576,7 +577,11 @@ namespace Hi3Helper.Sophon.Helper
             static ZstdStream GetDecompressorStream(Stream sourceStream)
             {
                 sourceStream.Position = 0;
+#if NET11_0_OR_GREATER
+                return new ZstdStream(sourceStream, CompressionMode.Decompress);
+#else
                 return new ZstdStream(sourceStream);
+#endif
             }
         }
 
@@ -638,12 +643,21 @@ namespace Hi3Helper.Sophon.Helper
             await
 #endif
             using Stream decompressedProtoStream = manifestInfo.IsUseCompression ?
-                new ZstdStream(manifestLocalStream) :
+                GetDecompressorStream(manifestLocalStream) :
                 manifestLocalStream;
             return await Task<T>.Factory.StartNew(() => messageParser.ParseFrom(decompressedProtoStream),
                                                   innerToken,
                                                   TaskCreationOptions.DenyChildAttach,
                                                   TaskScheduler.Default);
+
+            static ZstdStream GetDecompressorStream(Stream sourceStream)
+            {
+#if NET11_0_OR_GREATER
+                return new ZstdStream(sourceStream, CompressionMode.Decompress);
+#else
+                return new ZstdStream(sourceStream);
+#endif
+            }
         }
 
         internal static FileInfo GetLegacyOrHoyoPlayPatchChunkPath(this SophonPatchAsset asset, string patchOutputDir)
@@ -714,5 +728,16 @@ namespace Hi3Helper.Sophon.Helper
                    <= 100 << 20 => 512 << 10,
                    _ => 1 << 20
                };
+
+        internal static PatchOptions GetPatchOptions(this long fileSize, int parallelThreads)
+            => fileSize switch
+                {
+                    <= 128 << 10 => PatchOptions.SmallBuffer,
+                    <= 1 << 20   => PatchOptions.Default,
+                    _            => PatchOptions.BigBuffer
+                } with
+                {
+                    ParallelThreads = (uint)parallelThreads
+                };
     }
 }

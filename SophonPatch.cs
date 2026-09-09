@@ -13,8 +13,11 @@ using System.Threading;
 #if NET6_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using ZstdNet;
 // ReSharper disable RedundantCallerArgumentExpressionDefaultValue
+#endif
+
+#if NET6_0_OR_GREATER && !NET11_0_OR_GREATER
+using ZstdNet;
 #endif
 
 // ReSharper disable CommentTypo
@@ -145,7 +148,7 @@ namespace Hi3Helper.Sophon
             if (mainChunksInfo == null) throw new ArgumentNullException(nameof(mainChunksInfo));
 #endif
 
-#if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER && !NET11_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
                 throw new DllNotFoundException("libzstd is not found!");
@@ -394,7 +397,7 @@ namespace Hi3Helper.Sophon
             if (mainChunksInfo == null) throw new ArgumentNullException(nameof(mainChunksInfo));
 #endif
 
-#if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER && !NET11_0_OR_GREATER
             if (!DllUtils.IsLibraryExist(DllUtils.DllName))
             {
                 throw new DllNotFoundException("libzstd is not found!");

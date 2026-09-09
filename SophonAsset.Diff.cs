@@ -2,9 +2,6 @@
 using Hi3Helper.Sophon.Structs;
 using System;
 using System.Buffers;
-#if NET6_0_OR_GREATER
-using System.Diagnostics;
-#endif
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -19,7 +16,13 @@ using System.Threading.Tasks.Dataflow;
 // ReSharper disable IdentifierTypo
 
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+
+#if NET11_0_OR_GREATER
+using System.IO.Compression;
+using ZstdStream = System.IO.Compression.ZstandardStream;
+#else
 using ZstdStream = ZstdNet.DecompressionStream;
+#endif
 
 namespace Hi3Helper.Sophon
 {
@@ -404,7 +407,11 @@ namespace Hi3Helper.Sophon
                         {
                             if (SophonChunksInfo.IsUseCompression)
                             {
+#if NET11_0_OR_GREATER
+                                checkHashStream = new ZstdStream(checkHashStream, CompressionMode.Decompress);
+#else
                                 checkHashStream = new ZstdStream(checkHashStream);
+#endif
                             }
 
                             isHashVerified =

@@ -12,7 +12,13 @@ using System.Threading.Tasks;
 // ReSharper disable AccessToModifiedClosure
 
 using TaskExtensions = Hi3Helper.Sophon.Helper.TaskExtensions;
+
+#if NET11_0_OR_GREATER
+using System.IO.Compression;
+using ZstdStream = System.IO.Compression.ZstandardStream;
+#else
 using ZstdStream = ZstdNet.DecompressionStream;
+#endif
 
 namespace Hi3Helper.Sophon
 {
@@ -315,7 +321,11 @@ namespace Hi3Helper.Sophon
                         {
                             if (PatchInfo.IsUseCompression)
                             {
+#if NET11_0_OR_GREATER
+                                checkHashStream = new ZstdStream(checkHashStream, CompressionMode.Decompress);
+#else
                                 checkHashStream = new ZstdStream(checkHashStream);
+#endif
                             }
 
                             isHashVerified =
