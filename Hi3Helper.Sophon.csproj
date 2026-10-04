@@ -44,7 +44,7 @@
 
     <!-- Cross-platform protoc path -->
     <PropertyGroup>
-        <GoogleProtobufVersion>3.36.1</GoogleProtobufVersion>
+        <GoogleProtobufVersion>3.36.2</GoogleProtobufVersion>
         <ProtoToolsRoot>$(NuGetPackageRoot)/google.protobuf.tools/$(GoogleProtobufVersion)/tools</ProtoToolsRoot>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(ProtoToolsRoot)/windows_x64/protoc.exe</ProtocPath>
         <ProtocPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(ProtoToolsRoot)/linux_x64/protoc</ProtocPath>
@@ -57,7 +57,7 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.6.7" Condition="'$(TargetFramework)'!='netstandard2.0' and '$(TargetFramework)'!='net11.0'" />
+        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.6.9" Condition="'$(TargetFramework)'!='netstandard2.0' and '$(TargetFramework)'!='net11.0'" />
         <PackageReference Include="SharpHPatchZ" Version="3.1.0" />
         <PackageReference Include="System.IO.Hashing" Version="10.0.12" />
     </ItemGroup>
