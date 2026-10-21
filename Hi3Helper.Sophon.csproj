@@ -57,8 +57,8 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.6.9" Condition="'$(TargetFramework)'!='netstandard2.0' and '$(TargetFramework)'!='net11.0'" />
-        <PackageReference Include="SharpHPatchZ" Version="3.1.0" />
+        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.6.9" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'!='net11.0'" />
+        <PackageReference Include="SharpHPatchZ" Version="3.1.1" />
         <PackageReference Include="System.IO.Hashing" Version="10.0.13" />
     </ItemGroup>
 
