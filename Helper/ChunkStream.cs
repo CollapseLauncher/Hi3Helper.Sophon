@@ -187,7 +187,7 @@ public sealed class ChunkStream : Stream
         CurPos = Size;
         try
         {
-            Read:
+        Read:
             if (remained == 0)
                 return;
 
@@ -289,7 +289,12 @@ public sealed class ChunkStream : Stream
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) base.Dispose(true);
+        if (!disposing)
+        {
+            return;
+        }
+
         if (IsDisposing) _stream.Dispose();
+        base.Dispose(true);
     }
 }
