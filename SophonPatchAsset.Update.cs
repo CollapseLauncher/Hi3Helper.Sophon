@@ -564,7 +564,7 @@ namespace Hi3Helper.Sophon
                     Exception? ex = await HPatch.PatchAsync(hdiffInfo, CreateChunkStream, inputPath, targetTempPath, options, InvokeWriteProgress, token);
 
                     if (ex != null)
-                        throw ex;
+                        throw new Exception("HPatchZ has resulted unsuccessful attempt to patch the file", ex);
                 }
                 catch
                 {
@@ -621,9 +621,8 @@ namespace Hi3Helper.Sophon
                                             4 << 10,
                                             FileOptions.SequentialScan);
 #endif
-                ChunkStream chunkStream = new(fileStream, PatchOffset, PatchOffset + PatchChunkLength, true);
-                chunkStream.Position = pos;
-                return new ValueTask<(Stream Stream, bool LeaveOpen)>((chunkStream, false));
+                fileStream.Position = pos + PatchOffset;
+                return new ValueTask<(Stream Stream, bool LeaveOpen)>((fileStream, false));
             }
         }
 
