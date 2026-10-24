@@ -16,9 +16,9 @@
       },
       "Hi3Helper.ZstdNet": {
         "type": "Direct",
-        "requested": "[1.6.9, )",
-        "resolved": "1.6.9",
-        "contentHash": "AysVvAAN/jC5Ac8eh1XgnM35jqJ6G6+g28oEXsGq+K8WSt92oABUgZedctRTWP6eg45H8Pr+VZq6Z1dvPuxL6w=="
+        "requested": "[1.7.1, )",
+        "resolved": "1.7.1",
+        "contentHash": "UMTpQOSOuWdW9AI7Grz7vRtSVYoHICQnAFbo6X24hSe/4Rgd2daKY4QCgAbUfYDpP0T+evp/ElV9JHVPziZDIw=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
