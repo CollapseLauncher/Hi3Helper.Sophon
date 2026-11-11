@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0": {
+    "net11.0": {
       "Google.Protobuf": {
         "type": "Direct",
         "requested": "[3.36.2, )",
@@ -14,17 +14,11 @@
         "resolved": "3.36.2",
         "contentHash": "NBVZBXcHIztsG0r/9IlkMWv16krc0wlZp1l0cgi5K538eIw7xakkb7RLqcFK4CeUioVu7TUEy8OMIjc8uVLUqg=="
       },
-      "Hi3Helper.ZstdNet": {
-        "type": "Direct",
-        "requested": "[1.7.1, )",
-        "resolved": "1.7.1",
-        "contentHash": "UMTpQOSOuWdW9AI7Grz7vRtSVYoHICQnAFbo6X24hSe/4Rgd2daKY4QCgAbUfYDpP0T+evp/ElV9JHVPziZDIw=="
-      },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[10.0.14, )",
-        "resolved": "10.0.14",
-        "contentHash": "YlTamXppEQls6DYWt7RdUuwWDb0lyw/vXCaGeQpLCpsLmfwGuCkOz/vIGgMTV7ECsJcavkCOkxZXv9s8rdAHkQ=="
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "gK2aq4XvChj5kvozpPHrkfKkr7zc5Z4xoTrJb4GPZzDEPMlCk0TX632bwY3LsWcX2UVcVRQBBGzsBGC2lq6YhA=="
       },
       "SharpHPatchZ": {
         "type": "Direct",
@@ -32,21 +26,14 @@
         "resolved": "3.1.1",
         "contentHash": "pOeTAjQCc+DvNfXkwPeY0K33jh1xHAyyVHkMhm1oVsBnP3viMr4Lu8GSjJ38ZOd9YvLCHHA0KWFMTDPvit0WXg==",
         "dependencies": {
-          "Hi3Helper.ZstdNet": "1.6.7",
-          "System.IO.Hashing": "10.0.13",
-          "ZstdSharp.Port": "0.8.8"
+          "System.IO.Hashing": "10.0.13"
         }
       },
       "System.IO.Hashing": {
         "type": "Direct",
-        "requested": "[10.0.14, )",
-        "resolved": "10.0.14",
-        "contentHash": "lVqovhCt3HlZe7ONG5ydaj6BYwYI004gldVfMMkJl/lR5ueeCtWNpW4nejOX75sPmzm8vXCxB69GqwHaYCnyUQ=="
-      },
-      "ZstdSharp.Port": {
-        "type": "Transitive",
-        "resolved": "0.8.8",
-        "contentHash": "UIDFkA5DC3en3tOJ3Mof11yBx9kUQLsaeo/oFdvN6Bbkr9E9+VCqfIadHci8cu+I51K2Sl7XYWVl2R/mA75NBQ=="
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "U+Bv2qCYt6eONi+arSP0QIp4uTO6os6uceBsqiAwruZ+Wo2HrRhO/0tj38M9URJtS+4DhAtT3ka2TGNFYsnhyQ=="
       }
     }
   }

@@ -1,15 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-	    <TargetFramework>net10.0</TargetFramework>
+	    <TargetFramework>net11.0</TargetFramework>
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Platforms>x64</Platforms>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<DefineConstants>$(DefineConstants);NOSTREAMLOCK</DefineConstants>
 		<IsAotCompatible>true</IsAotCompatible>
 		<IsTrimmable>true</IsTrimmable>
+        <DebugType>portable</DebugType>
 
-        <Version>1.8.1</Version>
-        <AssemblyVersion>1.8.1</AssemblyVersion>
+        <Version>1.8.2</Version>
+        <AssemblyVersion>1.8.2</AssemblyVersion>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <AssemblyName>Hi3Helper.Sophon</AssemblyName>
         <AssemblyTitle>Hi3Helper.Sophon - A deserializer and downloader for the new HoYoverse/miHoYo Launcher's Sophon chunk-based download method.</AssemblyTitle>
@@ -24,18 +25,20 @@
         <IsAotCompatible>true</IsAotCompatible>
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-        <DebugType>portable</DebugType>
-    </PropertyGroup>
     <PropertyGroup Condition="'$(Configuration)'=='Release'">
         <Optimize>True</Optimize>
-        <DebugType>portable</DebugType>
     </PropertyGroup>
+
     <ItemGroup>
         <Compile Remove="Test\**" />
         <EmbeddedResource Remove="Test\**" />
         <None Remove="Test\**" />
     </ItemGroup>
+
+    <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))">
+        <!-- .NET 11 feature - Runtime Async -->
+        <Features>runtime-async=on</Features>
+    </PropertyGroup>
 
     <ItemGroup>
         <None Include="icon.png" Pack="true" PackagePath="\" />
@@ -57,9 +60,9 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.7.1" Condition="'$(TargetFramework)'=='netstandard2.0' or '$(TargetFramework)'!='net11.0'" />
+        <PackageReference Include="Hi3Helper.ZstdNet" Version="1.7.1" Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))" />
         <PackageReference Include="SharpHPatchZ" Version="3.1.1" />
-        <PackageReference Include="System.IO.Hashing" Version="10.0.14" />
+        <PackageReference Include="System.IO.Hashing" Version="11.0.0" />
     </ItemGroup>
 
     <Target Name="GenerateProto-SophonManifestProto" Inputs="$(ProjectDir)Protos/SophonManifestProto.proto" Outputs="$(ProjectDir)Protos/SophonManifestProto.cs" BeforeTargets="BeforeBuild">
