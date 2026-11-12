@@ -61,7 +61,7 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Hi3Helper.ZstdNet" Version="1.7.1" Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net11.0'))" />
-        <PackageReference Include="SharpHPatchZ" Version="3.1.1" />
+        <PackageReference Include="SharpHPatchZ" Version="3.1.2" />
         <PackageReference Include="System.IO.Hashing" Version="11.0.0" />
     </ItemGroup>
 
